@@ -11,6 +11,7 @@ A bilingual (English / 中文) flowchart assignment for junior-high students: dr
 | Home 首頁 | `index.html` | Everyone 所有人 |
 | Free Draw 自由繪製 | `free/` | Anyone 任何人 |
 | BMI Drawing Tool BMI 繪製工具 | `bmi/` | Students 學生 |
+| Pass or Fail Tool 成績及格判斷工具 | `score/` | Students 學生 |
 | Grading Desk 批改台 | `grader/` | Teachers 教師 |
 
 Live site 網址：https://taksito.github.io/flowchart-work/
@@ -18,7 +19,7 @@ Live site 網址：https://taksito.github.io/flowchart-work/
 All pages are single, self-contained HTML files. No build step and no server are needed.
 每個頁面都是單一 HTML 檔，不需要編譯或伺服器。
 
-## The task 題目
+## The BMI task BMI 題目
 
 Input height and weight, compute `BMI = weight ÷ height²` (height in metres), then output:
 輸入身高與體重，計算 BMI（身高用公尺），再輸出：
@@ -43,7 +44,18 @@ The same board without the BMI helper or Check button. Drawings are saved separa
 - Check 提交批改: shows the score, bilingual feedback and the 8 BMI tests. A fully correct chart unlocks a PNG certificate (完成圖), with a Bilingual Star badge for all-English charts.
 - Files 檔案: download / open `.json` work files; “我的作品” keeps several drawings in the browser.
 
-## Grading Desk 流程圖批改台
+## Pass or Fail Tool 成績及格判斷工具
+
+Input four scores, compute the total and the average (total ÷ 4), then output `pass` if the average is 60 or more, otherwise `fail` (exactly 60 passes).
+輸入四個成績，算出總分與平均（總分 ÷ 4），平均 ≥ 60 輸出 pass，否則輸出 fail（剛好 60 算 pass）。
+
+- Any variable names work: s1–s4, a–d, score1–score4, or Chinese names. One INPUT per score, or `input s1, s2, s3, s4`. 變數名稱不限，可以一個 INPUT 一個成績，也可以寫在同一個 INPUT。
+- The helper checks the inputs, the total, the average (÷ 4, not ÷ 3), the `>= 60` boundary and the Yes/No lines. 小幫手會檢查輸入、總分、平均、>= 60 的邊界和 Yes/No 接線。
+- Rubric (100): Structure 20, Input 10, Process 20, Decision 15, Output 10, Test run 25 (8 sets of scores, including averages of exactly 60 and 59.75).
+
+## Grading Desk 批改台
+
+- Units 單元：switch between **BMI** and **Pass or Fail** at the top. Uploaded files go to the right unit automatically. 上方切換單元，上傳的檔案會自動分到對應單元。
 
 - Upload many `.json` files at once (or drag them in). 一次上傳多份作業檔。
 - Rubric (100 points): Structure 20, Input 10, Process 10, Decision 20, Output 10, Test run 30.

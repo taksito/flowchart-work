@@ -35,6 +35,12 @@ h1{font-size:20px;font-weight:700;margin:0;letter-spacing:.03em;display:flex;ali
 h1 small{font-size:13px;font-weight:400;color:var(--muted);letter-spacing:0}
 .tools{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
 button{font:inherit;color:inherit}
+.units{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.units button{border:0;background:transparent;padding:7px 14px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
+.units button span{font-size:12px;color:var(--muted);font-weight:400}
+.units button em{font-style:normal;font-family:var(--font-mono);font-size:11px;background:var(--soft);border-radius:999px;padding:0 7px;color:var(--muted)}
+.units button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
+.units button[aria-selected="true"] em{background:var(--accent);color:var(--panel)}
 .btn{font-size:13px;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);cursor:pointer;white-space:nowrap}
 .btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .btn:disabled{opacity:.45;cursor:default}
@@ -58,7 +64,7 @@ button{font:inherit;color:inherit}
 .lv-及格{background:var(--warn-soft);color:var(--warn)}
 .lv-需加強{background:var(--bad-soft);color:var(--bad)}
 .chip.en{border-color:var(--accent);color:var(--accent);font-weight:500}
-.chip{font-size:11px;padding:0 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);margin-left:6px;white-space:nowrap}
+.chip{font-size:11px;padding:0 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 
 .main{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:16px;align-items:start}
 .roster{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:sticky;top:12px}
@@ -69,7 +75,7 @@ button{font:inherit;color:inherit}
 .row.on{background:var(--accent-soft);border-left-color:var(--accent)}
 .row .who{min-width:0}
 .row .who b{display:block;font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .who span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.row .who>span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
 .score-cell{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
 .score-cell b{font-family:var(--font-mono);font-size:16px;font-weight:500;font-variant-numeric:tabular-nums}
 .mini{width:84px;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
@@ -164,7 +170,8 @@ td .why{color:var(--muted);font-size:12px}
 
 <div class="wrap">
   <header>
-    <h1>Grading Desk 批改台 <small>BMI Flowchart</small></h1>
+    <h1>Grading Desk 批改台 <small id="unitName">BMI Flowchart</small></h1>
+    <div class="units" role="tablist" aria-label="Unit 單元"><button role="tab" data-unit="bmi">BMI <span>BMI 判斷</span><em id="cntBmi"></em></button><button role="tab" data-unit="score">Pass or Fail <span>成績及格判斷</span><em id="cntScore"></em></button></div>
     <div class="tools">
       <label class="btn primary" for="fileInput" tabindex="0" id="upLabel">上傳作業檔</label>
       <input type="file" id="fileInput" accept=".json,application/json" multiple hidden>
@@ -175,7 +182,7 @@ td .why{color:var(--muted);font-size:12px}
     </div>
   </header>
 
-  <div class="banner" id="banner" hidden><b>目前是範例資料。</b>一份是你提供的範例作業，一份是標準答案。上傳學生的 .json 作業檔後，範例會自動移除。可以一次選多個檔案，或直接把檔案拖進這個頁面。</div>
+  <div class="banner" id="banner" hidden><b>目前是範例資料。</b>每個單元各有一份範例作業和一份標準答案。上傳學生的 .json 作業檔後，範例會自動移除。可以一次選多個檔案，或直接把檔案拖進這個頁面。</div>
 
   <div class="summary" id="summary"></div>
 
@@ -190,6 +197,7 @@ td .why{color:var(--muted);font-size:12px}
 
 <div class="modal" id="rubricModal" hidden>
   <div class="dialog">
+    <div data-rub="bmi">
     <h2>BMI 流程圖評分標準（滿分 100）</h2>
     <p>越接近標準答案分數越高。除了檢查有沒有畫對符號，也會把學生的流程圖真的「跑一遍」，看每種 BMI 會不會輸出正確結果。</p>
     <div class="tbl-wrap"><table>
@@ -203,6 +211,22 @@ td .why{color:var(--muted);font-size:12px}
       <tr><td>English 英文</td><td>不計分，只鼓勵：顯示英文使用率，全英文的作品標上 EN；用了中文會列出可以換成的英文，例如 身高 → height、是 → Yes。</td><td>0</td></tr>
     </table></div>
     <p>判斷的寫法不限：「BMI &lt; 18.5」、「BMI ≥ 27」、「18.5 ≤ BMI &lt; 24」、中文「小於」「大於等於」都看得懂；判斷順序由大到小或由小到大都可以。分界值剛好等於 24 算 overweight，等於 27 算 obesity。</p>
+    </div>
+    <div data-rub="score">
+    <h2>Pass or Fail 成績及格判斷評分標準（滿分 100）</h2>
+    <p>題目：輸入四個成績，算出總分與平均，平均 ≥ 60 輸出 pass，否則輸出 fail（剛好 60 算 pass）。會把學生的流程圖真的「跑一遍」。</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>項目</th><th>檢查內容</th><th>配分</th></tr>
+      <tr><td>Structure 結構</td><td>有 START、有 END、能從開始走到結束、每個圖形都有接線、判斷有 Yes／No 兩條路</td><td>20</td></tr>
+      <tr><td>Input 輸入</td><td>輸入四個成績（每個 2 分），並使用 INPUT 符號</td><td>10</td></tr>
+      <tr><td>Process 計算</td><td>計算總分（四個成績相加）10 分、計算平均（總分 ÷ 4）10 分；直接寫 avg = (a+b+c+d)/4 也算對</td><td>20</td></tr>
+      <tr><td>Decision 判斷</td><td>用平均和 60 比較，條件寫在菱形裡</td><td>15</td></tr>
+      <tr><td>Output 輸出</td><td>用 OUTPUT 符號輸出 pass 和 fail</td><td>10</td></tr>
+      <tr><td>Test run 執行測試</td><td>8 組成績實際跑一遍，含平均剛好 60、59.75 的邊界情況</td><td>25</td></tr>
+      <tr><td>English 英文</td><td>不計分，只鼓勵。</td><td>0</td></tr>
+    </table></div>
+    <p>變數名稱不限：s1～s4、a～d、score1～score4，或 國文、數學 都可以；可以一個 INPUT 放一個成績，也可以在一個 INPUT 裡寫 s1, s2, s3, s4。判斷寫 avg &gt;= 60（Yes 接 pass）或 avg &lt; 60（Yes 接 fail）都可以。</p>
+    </div>
     <p>雙語課程鼓勵學生多用英文：英文不加分也不扣分，中文寫法一樣可以拿滿分；評語會稱讚全英文的作品，並建議其他人可以換成哪些英文字。</p>
     <p>等第：90 分以上 優秀，75 分以上 良好，60 分以上 及格，60 分以下 需加強。</p>
     <div class="end"><button class="btn primary" data-close>知道了</button></div>
@@ -512,31 +536,249 @@ function feedback(work,g){
 
 if(typeof module!=='undefined') module.exports={feedback,grade,CASES,expectCat,CATS,parseAssign,compileCond,heightUnit,catOf,norm,RE_H,RE_W};
 
+/* ===== Average score task: input 4 scores, total, average, pass/fail ===== */
+const PASS_LINE=60;
+const SCORE_CASES=[[70,80,90,60],[60,60,60,60],[59,60,60,60],[100,100,100,0],[40,50,60,80],[0,0,0,0],[61,59,60,60],[100,90,80,70]];
+const sAvg=a=>(a[0]+a[1]+a[2]+a[3])/4;
+const sExpect=a=>sAvg(a)>=PASS_LINE?'pass':'fail';
+const STOP=new Set(['input','output','print','read','enter','scan','set','let','if','then','and','or','is','the','輸入','輸出','印出','顯示','計算','令','是否','嗎','和','與','及','請']);
+function sCat(text){ const t=String(text||''); if(/fail|不及格|不通過|沒過/i.test(t)) return 'fail'; if(/pass|及格|通過/i.test(t)) return 'pass'; return null; }
+function sNorm(s){
+  return norm(s).replace(/大於或等於|大於等於|不小於|至少/g,'>=').replace(/小於或等於|小於等於|不大於|至多/g,'<=')
+    .replace(/大於|超過|高於/g,'>').replace(/小於|低於|未滿/g,'<').replace(/不等於/g,'!=').replace(/等於/g,'==')
+    .replace(/[÷]/g,'/').replace(/[×]/g,'*').replace(/[＋]/g,'+').replace(/[－−]/g,'-');
+}
+/* tokens -> js using env lookups */
+function sTokens(src){
+  const t=sNorm(src), out=[]; const re=/\s*(<=|>=|==|!=|←|:=|->|→|[<>=+\-*/^()]|\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*|[㐀-鿿]+)/gy; let m, last=0;
+  while((m=re.exec(t))){ out.push(m[1]); last=re.lastIndex; }
+  if(t.slice(last).trim()) return null; return out;
+}
+const isId=x=>/^([A-Za-z_][A-Za-z0-9_]*|[㐀-鿿]+)$/.test(x);
+const idKey=x=>/^[A-Za-z_]/.test(x)?x.toLowerCase():x;
+function sJs(toks){
+  const vars=new Set(); const js=toks.map(x=>{ if(isId(x)){ const k=idKey(x); vars.add(k); return `e[${JSON.stringify(k)}]`; } if(x==='^') return '**'; if(x==='=') return '=='; return x; }).join(' ');
+  return {js,vars};
+}
+function sExpr(toks){ if(!toks||!toks.length) return null; const {js,vars}=sJs(toks); try{ const f=new Function('e','return ('+js+');'); return {f,vars}; }catch(e){ return null; } }
+function sAssign(text){
+  const toks=sTokens(text); if(!toks) return null;
+  const tk=toks.filter(x=>!(isId(x)&&STOP.has(idKey(x))));
+  let i=tk.findIndex(x=>x==='='||x==='←'||x===':=');
+  if(i===1&&isId(tk[0])){ const ex=sExpr(tk.slice(2)); return {target:idKey(tk[0]),expr:ex,rhs:tk.slice(2).join(' ')}; }
+  i=tk.findIndex(x=>x==='->'||x==='→');
+  if(i>0&&i===tk.length-2&&isId(tk[i+1])){ const ex=sExpr(tk.slice(0,i)); return {target:idKey(tk[i+1]),expr:ex,rhs:tk.slice(0,i).join(' ')}; }
+  return null;
+}
+function sCond(text){
+  const toks=sTokens(text); if(!toks) return null;
+  const tk=toks.filter(x=>!(isId(x)&&STOP.has(idKey(x))));
+  if(!tk.some(x=>/^(<=|>=|==|!=|<|>|=)$/.test(x))) return null;
+  // chained comparisons a<=b<c -> (a<=b)&&(b<c)
+  const parts=[]; let cur=[]; const ops=[];
+  tk.forEach(x=>{ if(/^(<=|>=|==|!=|<|>|=)$/.test(x)){ parts.push(cur); ops.push(x==='='?'==':x); cur=[]; } else cur.push(x); }); parts.push(cur);
+  if(parts.some(p=>!p.length)) return null;
+  const sides=parts.map(p=>sJs(p)); const vars=new Set(); sides.forEach(s=>s.vars.forEach(v=>vars.add(v)));
+  const js=ops.map((o,k)=>`((${sides[k].js}) ${o} (${sides[k+1].js}))`).join('&&');
+  try{ const f=new Function('e','return ('+js+');'); return {f,vars,nums:(tk.join(' ').match(/\d+(\.\d+)?/g)||[]).map(Number)}; }catch(e){ return null; }
+}
+function sInputVars(n){
+  const body=String(n.text||'').replace(/^(input|輸入|read|enter)\s*[:：]?\s*/i,'');
+  return (sNorm(body).match(/[A-Za-z_][A-Za-z0-9_]*|[㐀-鿿]+/g)||[]).map(idKey).filter(v=>!STOP.has(v)&&!/^(cm|kg|分)$/.test(v));
+}
+function sAnalyze(work){
+  const A=analyze(work);
+  A.nodes.forEach(n=>{ const t=n.text||'';
+    if(n.type==='terminator') n._r=RE_START.test(t)?'start':RE_END.test(t)?'end':'term';
+    else if(n.type==='decision') n._r='decision';
+    else if(n.type==='io'&&(n.role==='output'||(!n.role&&/^(output|輸出|print|印出|顯示)/i.test(t)))) n._r='output';
+    else if(n.type==='io') n._r='input';
+    else if(sCat(t)&&RE_OUT.test(t)) n._r='output';
+    else if(sAssign(t)) n._r='calc';
+    else if(RE_IN.test(t)) n._r='input';
+    else n._r='other'; });
+  return A;
+}
+function sOrderedInputs(A,start){
+  const seen=new Set(), order=[]; const q=start?[start.id]:[];
+  while(q.length){ const id=q.shift(); if(seen.has(id)) continue; seen.add(id); const n=A.byId[id]; if(n&&n._r==='input') order.push(n);
+    A.out[id].forEach(e=>q.push(e.to.node)); }
+  A.nodes.filter(n=>n._r==='input'&&!seen.has(n.id)).sort((a,b)=>a.y-b.y).forEach(n=>order.push(n));
+  return order;
+}
+function sRun(A,start,scores){
+  const e={}, q=[...scores], outputs=[]; let n=start, steps=0, stop=null;
+  while(n&&steps++<200){
+    const r=n._r;
+    if(r==='end') break;
+    if(r==='input') sInputVars(n).forEach(v=>{ e[v]=q.length?q.shift():undefined; });
+    else if(r==='calc'){ const a=sAssign(n.text); if(a&&a.expr){ try{ const v=a.expr.f(e); if(typeof v==='number'&&isFinite(v)) e[a.target]=v; }catch(err){} } }
+    else if(r==='output'){ const c=sCat(n.text); if(c) outputs.push(c); }
+    if(n.type==='decision'){
+      const c=sCond(n.text); if(!c){ stop={node:n.id,why:'看不懂判斷條件'}; break; }
+      let ans; try{ ans=!!c.f(e); }catch(err){ ans=false; }
+      if([...c.vars].some(v=>e[v]===undefined)){ stop={node:n.id,why:'判斷用到還沒算出來的變數'}; break; }
+      const ex=A.exits(n), ed=ans?ex.yes:ex.no;
+      if(!ed){ stop={node:n.id,why:`缺少「${ans?'Yes':'No'}」的路線`}; break; }
+      n=A.byId[ed.to.node]; continue;
+    }
+    const es=A.out[n.id]; if(!es.length){ stop={node:n.id,why:'這裡沒有接下一步'}; break; }
+    n=A.byId[es[0].to.node];
+  }
+  if(steps>=200) stop={node:n&&n.id,why:'流程繞圈出不來'};
+  return {outputs,env:e,stop};
+}
+/* simulate process steps (by flow order, then by y) to find total / average vars */
+function sCalcCheck(A,inVars){
+  const calcs=A.nodes.filter(n=>n._r==='calc').sort((a,b)=>a.y-b.y).map(n=>({n,a:sAssign(n.text)})).filter(x=>x.a);
+  const sample=[70,80,90,61];
+  const e={}; inVars.slice(0,4).forEach((v,i)=>e[v]=sample[i]);
+  for(let pass=0;pass<3;pass++) calcs.forEach(({a})=>{ if(a.expr){ try{ const v=a.expr.f(e); if(typeof v==='number'&&isFinite(v)) e[a.target]=v; }catch(err){} } });
+  const sum=sample.reduce((x,y)=>x+y,0), avg=sum/4;
+  const near=(x,y)=>typeof x==='number'&&Math.abs(x-y)<1e-6;
+  const totalC=calcs.find(({a})=>near(e[a.target],sum)), avgC=calcs.find(({a})=>near(e[a.target],avg));
+  return {calcs,e,totalC,avgC,sum,avg};
+}
+function gradeScore(work){
+  const A=sAnalyze(work), items=[], bad=new Set();
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  const nodes=A.nodes;
+  const start=nodes.find(n=>n._r==='start')||null, end=nodes.find(n=>n._r==='end')||null;
+  /* structure 20 */
+  add('結構','有「開始」符號',3,start?3:0,start?'':'找不到 START（開始）');
+  add('結構','有「結束」符號',3,end?3:0,end?'':'找不到 END（結束）');
+  let reach=false; if(start&&end){ const seen=new Set([start.id]),q=[start.id]; while(q.length){ const id=q.shift(); if(id===end.id){reach=true;break;} A.out[id].forEach(e=>{ if(!seen.has(e.to.node)){seen.add(e.to.node);q.push(e.to.node);} }); } }
+  add('結構','從開始能一路走到結束',4,reach?4:0,reach?'':(start&&end?'開始和結束之間有斷掉的地方':'缺少開始或結束，無法檢查'));
+  const loose=[]; nodes.forEach(n=>{ if(n._r!=='start'&&!A.inc[n.id].length){ loose.push(`「${n.text||'(空白)'}」沒有線連進來`); bad.add(n.id); } if(n._r!=='end'&&!A.out[n.id].length){ loose.push(`「${n.text||'(空白)'}」沒有線連出去`); bad.add(n.id); } });
+  add('結構','每個圖形都有接上線',4,4-loose.length,loose.join('；'));
+  const decs=nodes.filter(n=>n.type==='decision'); let decOK=0; const dn=[];
+  decs.forEach(n=>{ const ex=A.exits(n); if(ex.yes&&ex.no) decOK++; else { bad.add(n.id); dn.push(`「${n.text}」要有 Yes 和 No 兩條路`); } });
+  add('結構','每個判斷都有 Yes／No 兩條路',6,decs.length?6*decOK/decs.length:0,decs.length?dn.join('；'):'沒有判斷符號');
+  /* input 10 */
+  const ins=sOrderedInputs(A,start), inVars=[...new Set(ins.flatMap(sInputVars))];
+  add('輸入','輸入四個成績',8,2*Math.min(4,inVars.length),inVars.length>=4?'':`目前輸入了 ${inVars.length} 個成績，要輸入 4 個`);
+  const insIO=ins.filter(n=>n.type==='io');
+  add('輸入','輸入使用「輸入／輸出」符號',2,ins.length?2*insIO.length/ins.length:0,ins.length&&insIO.length<ins.length?'輸入要用平行四邊形（INPUT）符號':(ins.length?'':'沒有輸入步驟'));
+  /* calc 20 */
+  const C=sCalcCheck(A,inVars);
+  const procOK=c=>c&&c.n.type==='process';
+  add('計算','計算總分（四個成績相加）',10,C.totalC?(procOK(C.totalC)?10:7):(C.avgC?10:(C.calcs.length?3:0)),C.totalC||C.avgC?(C.totalC&&!procOK(C.totalC)?'計算要放在 PROCESS（長方形）裡':''):(C.calcs.length?'總分要把四個成績全部加起來':'沒有找到計算總分的步驟，例如 total = s1 + s2 + s3 + s4'));
+  let avgNote='';
+  if(!C.avgC){ const near=(x,y)=>Math.abs(x-y)<1e-6; const vals=C.calcs.map(({a})=>C.e[a.target]);
+    avgNote=vals.some(v=>near(v,C.sum/3))?'平均要除以 4，不是 3':vals.some(v=>near(v,C.sum))&&C.calcs.length<2?'還要再算平均：總分 ÷ 4':'沒有找到計算平均的步驟，例如 avg = total / 4';
+    C.calcs.forEach(({n})=>bad.add(n.id)); }
+  add('計算','計算平均（總分 ÷ 4）',10,C.avgC?(procOK(C.avgC)?10:7):0,avgNote);
+  /* decision 15 */
+  const decText=decs.map(n=>sNorm(n.text)).join(' ');
+  const has60=/(^|[^\d.])60(?![\d]|\.\d)/.test(decText);
+  add('判斷','和及格分數 60 比較',10,has60?10:(/(^|[^\d.])60(?![\d])/.test(nodes.map(n=>n.text).join(' '))?5:0),has60?'':'缺少平均和 60 的比較');
+  const condNodes=nodes.filter(n=>n.type!=='decision'&&/[<>]/.test(sNorm(n.text||''))&&n._r!=='calc');
+  add('判斷','條件寫在 DECISION（菱形）裡',5,decs.length&&!condNodes.length?5:decs.length?3:0,!decs.length?'沒有使用判斷符號':condNodes.length?'有條件寫在別的符號裡':'');
+  /* output 10 */
+  [['pass','pass'],['fail','fail']].forEach(([k,name])=>{ const io=nodes.find(n=>n.type==='io'&&n._r==='output'&&sCat(n.text)===k), other=nodes.find(n=>sCat(n.text)===k);
+    add('輸出',`輸出 ${name}`,5,io?5:other?2:0,io?'':other?`「${name}」要用 OUTPUT 符號`:`缺少 ${name} 的輸出`); });
+  /* tests 25 */
+  const full=SCORE_CASES.map(sc=>{ const exp=sExpect(sc); if(!start) return {scores:sc,avg:sAvg(sc),exp,got:null,ok:false,why:'沒有 START'};
+    const r=sRun(A,start,sc); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
+    return {scores:sc,avg:sAvg(sc),exp,got,ok:got===exp&&new Set(r.outputs).size===1,why:got?'':(r.stop?r.stop.why:'沒有輸出結果'),stop:r.stop}; });
+  const fp=full.filter(t=>t.ok).length;
+  add('執行測試','完整流程測試（輸入四個成績）',25,25*fp/SCORE_CASES.length,`${fp} / ${SCORE_CASES.length} 題正確`);
+  const st=full.find(t=>t.stop); if(st&&st.stop.node) bad.add(st.stop.node);
+  const b60=full.find(t=>t.avg===PASS_LINE&&!t.ok&&t.got==='fail');
+  /* english (not scored) */
+  const CJK=/[㐀-鿿]/;
+  const textNodes=nodes.filter(n=>String(n.text||'').trim()&&['terminator','io','process','decision'].includes(n.type));
+  const zhNodes=textNodes.filter(n=>CJK.test(n.text));
+  const decLabels=A.edges.filter(e=>A.byId[e.from.node]&&A.byId[e.from.node].type==='decision'&&String(e.label||'').trim());
+  const zhLabels=decLabels.filter(e=>CJK.test(e.label));
+  const words=[...new Set([...zhNodes.map(n=>n.text),...zhLabels.map(e=>e.label)].join(' ').match(/[㐀-鿿]+/g)||[])];
+  const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
+  const enUnits=textNodes.length+decLabels.length, english=enUnits?Math.round(100*(enUnits-zhNodes.length-zhLabels.length)/enUnits):0;
+  /* totals */
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  if(b60) fixes.push('平均剛好 60 也算 pass，判斷要用 >= 60');
+  full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`成績 ${t.scores.join('、')}（平均 ${t.avg}）應該是 ${t.exp}，你的流程輸出 ${t.got}`));
+  if(st&&fp===0) fixes.push(`流程執行到「${(A.byId[st.stop.node]||{}).text||''}」就停住：${st.stop.why}`);
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
+  return {task:'score',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,inVars,calc:C};
+}
+function feedbackScore(work,g){
+  const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
+  if(g.passed) return {
+    en:'Excellent! Your flowchart is complete and all 8 score tests passed.'+(enOK?' You wrote everything in English. Great job!':' Next time, try writing every label in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
+    zh:'流程圖完整又正確，八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
+  const pos=[],pz=[],fx=[],fz=[]; const add=(e,z)=>{fx.push(e);fz.push(z);};
+  if(full(it('輸入四個成績'))){ pos.push('you input all four scores'); pz.push('四個成績都有輸入'); }
+  if(full(it('計算總分'))){ pos.push('your total is correct'); pz.push('總分算對了'); }
+  if(full(it('計算平均'))){ pos.push('your average is correct'); pz.push('平均算對了'); }
+  if(enOK){ pos.push('you used English throughout'); pz.push('全部都用英文'); }
+  if(!full(it('有「開始」'))) add('add a START at the top','最前面要有 START');
+  if(!full(it('輸入四個成績'))) add('input four scores, e.g. s1, s2, s3, s4','要輸入四個成績，例如 s1、s2、s3、s4');
+  if(!full(it('計算總分'))) add('add the four scores: total = s1 + s2 + s3 + s4','把四個成績加起來：total = s1 + s2 + s3 + s4');
+  if(!full(it('計算平均'))) add('divide the total by 4: avg = total / 4','總分除以 4 算平均：avg = total / 4');
+  if(!full(it('和及格分數'))) add('compare the average with 60','用平均和 60 比較');
+  ['pass','fail'].forEach(k=>{ if(!(it('輸出 '+k)||{}).got) add(`add an OUTPUT: ${k}`,`加上 OUTPUT：${k}`); });
+  if(g.full.some(t=>t.avg===PASS_LINE&&!t.ok&&t.got==='fail')) add('use >= 60, because an average of exactly 60 passes','平均剛好 60 也算及格，要用 >= 60');
+  const loose=it('每個圖形都有接上線'); if(loose&&!full(loose)) add('connect every shape with lines','把每個圖形用線接好');
+  if(!full(it('有「結束」'))) add('finish with an END','最後加上 END');
+  const wrong=g.full.find(t=>!t.ok&&t.got);
+  let en=pos.length?`Good work: ${pos.slice(0,2).join(' and ')}.`:'Thank you for your flowchart!';
+  let zh=pz.length?pz.slice(0,2).join('，')+'，很不錯！':'謝謝你完成這份流程圖！';
+  if(fx.length){ en+=` To improve: ${fx.slice(0,2).join('; ')}.`; zh+='需要修正：'+fz.slice(0,2).join('；')+'。'; }
+  if(wrong){ en+=` Right now an average of ${wrong.avg} gives ${wrong.got}, but it should be ${wrong.exp}.`; zh+=`目前平均 ${wrong.avg} 會變成 ${wrong.got}，正確應該是 ${wrong.exp}。`; }
+  if(!enOK&&g.enTips.length){ en+=` Try more English: ${g.enTips.slice(0,3).join(', ')}.`; zh+=`也試著多用英文：${g.enTips.slice(0,3).join('、')}。`; }
+  en+=g.level==='優秀'?' Almost perfect, keep going!':' Fix these step by step and check again. You can do it!';
+  zh+=g.level==='優秀'?'只差一點點，繼續保持！':'照著修改，再檢查一次，一定會更好！';
+  return {en,zh};
+}
+Object.assign(EN_WORDS,{'成績':'score','分數':'score','總分':'total','總和':'total','平均':'avg','不及格':'fail','及格':'pass','通過':'pass'});
+function taskOf(work){ if(work&&(work.task==='score'||work.task==='bmi')) return work.task;
+  const t=(work&&work.nodes||[]).map(n=>n.text||'').join(' ');
+  return /pass|fail|及格|平均|avg|average|total|總分/i.test(t)&&!/bmi|height|weight|身高|體重/i.test(t)?'score':'bmi'; }
+function gradeTask(work){ const t=taskOf(work); const g=t==='score'?gradeScore(work):grade(work); g.task=t; return g; }
+function feedbackTask(work,g){ return (g.task||taskOf(work))==='score'?feedbackScore(work,g):feedback(work,g); }
+if(typeof module!=='undefined') Object.assign(module.exports,{gradeScore,feedbackScore,gradeTask,feedbackTask,taskOf,sAssign,sCond,sInputVars,sCat,sNorm,SCORE_CASES,PASS_LINE});
+
 </script>
 <script>
 (function(){
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SAMPLES=[{"id": "sample-1", "file": "27121_4564.json", "work": {"format": "flowboard-v1", "student": "27121", "title": "4564", "exportedAt": "2026-10-30T17:59:37.160Z", "line": "elbow", "nodes": [{"id": "nmvv9h6wx0", "type": "terminator", "typeName": "開始／結束", "text": "開始", "x": 570, "y": 80, "w": 120, "h": 48}, {"id": "nmvv9owj55", "type": "io", "typeName": "輸入／輸出", "text": "input height(m)", "x": 570, "y": 180, "w": 150, "h": 56}, {"id": "nmvv9p7ea6", "type": "io", "typeName": "輸入／輸出", "text": "input weight(kg)", "x": 570, "y": 280, "w": 150, "h": 56}, {"id": "nmvv9pvvj9", "type": "process", "typeName": "處理", "text": "bmi = weight / height^2", "x": 590, "y": 375, "w": 180, "h": 70}, {"id": "nmvv9qcjr10", "type": "decision", "typeName": "判斷", "text": "BMI<18.5", "x": 590, "y": 500, "w": 160, "h": 90}, {"id": "nmvv9quvz12", "type": "io", "typeName": "輸入／輸出", "text": "output thin", "x": 780, "y": 500, "w": 150, "h": 56}, {"id": "nmvv9r1f214", "type": "io", "typeName": "輸入／輸出", "text": "output overweight", "x": 770, "y": 630, "w": 150, "h": 56}, {"id": "nmvv9r37215", "type": "decision", "typeName": "判斷", "text": "BMI < 27", "x": 590, "y": 630, "w": 160, "h": 90}], "edges": [{"id": "emvv9plml7", "from": {"node": "nmvv9h6wx0", "port": "bottom"}, "to": {"node": "nmvv9owj55", "port": "top"}, "label": ""}, {"id": "emvv9pndm8", "from": {"node": "nmvv9owj55", "port": "bottom"}, "to": {"node": "nmvv9p7ea6", "port": "top"}, "label": ""}, {"id": "emvv9qnci11", "from": {"node": "nmvv9pvvj9", "port": "bottom"}, "to": {"node": "nmvv9qcjr10", "port": "top"}, "label": ""}, {"id": "emvv9qw0j13", "from": {"node": "nmvv9qcjr10", "port": "right"}, "to": {"node": "nmvv9quvz12", "port": "left"}, "label": "是"}, {"id": "emvv9r63216", "from": {"node": "nmvv9qcjr10", "port": "bottom"}, "to": {"node": "nmvv9r37215", "port": "top"}, "label": "否"}, {"id": "emvv9rt1h17", "from": {"node": "nmvv9r37215", "port": "right"}, "to": {"node": "nmvv9r1f214", "port": "left"}, "label": "是"}]}, "sample": true}, {"id": "sample-key", "file": "answer-key", "work": {"format": "flowboard-v1", "student": "標準答案 Answer key", "title": "BMI 流程圖", "line": "elbow", "nodes": [{"id": "s", "type": "terminator", "x": 300, "y": 40, "w": 120, "h": 48, "text": "START"}, {"id": "h", "type": "io", "x": 300, "y": 130, "w": 160, "h": 56, "text": "input height(cm)", "role": "input"}, {"id": "w", "type": "io", "x": 300, "y": 220, "w": 160, "h": 56, "text": "input weight(kg)", "role": "input"}, {"id": "p", "type": "process", "x": 300, "y": 310, "w": 240, "h": 56, "text": "bmi = weight / (height/100)^2"}, {"id": "d1", "type": "decision", "x": 300, "y": 420, "w": 170, "h": 90, "text": "BMI < 18.5"}, {"id": "d2", "type": "decision", "x": 300, "y": 540, "w": 170, "h": 90, "text": "BMI < 24"}, {"id": "d3", "type": "decision", "x": 300, "y": 660, "w": 170, "h": 90, "text": "BMI < 27"}, {"id": "o1", "type": "io", "x": 540, "y": 420, "w": 170, "h": 56, "text": "output thin", "role": "output"}, {"id": "o2", "type": "io", "x": 540, "y": 540, "w": 170, "h": 56, "text": "output normal", "role": "output"}, {"id": "o3", "type": "io", "x": 540, "y": 660, "w": 170, "h": 56, "text": "output overweight", "role": "output"}, {"id": "o4", "type": "io", "x": 300, "y": 770, "w": 170, "h": 56, "text": "output obesity", "role": "output"}, {"id": "e", "type": "terminator", "x": 300, "y": 870, "w": 120, "h": 48, "text": "END"}], "edges": [{"id": "e1", "from": {"node": "s", "port": "bottom"}, "to": {"node": "h", "port": "top"}, "label": ""}, {"id": "e2", "from": {"node": "h", "port": "bottom"}, "to": {"node": "w", "port": "top"}, "label": ""}, {"id": "e3", "from": {"node": "w", "port": "bottom"}, "to": {"node": "p", "port": "top"}, "label": ""}, {"id": "e4", "from": {"node": "p", "port": "bottom"}, "to": {"node": "d1", "port": "top"}, "label": ""}, {"id": "e5", "from": {"node": "d1", "port": "right"}, "to": {"node": "o1", "port": "left"}, "label": "Yes"}, {"id": "e6", "from": {"node": "d1", "port": "bottom"}, "to": {"node": "d2", "port": "top"}, "label": "No"}, {"id": "e7", "from": {"node": "d2", "port": "right"}, "to": {"node": "o2", "port": "left"}, "label": "Yes"}, {"id": "e8", "from": {"node": "d2", "port": "bottom"}, "to": {"node": "d3", "port": "top"}, "label": "No"}, {"id": "e9", "from": {"node": "d3", "port": "right"}, "to": {"node": "o3", "port": "left"}, "label": "Yes"}, {"id": "e10", "from": {"node": "d3", "port": "bottom"}, "to": {"node": "o4", "port": "top"}, "label": "No"}, {"id": "e11", "from": {"node": "o1", "port": "right"}, "to": {"node": "e", "port": "right"}, "label": ""}, {"id": "e12", "from": {"node": "o2", "port": "right"}, "to": {"node": "e", "port": "right"}, "label": ""}, {"id": "e13", "from": {"node": "o3", "port": "right"}, "to": {"node": "e", "port": "right"}, "label": ""}, {"id": "e14", "from": {"node": "o4", "port": "bottom"}, "to": {"node": "e", "port": "top"}, "label": ""}]}, "sample": true}];
+const SAMPLES=[{"id": "sample-1", "file": "27121_4564.json", "work": {"format": "flowboard-v1", "student": "27121", "title": "4564", "exportedAt": "2026-10-30T17:59:37.160Z", "line": "elbow", "nodes": [{"id": "nmvv9h6wx0", "type": "terminator", "typeName": "開始／結束", "text": "開始", "x": 570, "y": 80, "w": 120, "h": 48}, {"id": "nmvv9owj55", "type": "io", "typeName": "輸入／輸出", "text": "input height(m)", "x": 570, "y": 180, "w": 150, "h": 56}, {"id": "nmvv9p7ea6", "type": "io", "typeName": "輸入／輸出", "text": "input weight(kg)", "x": 570, "y": 280, "w": 150, "h": 56}, {"id": "nmvv9pvvj9", "type": "process", "typeName": "處理", "text": "bmi = weight / height^2", "x": 590, "y": 375, "w": 180, "h": 70}, {"id": "nmvv9qcjr10", "type": "decision", "typeName": "判斷", "text": "BMI<18.5", "x": 590, "y": 500, "w": 160, "h": 90}, {"id": "nmvv9quvz12", "type": "io", "typeName": "輸入／輸出", "text": "output thin", "x": 780, "y": 500, "w": 150, "h": 56}, {"id": "nmvv9r1f214", "type": "io", "typeName": "輸入／輸出", "text": "output overweight", "x": 770, "y": 630, "w": 150, "h": 56}, {"id": "nmvv9r37215", "type": "decision", "typeName": "判斷", "text": "BMI < 27", "x": 590, "y": 630, "w": 160, "h": 90}], "edges": [{"id": "emvv9plml7", "from": {"node": "nmvv9h6wx0", "port": "bottom"}, "to": {"node": "nmvv9owj55", "port": "top"}, "label": ""}, {"id": "emvv9pndm8", "from": {"node": "nmvv9owj55", "port": "bottom"}, "to": {"node": "nmvv9p7ea6", "port": "top"}, "label": ""}, {"id": "emvv9qnci11", "from": {"node": "nmvv9pvvj9", "port": "bottom"}, "to": {"node": "nmvv9qcjr10", "port": "top"}, "label": ""}, {"id": "emvv9qw0j13", "from": {"node": "nmvv9qcjr10", "port": "right"}, "to": {"node": "nmvv9quvz12", "port": "left"}, "label": "是"}, {"id": "emvv9r63216", "from": {"node": "nmvv9qcjr10", "port": "bottom"}, "to": {"node": "nmvv9r37215", "port": "top"}, "label": "否"}, {"id": "emvv9rt1h17", "from": {"node": "nmvv9r37215", "port": "right"}, "to": {"node": "nmvv9r1f214", "port": "left"}, "label": "是"}], "task": "bmi"}, "sample": true}, {"id": "sample-key", "file": "answer-key", "work": {"format": "flowboard-v1", "student": "標準答案 Answer key", "title": "BMI 流程圖", "line": "elbow", "nodes": [{"id": "s", "type": "terminator", "x": 300, "y": 40, "w": 120, "h": 48, "text": "START"}, {"id": "h", "type": "io", "x": 300, "y": 130, "w": 160, "h": 56, "text": "input height(cm)", "role": "input"}, {"id": "w", "type": "io", "x": 300, "y": 220, "w": 160, "h": 56, "text": "input weight(kg)", "role": "input"}, {"id": "p", "type": "process", "x": 300, "y": 310, "w": 240, "h": 56, "text": "bmi = weight / (height/100)^2"}, {"id": "d1", "type": "decision", "x": 300, "y": 420, "w": 170, "h": 90, "text": "BMI < 18.5"}, {"id": "d2", "type": "decision", "x": 300, "y": 540, "w": 170, "h": 90, "text": "BMI < 24"}, {"id": "d3", "type": "decision", "x": 300, "y": 660, "w": 170, "h": 90, "text": "BMI < 27"}, {"id": "o1", "type": "io", "x": 540, "y": 420, "w": 170, "h": 56, "text": "output thin", "role": "output"}, {"id": "o2", "type": "io", "x": 540, "y": 540, "w": 170, "h": 56, "text": "output normal", "role": "output"}, {"id": "o3", "type": "io", "x": 540, "y": 660, "w": 170, "h": 56, "text": "output overweight", "role": "output"}, {"id": "o4", "type": "io", "x": 300, "y": 770, "w": 170, "h": 56, "text": "output obesity", "role": "output"}, {"id": "e", "type": "terminator", "x": 300, "y": 870, "w": 120, "h": 48, "text": "END"}], "edges": [{"id": "e1", "from": {"node": "s", "port": "bottom"}, "to": {"node": "h", "port": "top"}, "label": ""}, {"id": "e2", "from": {"node": "h", "port": "bottom"}, "to": {"node": "w", "port": "top"}, "label": ""}, {"id": "e3", "from": {"node": "w", "port": "bottom"}, "to": {"node": "p", "port": "top"}, "label": ""}, {"id": "e4", "from": {"node": "p", "port": "bottom"}, "to": {"node": "d1", "port": "top"}, "label": ""}, {"id": "e5", "from": {"node": "d1", "port": "right"}, "to": {"node": "o1", "port": "left"}, "label": "Yes"}, {"id": "e6", "from": {"node": "d1", "port": "bottom"}, "to": {"node": "d2", "port": "top"}, "label": "No"}, {"id": "e7", "from": {"node": "d2", "port": "right"}, "to": {"node": "o2", "port": "left"}, "label": "Yes"}, {"id": "e8", "from": {"node": "d2", "port": "bottom"}, "to": {"node": "d3", "port": "top"}, "label": "No"}, {"id": "e9", "from": {"node": "d3", "port": "right"}, "to": {"node": "o3", "port": "left"}, "label": "Yes"}, {"id": "e10", "from": {"node": "d3", "port": "bottom"}, "to": {"node": "o4", "port": "top"}, "label": "No"}, {"id": "e11", "from": {"node": "o1", "port": "right"}, "to": {"node": "e", "port": "right"}, "label": ""}, {"id": "e12", "from": {"node": "o2", "port": "right"}, "to": {"node": "e", "port": "right"}, "label": ""}, {"id": "e13", "from": {"node": "o3", "port": "right"}, "to": {"node": "e", "port": "right"}, "label": ""}, {"id": "e14", "from": {"node": "o4", "port": "bottom"}, "to": {"node": "e", "port": "top"}, "label": ""}], "task": "bmi"}, "sample": true}, {"id": "sample-s1", "file": "sample-score.json", "work": {"format": "flowboard-v1", "task": "score", "student": "範例學生 Sample", "title": "Pass or Fail Flowchart", "line": "elbow", "nodes": [{"id": "s", "type": "terminator", "x": 300, "y": 40, "w": 120, "h": 48, "text": "START"}, {"id": "i1", "type": "io", "x": 300, "y": 130, "w": 170, "h": 56, "text": "input s1", "role": "input"}, {"id": "i2", "type": "io", "x": 300, "y": 220, "w": 170, "h": 56, "text": "input s2", "role": "input"}, {"id": "i3", "type": "io", "x": 300, "y": 310, "w": 170, "h": 56, "text": "input s3", "role": "input"}, {"id": "p1", "type": "process", "x": 300, "y": 400, "w": 220, "h": 56, "text": "total = s1 + s2 + s3"}, {"id": "p2", "type": "process", "x": 300, "y": 490, "w": 200, "h": 56, "text": "avg = total / 3"}, {"id": "d", "type": "decision", "x": 300, "y": 610, "w": 170, "h": 96, "text": "avg > 60"}, {"id": "o1", "type": "io", "x": 540, "y": 610, "w": 170, "h": 56, "text": "output 及格", "role": "output"}, {"id": "o2", "type": "io", "x": 300, "y": 730, "w": 170, "h": 56, "text": "output 不及格", "role": "output"}], "edges": [{"id": "e1", "from": {"node": "s", "port": "bottom"}, "to": {"node": "i1", "port": "top"}, "label": ""}, {"id": "e2", "from": {"node": "i1", "port": "bottom"}, "to": {"node": "i2", "port": "top"}, "label": ""}, {"id": "e3", "from": {"node": "i2", "port": "bottom"}, "to": {"node": "i3", "port": "top"}, "label": ""}, {"id": "e4", "from": {"node": "i3", "port": "bottom"}, "to": {"node": "p1", "port": "top"}, "label": ""}, {"id": "e6", "from": {"node": "p1", "port": "bottom"}, "to": {"node": "p2", "port": "top"}, "label": ""}, {"id": "e7", "from": {"node": "p2", "port": "bottom"}, "to": {"node": "d", "port": "top"}, "label": ""}, {"id": "e8", "from": {"node": "d", "port": "right"}, "to": {"node": "o1", "port": "left"}, "label": "是"}, {"id": "e9", "from": {"node": "d", "port": "bottom"}, "to": {"node": "o2", "port": "top"}, "label": "否"}]}, "sample": true}, {"id": "sample-s2", "file": "answer-key-score", "work": {"format": "flowboard-v1", "task": "score", "student": "標準答案 Answer key", "title": "Pass or Fail Flowchart", "line": "elbow", "nodes": [{"id": "s", "type": "terminator", "x": 300, "y": 40, "w": 120, "h": 48, "text": "START"}, {"id": "i1", "type": "io", "x": 300, "y": 130, "w": 170, "h": 56, "text": "input s1", "role": "input"}, {"id": "i2", "type": "io", "x": 300, "y": 220, "w": 170, "h": 56, "text": "input s2", "role": "input"}, {"id": "i3", "type": "io", "x": 300, "y": 310, "w": 170, "h": 56, "text": "input s3", "role": "input"}, {"id": "i4", "type": "io", "x": 300, "y": 400, "w": 170, "h": 56, "text": "input s4", "role": "input"}, {"id": "p1", "type": "process", "x": 300, "y": 490, "w": 240, "h": 56, "text": "total = s1 + s2 + s3 + s4"}, {"id": "p2", "type": "process", "x": 300, "y": 580, "w": 200, "h": 56, "text": "avg = total / 4"}, {"id": "d", "type": "decision", "x": 300, "y": 700, "w": 170, "h": 96, "text": "avg >= 60"}, {"id": "o1", "type": "io", "x": 540, "y": 700, "w": 170, "h": 56, "text": "output pass", "role": "output"}, {"id": "o2", "type": "io", "x": 300, "y": 820, "w": 170, "h": 56, "text": "output fail", "role": "output"}, {"id": "e", "type": "terminator", "x": 300, "y": 920, "w": 120, "h": 48, "text": "END"}], "edges": [{"id": "e1", "from": {"node": "s", "port": "bottom"}, "to": {"node": "i1", "port": "top"}, "label": ""}, {"id": "e2", "from": {"node": "i1", "port": "bottom"}, "to": {"node": "i2", "port": "top"}, "label": ""}, {"id": "e3", "from": {"node": "i2", "port": "bottom"}, "to": {"node": "i3", "port": "top"}, "label": ""}, {"id": "e4", "from": {"node": "i3", "port": "bottom"}, "to": {"node": "i4", "port": "top"}, "label": ""}, {"id": "e5", "from": {"node": "i4", "port": "bottom"}, "to": {"node": "p1", "port": "top"}, "label": ""}, {"id": "e6", "from": {"node": "p1", "port": "bottom"}, "to": {"node": "p2", "port": "top"}, "label": ""}, {"id": "e7", "from": {"node": "p2", "port": "bottom"}, "to": {"node": "d", "port": "top"}, "label": ""}, {"id": "e8", "from": {"node": "d", "port": "right"}, "to": {"node": "o1", "port": "left"}, "label": "Yes"}, {"id": "e9", "from": {"node": "d", "port": "bottom"}, "to": {"node": "o2", "port": "top"}, "label": "No"}, {"id": "e10", "from": {"node": "o1", "port": "right"}, "to": {"node": "e", "port": "right"}, "label": ""}, {"id": "e11", "from": {"node": "o2", "port": "bottom"}, "to": {"node": "e", "port": "top"}, "label": ""}]}, "sample": true}];
 const KEY='grader-works-v1';
-const GROUPS=[['結構',20],['輸入',10],['計算',10],['判斷',20],['輸出',10],['執行測試',30]];
+const TASKS={
+  bmi:{name:'BMI Flowchart',title:'BMI 判斷',groups:[['結構',20],['輸入',10],['計算',10],['判斷',20],['輸出',10],['執行測試',30]],csv:'BMI流程圖成績.csv',
+    text:'題目要求：輸入身高與體重，計算 BMI = 體重 ÷ 身高²（身高單位公尺），然後依 BMI 輸出：BMI < 18.5 輸出 thin；18.5 ≤ BMI < 24 輸出 normal；24 ≤ BMI < 27 輸出 overweight；BMI ≥ 27 輸出 obesity。'},
+  score:{name:'Pass or Fail Flowchart',title:'成績及格判斷',groups:[['結構',20],['輸入',10],['計算',20],['判斷',15],['輸出',10],['執行測試',25]],csv:'成績及格判斷成績.csv',
+    text:'題目要求：輸入四個成績，計算總分（四個相加）和平均（總分 ÷ 4），平均 ≥ 60 輸出 pass，否則輸出 fail（剛好 60 算 pass）。'}};
+let unit='bmi', ALL=[];
+const GR=t=>TASKS[t||unit].groups;
 const GL={'結構':'Structure 結構','輸入':'Input 輸入','計算':'Process 計算','判斷':'Decision 判斷','輸出':'Output 輸出','執行測試':'Test run 執行測試'};
 
 let works=[], usingSamples=false, cur=null;
-function load(){ try{ works=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ works=[]; }
-  if(!works.length){ works=SAMPLES.map(w=>({...w})); usingSamples=true; } }
-function persist(){ if(usingSamples) return; try{ localStorage.setItem(KEY,JSON.stringify(works.map(w=>({id:w.id,file:w.file,work:w.work,ai:w.ai||'',aiSrc:w.aiSrc||''})))); }catch(e){} }
-function gradeAll(){ works.forEach(w=>{ if(!w.g) w.g=grade(w.work); }); }
-const sortWorks=()=>works.sort((a,b)=>String(a.work.student||'').localeCompare(String(b.work.student||''),'zh-Hant',{numeric:true})||String(a.work.title||'').localeCompare(String(b.work.title||'')));
+function refilter(){ works=ALL.filter(w=>w.g.task===unit); }
+function load(){ try{ ALL=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ ALL=[]; }
+  if(!ALL.length){ ALL=SAMPLES.map(w=>({...w})); usingSamples=true; } }
+function persist(){ if(usingSamples) return; try{ localStorage.setItem(KEY,JSON.stringify(ALL.map(w=>({id:w.id,file:w.file,work:w.work,ai:w.ai||'',aiSrc:w.aiSrc||''})))); }catch(e){} }
+function gradeAll(){ ALL.forEach(w=>{ if(!w.g) w.g=gradeTask(w.work); }); refilter(); }
+const sortWorks=()=>ALL.sort((a,b)=>String(a.work.student||'').localeCompare(String(b.work.student||''),'zh-Hant',{numeric:true})||String(a.work.title||'').localeCompare(String(b.work.title||'')));
 let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},2800); }
 
 /* ---------- roster & summary ---------- */
 function renderList(){
+  refilter();
   $('#banner').hidden=!usingSamples;
+  $('#unitName').textContent=TASKS[unit].name;
+  document.querySelectorAll('.units [data-unit]').forEach(b=>b.setAttribute('aria-selected',b.dataset.unit===unit));
+  $('#cntBmi').textContent=ALL.filter(w=>w.g.task==='bmi').length; $('#cntScore').textContent=ALL.filter(w=>w.g.task==='score').length;
+  document.querySelectorAll('[data-rub]').forEach(d=>{ d.hidden=d.dataset.rub!==unit; });
   const rows=$('#rows');
-  if(!works.length){ rows.innerHTML='<div class="empty">還沒有作業。按「上傳作業檔」或把 .json 檔拖進頁面。</div>'; $('#summary').innerHTML=''; $('#detail').innerHTML=''; return; }
+  if(!works.length){ rows.innerHTML=`<div class="empty">${TASKS[unit].title}單元還沒有作業。按「上傳作業檔」或把 .json 檔拖進頁面。</div>`; $('#summary').innerHTML=''; $('#detail').innerHTML=''; return; }
   rows.innerHTML=works.map(w=>`<button class="row${cur===w.id?' on':''}" data-id="${esc(w.id)}">
-    <span class="who"><b>${esc(w.work.student||'（未填姓名）')}${w.sample?'<span class="chip">範例</span>':''}${w.g.english>=100?'<span class="chip en">EN</span>':''}</b><span>${esc(w.work.title||w.file||'')}</span></span>
+    <span class="who"><b>${esc(w.work.student||'（未填姓名）')}</b><span>${w.sample?'<span class="chip">範例</span> ':''}${w.g.english>=100?'<span class="chip en">EN</span> ':''}${esc(w.work.title||w.file||'')}</span></span>
     <span class="score-cell"><b>${w.g.total}</b><span class="mini"><i style="width:${w.g.total}%;background:${barColor(w.g.total)}"></i></span></span></button>`).join('');
   const ts=works.map(w=>w.g.total), avg=ts.reduce((a,b)=>a+b,0)/ts.length;
   const cnt=lv=>works.filter(w=>w.g.level===lv).length;
@@ -545,6 +787,7 @@ function renderList(){
     <div class="dist">${['優秀','良好','及格','需加強'].map(l=>`<span class="pill lv-${l}">${l} ${cnt(l)}</span>`).join('')}</div>`;
 }
 const barColor=v=>v>=75?'var(--good)':v>=60?'var(--warn)':'var(--bad)';
+document.querySelectorAll('.units [data-unit]').forEach(b=>b.onclick=()=>{ unit=b.dataset.unit; refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); });
 $('#rows').addEventListener('click',e=>{ const r=e.target.closest('.row'); if(!r) return; cur=r.dataset.id; renderList(); renderDetail(); if(innerWidth<=820) $('#detail').scrollIntoView({behavior:'smooth',block:'start'}); });
 
 /* ---------- detail ---------- */
@@ -552,7 +795,7 @@ const CAT_TXT={thin:'thin',normal:'normal',overweight:'overweight',obesity:'obes
 function renderDetail(){
   const w=works.find(x=>x.id===cur); const d=$('#detail');
   if(!w){ d.innerHTML=''; return; }
-  const g=w.g;
+  const g=w.g, GROUPS=GR(g.task);
   const gb=GROUPS.map(([k,max])=>{ const v=g.groups[k]||{got:0}; const p=Math.round(v.got/max*100);
     return `<div class="gbar"><div><span>${GL[k]||k}</span><b>${fmt(v.got)} / ${max}</b></div><span class="track"><i style="width:${p}%;background:${barColor(p)}"></i></span></div>`; }).join('');
   const fixes=g.fixes.length?`<ol class="fixes">${g.fixes.map(f=>`<li>${esc(f)}</li>`).join('')}</ol>`:'<p class="allgood">全部正確，沒有需要修正的地方。</p>';
@@ -562,6 +805,9 @@ function renderDetail(){
       return `<div class="ritem"><span class="ic ${c}">${ic}</span><span>${esc(i.label)}${i.note&&c!=='full'?`<span class="note">${esc(i.note)}</span>`:(i.note&&/題正確/.test(i.note)?`<span class="note">${esc(i.note)}</span>`:'')}</span><span class="pts">${fmt(i.got)} / ${fmt(i.max)}</span></div>`; }).join('')}</div>`; }).join('');
   const ttable=(list,full)=>`<div class="tbl-wrap"><table><tr><th>BMI</th>${full?'<th>輸入</th>':''}<th>應輸出</th><th>流程輸出</th><th></th></tr>${list.map(t=>`<tr><td class="n">${t.bmi}</td>${full?`<td class="n">${t.h} m, ${+t.w.toFixed(2)} kg</td>`:''}<td>${t.exp}</td><td>${t.got?esc(CAT_TXT[t.got]):`<span class="why">${esc(t.why||'沒有輸出')}</span>`}</td><td class="${t.ok?'ok':'no'}">${t.ok?'✓':'✗'}</td></tr>`).join('')}</table></div>`;
   const lp=g.logic.filter(t=>t.ok).length, fp=g.full.filter(t=>t.ok).length;
+  const stable=list=>`<div class="tbl-wrap"><table><tr><th>Scores 成績</th><th>Avg 平均</th><th>應輸出</th><th>流程輸出</th><th></th></tr>${list.map(t=>`<tr><td class="n">${t.scores.join(', ')}</td><td class="n">${t.avg}</td><td>${t.exp}</td><td>${t.got?esc(t.got):`<span class="why">${esc(t.why||'沒有輸出')}</span>`}</td><td class="${t.ok?'ok':'no'}">${t.ok?'✓':'✗'}</td></tr>`).join('')}</table></div>`;
+  const testsHTML=g.task==='score'?`<div><div class="tcap">完整流程測試 <span>從 START 輸入四個成績 · ${fp}/8</span></div>${stable(g.full)}</div>`:`<div><div class="tcap">判斷邏輯測試 <span>直接給 BMI，從第一個判斷開始跑 · ${lp}/8</span></div>${ttable(g.logic,false)}</div>
+    <div><div class="tcap">完整流程測試 <span>從開始輸入身高體重 · ${fp}/8</span></div>${ttable(g.full,true)}</div>`;
   d.innerHTML=`
   <div class="card top">
     <div class="big"><h2>${esc(w.work.student||'（未填姓名）')}</h2><span class="sub">${esc(w.work.title||'')}${w.file?' · '+esc(w.file):''}</span>
@@ -573,8 +819,7 @@ function renderDetail(){
     ${g.bad.length?'<div class="legend"><span><i></i>紅框：有問題的圖形（沒接好線、判斷缺路線、公式錯誤或流程停住的地方）</span></div>':''}</div>
   <div class="card"><h3>評分明細</h3><div class="rub">${rub}</div></div>
   <div class="card"><h3>執行測試</h3><div class="tests">
-    <div><div class="tcap">判斷邏輯測試 <span>直接給 BMI，從第一個判斷開始跑 · ${lp}/8</span></div>${ttable(g.logic,false)}</div>
-    <div><div class="tcap">完整流程測試 <span>從開始輸入身高體重 · ${fp}/8</span></div>${ttable(g.full,true)}</div>
+    ${testsHTML}
   </div></div>
   <div class="card ai" id="aiCard"><h3>評語<span class="src" id="cmtSrc"></span></h3>
     <p id="aiText"></p>
@@ -618,9 +863,11 @@ function route(a,da,b,db,A,B,line){
   if(line==='straight') return [a,b];
   const S=20,a1={x:a.x+da.x*S,y:a.y+da.y*S},b1={x:b.x+db.x*S,y:b.y+db.y*S},av=da.x===0,bv=db.x===0; let mid;
   if(av&&bv){ if(da.y===db.y){const my=da.y>0?Math.max(a1.y,b1.y):Math.min(a1.y,b1.y);mid=[{x:a1.x,y:my},{x:b1.x,y:my}];}
+    else if((da.y>0&&b.y>=a.y||da.y<0&&b.y<=a.y)&&(da.y>0?b1.y<a1.y:b1.y>a1.y)){ const my=(a.y+b.y)/2; a1.y=my; b1.y=my; mid=[]; }
     else if(da.y>0&&b1.y<a1.y||da.y<0&&b1.y>a1.y){const sx=Math.max(box(A).r,box(B).r)+30;mid=[{x:sx,y:a1.y},{x:sx,y:b1.y}];}
     else{const my=(a1.y+b1.y)/2;mid=[{x:a1.x,y:my},{x:b1.x,y:my}];} }
   else if(!av&&!bv){ if(da.x===db.x){const mx=da.x>0?Math.max(a1.x,b1.x):Math.min(a1.x,b1.x);mid=[{x:mx,y:a1.y},{x:mx,y:b1.y}];}
+    else if((da.x>0&&b.x>=a.x||da.x<0&&b.x<=a.x)&&(da.x>0?b1.x<a1.x:b1.x>a1.x)){ const mx=(a.x+b.x)/2; a1.x=mx; b1.x=mx; mid=[]; }
     else if(da.x>0&&b1.x<a1.x||da.x<0&&b1.x>a1.x){const sy=Math.max(box(A).b,box(B).b)+30;mid=[{x:a1.x,y:sy},{x:b1.x,y:sy}];}
     else{const mx=(a1.x+b1.x)/2;mid=[{x:mx,y:a1.y},{x:mx,y:b1.y}];} }
   else if(av) mid=[{x:a1.x,y:b1.y}]; else mid=[{x:b1.x,y:a1.y}];
@@ -647,7 +894,7 @@ function previewSVG(work,bad){
 }
 
 /* ---------- comments ---------- */
-function ruleComment(w){ const f=feedback(w.work,w.g); return f.en+'\n'+f.zh; }
+function ruleComment(w){ const f=feedbackTask(w.work,w.g); return f.en+'\n'+f.zh; }
 const commentOf=w=>w.ai||ruleComment(w);
 const SRC={free:'（貼上的 AI 回覆）',claude:'（Claude 產生）'};
 
@@ -658,13 +905,12 @@ function describe(work){
   const es=(work.edges||[]).map(e=>`- 「${(byId[e.from.node]||{}).text||'?'}」→「${(byId[e.to.node]||{}).text||'?'}」${e.label?`（${e.label}）`:''}`).join('\n');
   return `圖形：\n${ns}\n連線：\n${es}`;
 }
-const TASK=`題目要求：輸入身高與體重，計算 BMI = 體重 ÷ 身高²（身高單位公尺），然後依 BMI 輸出：BMI < 18.5 輸出 thin；18.5 ≤ BMI < 24 輸出 normal；24 ≤ BMI < 27 輸出 overweight；BMI ≥ 27 輸出 obesity。`;
 const STYLE=`這是雙語課程。評語先用簡單英文（國中程度，2 到 3 句），再用繁體中文把同樣的意思寫一次（不超過 100 字）：先具體肯定一個做對的地方，再指出最重要的一到兩個需要修正的地方並說明怎麼改，最後一句鼓勵。如果學生在流程圖裡用了中文字，鼓勵他改用英文並舉例（例如 身高 → height、是 → Yes）；如果全部用英文，特別稱讚。語氣親切，不要列點，不要提到分數，不要提到「自動批改」。`;
 function studentBlock(w){
   const g=w.g;
-  return `${describe(w.work)}\n批改結果：總分 ${g.total}/100（${g.level}）；${GROUPS.map(([k,m])=>`${k} ${fmt(g.groups[k].got)}/${m}`).join('、')}\n需要修正：\n${g.fixes.length?g.fixes.map(f=>'- '+f).join('\n'):'- 無'}`;
+  return `${describe(w.work)}\n批改結果：總分 ${g.total}/100（${g.level}）；${GR(g.task).map(([k,m])=>`${k} ${fmt(g.groups[k].got)}/${m}`).join('、')}\n需要修正：\n${g.fixes.length?g.fixes.map(f=>'- '+f).join('\n'):'- 無'}`;
 }
-const promptFor=w=>`你是國中資訊科技老師，正在批改學生畫的「BMI 判斷」流程圖。\n${TASK}\n\n學生的流程圖：\n${studentBlock(w)}\n\n請寫一段給這位學生的評語。${STYLE}只輸出評語本身。`;
+const promptFor=w=>`你是國中資訊科技老師，正在批改學生畫的「${TASKS[w.g.task].title}」流程圖。\n${TASKS[w.g.task].text}\n\n學生的流程圖：\n${studentBlock(w)}\n\n請寫一段給這位學生的評語。${STYLE}只輸出評語本身。`;
 
 async function copyText(text,okMsg,el){
   try{ await navigator.clipboard.writeText(text); toast(okMsg); return true; }
@@ -709,7 +955,7 @@ function openBatch(){
 function batchPrompt(k){
   const list=works.slice(k*SEG,(k+1)*SEG);
   const codes=Object.fromEntries(Object.entries(batchCodes).map(([c,id])=>[id,c]));
-  return `你是國中資訊科技老師，正在批改學生畫的「BMI 判斷」流程圖。\n${TASK}\n\n下面有 ${list.length} 位學生的流程圖和自動批改結果，請幫每位學生寫一段評語。${STYLE}\n\n回覆格式非常重要：每位學生一行，開頭寫代號，接一個「｜」，再寫英文評語，接「 // 」，再寫中文評語，例如：\nS01｜English comment // 中文評語\n不要輸出任何其他文字、標題或空行。\n\n`+
+  return `你是國中資訊科技老師，正在批改學生畫的「${TASKS[unit].title}」流程圖。\n${TASKS[unit].text}\n\n下面有 ${list.length} 位學生的流程圖和自動批改結果，請幫每位學生寫一段評語。${STYLE}\n\n回覆格式非常重要：每位學生一行，開頭寫代號，接一個「｜」，再寫英文評語，接「 // 」，再寫中文評語，例如：\nS01｜English comment // 中文評語\n不要輸出任何其他文字、標題或空行。\n\n`+
     list.map(w=>`=== ${codes[w.id]} ===\n${studentBlock(w)}`).join('\n\n');
 }
 $('#bBatch').onclick=openBatch;
@@ -741,15 +987,16 @@ function readFiles(files){
   Promise.all(files.map(f=>new Promise(res=>{ const r=new FileReader(); r.onload=()=>{ try{ res({ok:parseWork(String(r.result),f.name),file:f.name}); }catch(e){ res({err:e.message}); } }; r.onerror=()=>res({err:f.name+'：讀取失敗'}); r.readAsText(f); })))
   .then(list=>{
     const ok=list.filter(x=>x.ok), bad=list.filter(x=>x.err);
-    if(ok.length&&usingSamples){ works=[]; usingSamples=false; }
+    if(ok.length&&usingSamples){ ALL=[]; usingSamples=false; }
     let added=0,replaced=0,last=null;
     ok.forEach(({ok:work,file})=>{
       const key=(work.student||'')+'\u0000'+(work.title||'')+'\u0000'+(work.student||work.title?'':file);
-      const i=works.findIndex(w=>(w.work.student||'')+'\u0000'+(w.work.title||'')+'\u0000'+(w.work.student||w.work.title?'':w.file)===key);
-      const rec={id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),file,work,ai:'',g:grade(work)};
-      if(i>=0){ works[i]=rec; replaced++; } else { works.push(rec); added++; } last=rec.id;
+      if(!work.task) work.task=taskOf(work);
+      const i=ALL.findIndex(w=>w.work.task===work.task&&(w.work.student||'')+'\u0000'+(w.work.title||'')+'\u0000'+(w.work.student||w.work.title?'':w.file)===key);
+      const rec={id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),file,work,ai:'',g:gradeTask(work)};
+      if(i>=0){ ALL[i]=rec; replaced++; } else { ALL.push(rec); added++; } last=rec.id; unit=rec.g.task;
     });
-    sortWorks(); persist();
+    sortWorks(); persist(); refilter();
     if(last) cur=last;
     renderList(); renderDetail();
     let msg=[]; if(added) msg.push(`新增 ${added} 份`); if(replaced) msg.push(`更新 ${replaced} 份`); if(bad.length) msg.push(`${bad.length} 個檔案無法讀取（${bad.map(b=>b.err).join('；')}）`);
@@ -770,6 +1017,7 @@ const browserSave={save:async({filename,data})=>{ const blob=data instanceof Blo
 const dlPromise=(async()=>{ try{ return (window.claude&&window.claude.use)?await window.claude.use('downloads'):browserSave; }catch(e){ return null; } })();
 function csv(){
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const GROUPS=GR();
   const head=['座號姓名','作品名稱','總分','等第',...GROUPS.map(([k,m])=>`${k}(${m})`),'English 英文使用率(%)','需要修正','評語'];
   const rows=works.map(w=>[w.work.student||'',w.work.title||'',w.g.total,w.g.level,...GROUPS.map(([k])=>fmt(w.g.groups[k].got)),w.g.english,w.g.fixes.join('；'),commentOf(w)]);
   return '﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n');
@@ -777,7 +1025,7 @@ function csv(){
 $('#bCsv').onclick=async()=>{
   if(!works.length) return;
   const dl=await dlPromise, text=csv();
-  if(dl){ try{ await dl.save({filename:'BMI流程圖成績.csv',data:text}); toast('成績表已下載'); return; }
+  if(dl){ try{ await dl.save({filename:TASKS[unit].csv,data:text}); toast('成績表已下載'); return; }
     catch(e){ if(e&&e.code==='declined'){ toast('已取消下載'); return; } if(e&&e.code==='rate_limited'){ toast('下載視窗已經開著'); return; } } }
   $('#csvText').value=text.replace(/^﻿/,''); $('#csvModal').hidden=false;
 };
@@ -792,10 +1040,10 @@ bClear.onclick=()=>{
   if(usingSamples){ toast('目前是範例資料，上傳作業後會自動取代'); return; }
   if(!bClear.classList.contains('danger')){ bClear.classList.add('danger'); bClear.textContent='確定清除？'; clearTimeout(clearT); clearT=setTimeout(()=>{bClear.classList.remove('danger');bClear.textContent='清除全部';},3000); return; }
   clearTimeout(clearT); bClear.classList.remove('danger'); bClear.textContent='清除全部';
-  works=[]; try{ localStorage.removeItem(KEY); }catch(e){} load(); gradeAll(); sortWorks(); cur=works[0]&&works[0].id; renderList(); renderDetail(); toast('已清除所有作業');
+  ALL=[]; try{ localStorage.removeItem(KEY); }catch(e){} load(); gradeAll(); sortWorks(); refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); toast('已清除所有作業');
 };
 
-load(); gradeAll(); sortWorks(); cur=works[0]&&works[0].id; renderList(); renderDetail();
+load(); gradeAll(); sortWorks(); refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail();
 })();
 </script>
 

@@ -631,6 +631,212 @@ function feedback(work,g){
 
 if(typeof module!=='undefined') module.exports={feedback,grade,CASES,expectCat,CATS,parseAssign,compileCond,heightUnit,catOf,norm,RE_H,RE_W};
 
+/* ===== Average score task: input 4 scores, total, average, pass/fail ===== */
+const PASS_LINE=60;
+const SCORE_CASES=[[70,80,90,60],[60,60,60,60],[59,60,60,60],[100,100,100,0],[40,50,60,80],[0,0,0,0],[61,59,60,60],[100,90,80,70]];
+const sAvg=a=>(a[0]+a[1]+a[2]+a[3])/4;
+const sExpect=a=>sAvg(a)>=PASS_LINE?'pass':'fail';
+const STOP=new Set(['input','output','print','read','enter','scan','set','let','if','then','and','or','is','the','輸入','輸出','印出','顯示','計算','令','是否','嗎','和','與','及','請']);
+function sCat(text){ const t=String(text||''); if(/fail|不及格|不通過|沒過/i.test(t)) return 'fail'; if(/pass|及格|通過/i.test(t)) return 'pass'; return null; }
+function sNorm(s){
+  return norm(s).replace(/大於或等於|大於等於|不小於|至少/g,'>=').replace(/小於或等於|小於等於|不大於|至多/g,'<=')
+    .replace(/大於|超過|高於/g,'>').replace(/小於|低於|未滿/g,'<').replace(/不等於/g,'!=').replace(/等於/g,'==')
+    .replace(/[÷]/g,'/').replace(/[×]/g,'*').replace(/[＋]/g,'+').replace(/[－−]/g,'-');
+}
+/* tokens -> js using env lookups */
+function sTokens(src){
+  const t=sNorm(src), out=[]; const re=/\s*(<=|>=|==|!=|←|:=|->|→|[<>=+\-*/^()]|\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*|[㐀-鿿]+)/gy; let m, last=0;
+  while((m=re.exec(t))){ out.push(m[1]); last=re.lastIndex; }
+  if(t.slice(last).trim()) return null; return out;
+}
+const isId=x=>/^([A-Za-z_][A-Za-z0-9_]*|[㐀-鿿]+)$/.test(x);
+const idKey=x=>/^[A-Za-z_]/.test(x)?x.toLowerCase():x;
+function sJs(toks){
+  const vars=new Set(); const js=toks.map(x=>{ if(isId(x)){ const k=idKey(x); vars.add(k); return `e[${JSON.stringify(k)}]`; } if(x==='^') return '**'; if(x==='=') return '=='; return x; }).join(' ');
+  return {js,vars};
+}
+function sExpr(toks){ if(!toks||!toks.length) return null; const {js,vars}=sJs(toks); try{ const f=new Function('e','return ('+js+');'); return {f,vars}; }catch(e){ return null; } }
+function sAssign(text){
+  const toks=sTokens(text); if(!toks) return null;
+  const tk=toks.filter(x=>!(isId(x)&&STOP.has(idKey(x))));
+  let i=tk.findIndex(x=>x==='='||x==='←'||x===':=');
+  if(i===1&&isId(tk[0])){ const ex=sExpr(tk.slice(2)); return {target:idKey(tk[0]),expr:ex,rhs:tk.slice(2).join(' ')}; }
+  i=tk.findIndex(x=>x==='->'||x==='→');
+  if(i>0&&i===tk.length-2&&isId(tk[i+1])){ const ex=sExpr(tk.slice(0,i)); return {target:idKey(tk[i+1]),expr:ex,rhs:tk.slice(0,i).join(' ')}; }
+  return null;
+}
+function sCond(text){
+  const toks=sTokens(text); if(!toks) return null;
+  const tk=toks.filter(x=>!(isId(x)&&STOP.has(idKey(x))));
+  if(!tk.some(x=>/^(<=|>=|==|!=|<|>|=)$/.test(x))) return null;
+  // chained comparisons a<=b<c -> (a<=b)&&(b<c)
+  const parts=[]; let cur=[]; const ops=[];
+  tk.forEach(x=>{ if(/^(<=|>=|==|!=|<|>|=)$/.test(x)){ parts.push(cur); ops.push(x==='='?'==':x); cur=[]; } else cur.push(x); }); parts.push(cur);
+  if(parts.some(p=>!p.length)) return null;
+  const sides=parts.map(p=>sJs(p)); const vars=new Set(); sides.forEach(s=>s.vars.forEach(v=>vars.add(v)));
+  const js=ops.map((o,k)=>`((${sides[k].js}) ${o} (${sides[k+1].js}))`).join('&&');
+  try{ const f=new Function('e','return ('+js+');'); return {f,vars,nums:(tk.join(' ').match(/\d+(\.\d+)?/g)||[]).map(Number)}; }catch(e){ return null; }
+}
+function sInputVars(n){
+  const body=String(n.text||'').replace(/^(input|輸入|read|enter)\s*[:：]?\s*/i,'');
+  return (sNorm(body).match(/[A-Za-z_][A-Za-z0-9_]*|[㐀-鿿]+/g)||[]).map(idKey).filter(v=>!STOP.has(v)&&!/^(cm|kg|分)$/.test(v));
+}
+function sAnalyze(work){
+  const A=analyze(work);
+  A.nodes.forEach(n=>{ const t=n.text||'';
+    if(n.type==='terminator') n._r=RE_START.test(t)?'start':RE_END.test(t)?'end':'term';
+    else if(n.type==='decision') n._r='decision';
+    else if(n.type==='io'&&(n.role==='output'||(!n.role&&/^(output|輸出|print|印出|顯示)/i.test(t)))) n._r='output';
+    else if(n.type==='io') n._r='input';
+    else if(sCat(t)&&RE_OUT.test(t)) n._r='output';
+    else if(sAssign(t)) n._r='calc';
+    else if(RE_IN.test(t)) n._r='input';
+    else n._r='other'; });
+  return A;
+}
+function sOrderedInputs(A,start){
+  const seen=new Set(), order=[]; const q=start?[start.id]:[];
+  while(q.length){ const id=q.shift(); if(seen.has(id)) continue; seen.add(id); const n=A.byId[id]; if(n&&n._r==='input') order.push(n);
+    A.out[id].forEach(e=>q.push(e.to.node)); }
+  A.nodes.filter(n=>n._r==='input'&&!seen.has(n.id)).sort((a,b)=>a.y-b.y).forEach(n=>order.push(n));
+  return order;
+}
+function sRun(A,start,scores){
+  const e={}, q=[...scores], outputs=[]; let n=start, steps=0, stop=null;
+  while(n&&steps++<200){
+    const r=n._r;
+    if(r==='end') break;
+    if(r==='input') sInputVars(n).forEach(v=>{ e[v]=q.length?q.shift():undefined; });
+    else if(r==='calc'){ const a=sAssign(n.text); if(a&&a.expr){ try{ const v=a.expr.f(e); if(typeof v==='number'&&isFinite(v)) e[a.target]=v; }catch(err){} } }
+    else if(r==='output'){ const c=sCat(n.text); if(c) outputs.push(c); }
+    if(n.type==='decision'){
+      const c=sCond(n.text); if(!c){ stop={node:n.id,why:'看不懂判斷條件'}; break; }
+      let ans; try{ ans=!!c.f(e); }catch(err){ ans=false; }
+      if([...c.vars].some(v=>e[v]===undefined)){ stop={node:n.id,why:'判斷用到還沒算出來的變數'}; break; }
+      const ex=A.exits(n), ed=ans?ex.yes:ex.no;
+      if(!ed){ stop={node:n.id,why:`缺少「${ans?'Yes':'No'}」的路線`}; break; }
+      n=A.byId[ed.to.node]; continue;
+    }
+    const es=A.out[n.id]; if(!es.length){ stop={node:n.id,why:'這裡沒有接下一步'}; break; }
+    n=A.byId[es[0].to.node];
+  }
+  if(steps>=200) stop={node:n&&n.id,why:'流程繞圈出不來'};
+  return {outputs,env:e,stop};
+}
+/* simulate process steps (by flow order, then by y) to find total / average vars */
+function sCalcCheck(A,inVars){
+  const calcs=A.nodes.filter(n=>n._r==='calc').sort((a,b)=>a.y-b.y).map(n=>({n,a:sAssign(n.text)})).filter(x=>x.a);
+  const sample=[70,80,90,61];
+  const e={}; inVars.slice(0,4).forEach((v,i)=>e[v]=sample[i]);
+  for(let pass=0;pass<3;pass++) calcs.forEach(({a})=>{ if(a.expr){ try{ const v=a.expr.f(e); if(typeof v==='number'&&isFinite(v)) e[a.target]=v; }catch(err){} } });
+  const sum=sample.reduce((x,y)=>x+y,0), avg=sum/4;
+  const near=(x,y)=>typeof x==='number'&&Math.abs(x-y)<1e-6;
+  const totalC=calcs.find(({a})=>near(e[a.target],sum)), avgC=calcs.find(({a})=>near(e[a.target],avg));
+  return {calcs,e,totalC,avgC,sum,avg};
+}
+function gradeScore(work){
+  const A=sAnalyze(work), items=[], bad=new Set();
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  const nodes=A.nodes;
+  const start=nodes.find(n=>n._r==='start')||null, end=nodes.find(n=>n._r==='end')||null;
+  /* structure 20 */
+  add('結構','有「開始」符號',3,start?3:0,start?'':'找不到 START（開始）');
+  add('結構','有「結束」符號',3,end?3:0,end?'':'找不到 END（結束）');
+  let reach=false; if(start&&end){ const seen=new Set([start.id]),q=[start.id]; while(q.length){ const id=q.shift(); if(id===end.id){reach=true;break;} A.out[id].forEach(e=>{ if(!seen.has(e.to.node)){seen.add(e.to.node);q.push(e.to.node);} }); } }
+  add('結構','從開始能一路走到結束',4,reach?4:0,reach?'':(start&&end?'開始和結束之間有斷掉的地方':'缺少開始或結束，無法檢查'));
+  const loose=[]; nodes.forEach(n=>{ if(n._r!=='start'&&!A.inc[n.id].length){ loose.push(`「${n.text||'(空白)'}」沒有線連進來`); bad.add(n.id); } if(n._r!=='end'&&!A.out[n.id].length){ loose.push(`「${n.text||'(空白)'}」沒有線連出去`); bad.add(n.id); } });
+  add('結構','每個圖形都有接上線',4,4-loose.length,loose.join('；'));
+  const decs=nodes.filter(n=>n.type==='decision'); let decOK=0; const dn=[];
+  decs.forEach(n=>{ const ex=A.exits(n); if(ex.yes&&ex.no) decOK++; else { bad.add(n.id); dn.push(`「${n.text}」要有 Yes 和 No 兩條路`); } });
+  add('結構','每個判斷都有 Yes／No 兩條路',6,decs.length?6*decOK/decs.length:0,decs.length?dn.join('；'):'沒有判斷符號');
+  /* input 10 */
+  const ins=sOrderedInputs(A,start), inVars=[...new Set(ins.flatMap(sInputVars))];
+  add('輸入','輸入四個成績',8,2*Math.min(4,inVars.length),inVars.length>=4?'':`目前輸入了 ${inVars.length} 個成績，要輸入 4 個`);
+  const insIO=ins.filter(n=>n.type==='io');
+  add('輸入','輸入使用「輸入／輸出」符號',2,ins.length?2*insIO.length/ins.length:0,ins.length&&insIO.length<ins.length?'輸入要用平行四邊形（INPUT）符號':(ins.length?'':'沒有輸入步驟'));
+  /* calc 20 */
+  const C=sCalcCheck(A,inVars);
+  const procOK=c=>c&&c.n.type==='process';
+  add('計算','計算總分（四個成績相加）',10,C.totalC?(procOK(C.totalC)?10:7):(C.avgC?10:(C.calcs.length?3:0)),C.totalC||C.avgC?(C.totalC&&!procOK(C.totalC)?'計算要放在 PROCESS（長方形）裡':''):(C.calcs.length?'總分要把四個成績全部加起來':'沒有找到計算總分的步驟，例如 total = s1 + s2 + s3 + s4'));
+  let avgNote='';
+  if(!C.avgC){ const near=(x,y)=>Math.abs(x-y)<1e-6; const vals=C.calcs.map(({a})=>C.e[a.target]);
+    avgNote=vals.some(v=>near(v,C.sum/3))?'平均要除以 4，不是 3':vals.some(v=>near(v,C.sum))&&C.calcs.length<2?'還要再算平均：總分 ÷ 4':'沒有找到計算平均的步驟，例如 avg = total / 4';
+    C.calcs.forEach(({n})=>bad.add(n.id)); }
+  add('計算','計算平均（總分 ÷ 4）',10,C.avgC?(procOK(C.avgC)?10:7):0,avgNote);
+  /* decision 15 */
+  const decText=decs.map(n=>sNorm(n.text)).join(' ');
+  const has60=/(^|[^\d.])60(?![\d]|\.\d)/.test(decText);
+  add('判斷','和及格分數 60 比較',10,has60?10:(/(^|[^\d.])60(?![\d])/.test(nodes.map(n=>n.text).join(' '))?5:0),has60?'':'缺少平均和 60 的比較');
+  const condNodes=nodes.filter(n=>n.type!=='decision'&&/[<>]/.test(sNorm(n.text||''))&&n._r!=='calc');
+  add('判斷','條件寫在 DECISION（菱形）裡',5,decs.length&&!condNodes.length?5:decs.length?3:0,!decs.length?'沒有使用判斷符號':condNodes.length?'有條件寫在別的符號裡':'');
+  /* output 10 */
+  [['pass','pass'],['fail','fail']].forEach(([k,name])=>{ const io=nodes.find(n=>n.type==='io'&&n._r==='output'&&sCat(n.text)===k), other=nodes.find(n=>sCat(n.text)===k);
+    add('輸出',`輸出 ${name}`,5,io?5:other?2:0,io?'':other?`「${name}」要用 OUTPUT 符號`:`缺少 ${name} 的輸出`); });
+  /* tests 25 */
+  const full=SCORE_CASES.map(sc=>{ const exp=sExpect(sc); if(!start) return {scores:sc,avg:sAvg(sc),exp,got:null,ok:false,why:'沒有 START'};
+    const r=sRun(A,start,sc); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
+    return {scores:sc,avg:sAvg(sc),exp,got,ok:got===exp&&new Set(r.outputs).size===1,why:got?'':(r.stop?r.stop.why:'沒有輸出結果'),stop:r.stop}; });
+  const fp=full.filter(t=>t.ok).length;
+  add('執行測試','完整流程測試（輸入四個成績）',25,25*fp/SCORE_CASES.length,`${fp} / ${SCORE_CASES.length} 題正確`);
+  const st=full.find(t=>t.stop); if(st&&st.stop.node) bad.add(st.stop.node);
+  const b60=full.find(t=>t.avg===PASS_LINE&&!t.ok&&t.got==='fail');
+  /* english (not scored) */
+  const CJK=/[㐀-鿿]/;
+  const textNodes=nodes.filter(n=>String(n.text||'').trim()&&['terminator','io','process','decision'].includes(n.type));
+  const zhNodes=textNodes.filter(n=>CJK.test(n.text));
+  const decLabels=A.edges.filter(e=>A.byId[e.from.node]&&A.byId[e.from.node].type==='decision'&&String(e.label||'').trim());
+  const zhLabels=decLabels.filter(e=>CJK.test(e.label));
+  const words=[...new Set([...zhNodes.map(n=>n.text),...zhLabels.map(e=>e.label)].join(' ').match(/[㐀-鿿]+/g)||[])];
+  const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
+  const enUnits=textNodes.length+decLabels.length, english=enUnits?Math.round(100*(enUnits-zhNodes.length-zhLabels.length)/enUnits):0;
+  /* totals */
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  if(b60) fixes.push('平均剛好 60 也算 pass，判斷要用 >= 60');
+  full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`成績 ${t.scores.join('、')}（平均 ${t.avg}）應該是 ${t.exp}，你的流程輸出 ${t.got}`));
+  if(st&&fp===0) fixes.push(`流程執行到「${(A.byId[st.stop.node]||{}).text||''}」就停住：${st.stop.why}`);
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
+  return {task:'score',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,inVars,calc:C};
+}
+function feedbackScore(work,g){
+  const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
+  if(g.passed) return {
+    en:'Excellent! Your flowchart is complete and all 8 score tests passed.'+(enOK?' You wrote everything in English. Great job!':' Next time, try writing every label in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
+    zh:'流程圖完整又正確，八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
+  const pos=[],pz=[],fx=[],fz=[]; const add=(e,z)=>{fx.push(e);fz.push(z);};
+  if(full(it('輸入四個成績'))){ pos.push('you input all four scores'); pz.push('四個成績都有輸入'); }
+  if(full(it('計算總分'))){ pos.push('your total is correct'); pz.push('總分算對了'); }
+  if(full(it('計算平均'))){ pos.push('your average is correct'); pz.push('平均算對了'); }
+  if(enOK){ pos.push('you used English throughout'); pz.push('全部都用英文'); }
+  if(!full(it('有「開始」'))) add('add a START at the top','最前面要有 START');
+  if(!full(it('輸入四個成績'))) add('input four scores, e.g. s1, s2, s3, s4','要輸入四個成績，例如 s1、s2、s3、s4');
+  if(!full(it('計算總分'))) add('add the four scores: total = s1 + s2 + s3 + s4','把四個成績加起來：total = s1 + s2 + s3 + s4');
+  if(!full(it('計算平均'))) add('divide the total by 4: avg = total / 4','總分除以 4 算平均：avg = total / 4');
+  if(!full(it('和及格分數'))) add('compare the average with 60','用平均和 60 比較');
+  ['pass','fail'].forEach(k=>{ if(!(it('輸出 '+k)||{}).got) add(`add an OUTPUT: ${k}`,`加上 OUTPUT：${k}`); });
+  if(g.full.some(t=>t.avg===PASS_LINE&&!t.ok&&t.got==='fail')) add('use >= 60, because an average of exactly 60 passes','平均剛好 60 也算及格，要用 >= 60');
+  const loose=it('每個圖形都有接上線'); if(loose&&!full(loose)) add('connect every shape with lines','把每個圖形用線接好');
+  if(!full(it('有「結束」'))) add('finish with an END','最後加上 END');
+  const wrong=g.full.find(t=>!t.ok&&t.got);
+  let en=pos.length?`Good work: ${pos.slice(0,2).join(' and ')}.`:'Thank you for your flowchart!';
+  let zh=pz.length?pz.slice(0,2).join('，')+'，很不錯！':'謝謝你完成這份流程圖！';
+  if(fx.length){ en+=` To improve: ${fx.slice(0,2).join('; ')}.`; zh+='需要修正：'+fz.slice(0,2).join('；')+'。'; }
+  if(wrong){ en+=` Right now an average of ${wrong.avg} gives ${wrong.got}, but it should be ${wrong.exp}.`; zh+=`目前平均 ${wrong.avg} 會變成 ${wrong.got}，正確應該是 ${wrong.exp}。`; }
+  if(!enOK&&g.enTips.length){ en+=` Try more English: ${g.enTips.slice(0,3).join(', ')}.`; zh+=`也試著多用英文：${g.enTips.slice(0,3).join('、')}。`; }
+  en+=g.level==='優秀'?' Almost perfect, keep going!':' Fix these step by step and check again. You can do it!';
+  zh+=g.level==='優秀'?'只差一點點，繼續保持！':'照著修改，再檢查一次，一定會更好！';
+  return {en,zh};
+}
+Object.assign(EN_WORDS,{'成績':'score','分數':'score','總分':'total','總和':'total','平均':'avg','不及格':'fail','及格':'pass','通過':'pass'});
+function taskOf(work){ if(work&&(work.task==='score'||work.task==='bmi')) return work.task;
+  const t=(work&&work.nodes||[]).map(n=>n.text||'').join(' ');
+  return /pass|fail|及格|平均|avg|average|total|總分/i.test(t)&&!/bmi|height|weight|身高|體重/i.test(t)?'score':'bmi'; }
+function gradeTask(work){ const t=taskOf(work); const g=t==='score'?gradeScore(work):grade(work); g.task=t; return g; }
+function feedbackTask(work,g){ return (g.task||taskOf(work))==='score'?feedbackScore(work,g):feedback(work,g); }
+if(typeof module!=='undefined') Object.assign(module.exports,{gradeScore,feedbackScore,gradeTask,feedbackTask,taskOf,sAssign,sCond,sInputVars,sCat,sNorm,SCORE_CASES,PASS_LINE});
+
 /*GRADER-END*/
 </script>
 <script>
@@ -638,7 +844,8 @@ if(typeof module!=='undefined') module.exports={feedback,grade,CASES,expectCat,C
 const $=s=>document.querySelector(s);
 const svg=$('#board'), world=$('#world'), wrap=$('#wrap'), editor=$('#editor');
 const FREE=window.FLOW_MODE==='free';
-const KEY=FREE?'flowchart-free-v1':'flowboard-v2', SNAP=10;
+const TASK=FREE?'free':(window.FLOW_TASK==='score'?'score':'bmi');
+const KEY=FREE?'flowchart-free-v1':TASK==='score'?'flowchart-score-v1':'flowboard-v2', SNAP=10;
 
 const TOOLS=[
   {key:'start',label:'START',sub:'開始',type:'terminator',w:120,h:48,text:'START',mini:[64,26],tag:'START'},
@@ -652,7 +859,7 @@ const TOOLS=[
   {key:'connector',label:'CONNECTOR',sub:'連接點',type:'connector',w:44,h:44,text:'A',mini:[28,28]},
 ];
 const TOOL=Object.fromEntries(TOOLS.map(t=>[t.key,t]));
-const PH={input:'height / weight',output:'thin / normal …',process:'bmi = …',decision:'BMI < 18.5'};
+const PH=TASK==='score'?{input:'s1, s2, s3, s4',output:'pass / fail',process:'total = …',decision:'avg >= 60'}:{input:'height / weight',output:'thin / normal …',process:'bmi = …',decision:'BMI < 18.5'};
 const KINDS={
   terminator:{label:'開始／結束',w:120,h:48,text:'START',mini:[64,26]},
   process:{label:'處理',w:140,h:60,text:'',mini:[64,34]},
@@ -721,10 +928,12 @@ function route(a,da,b,db,A,B){
   const av=da.x===0, bv=db.x===0; let mid;
   if(av&&bv){
     if(da.y===db.y){ const my=da.y>0?Math.max(a1.y,b1.y):Math.min(a1.y,b1.y); mid=[{x:a1.x,y:my},{x:b1.x,y:my}]; }
+    else if((da.y>0&&b.y>=a.y||da.y<0&&b.y<=a.y)&&(da.y>0?b1.y<a1.y:b1.y>a1.y)){ const my=(a.y+b.y)/2; a1.y=my; b1.y=my; mid=[]; }
     else if(da.y>0&&b1.y<a1.y || da.y<0&&b1.y>a1.y){ const ba=box(A),bb=box(B); const sx=Math.max(ba.r,bb.r)+30; mid=[{x:sx,y:a1.y},{x:sx,y:b1.y}]; }
     else { const my=(a1.y+b1.y)/2; mid=[{x:a1.x,y:my},{x:b1.x,y:my}]; }
   } else if(!av&&!bv){
     if(da.x===db.x){ const mx=da.x>0?Math.max(a1.x,b1.x):Math.min(a1.x,b1.x); mid=[{x:mx,y:a1.y},{x:mx,y:b1.y}]; }
+    else if((da.x>0&&b.x>=a.x||da.x<0&&b.x<=a.x)&&(da.x>0?b1.x<a1.x:b1.x>a1.x)){ const mx=(a.x+b.x)/2; a1.x=mx; b1.x=mx; mid=[]; }
     else if(da.x>0&&b1.x<a1.x || da.x<0&&b1.x>a1.x){ const ba=box(A),bb=box(B); const sy=Math.max(ba.b,bb.b)+30; mid=[{x:a1.x,y:sy},{x:b1.x,y:sy}]; }
     else { const mx=(a1.x+b1.x)/2; mid=[{x:mx,y:a1.y},{x:mx,y:b1.y}]; }
   } else if(av){ mid=[{x:a1.x,y:b1.y}]; }
@@ -1046,9 +1255,9 @@ $('#bCopyImg').onclick=async()=>{
 };
 
 /* ---------- works: save, load, copy, import ---------- */
-const META_KEY=FREE?'flowchart-free-meta':'flowboard-meta', WORKS_KEY=FREE?'flowchart-free-works':'flowboard-works';
+const META_KEY=FREE?'flowchart-free-meta':TASK==='score'?'flowchart-score-meta':'flowboard-meta', WORKS_KEY=FREE?'flowchart-free-works':TASK==='score'?'flowchart-score-works':'flowboard-works';
 const TYPE_NAME={terminator:'START／END',process:'處理',decision:'判斷',io:'輸入／輸出',document:'文件',loop:'重複',connector:'連接點',predefined:'預設處理'};
-const DEFAULT_TITLE=FREE?'My Flowchart':'BMI Flowchart';
+const DEFAULT_TITLE=FREE?'My Flowchart':TASK==='score'?'Pass or Fail Flowchart':'BMI Flowchart';
 let meta={student:'',title:DEFAULT_TITLE};
 try{ meta=Object.assign(meta,JSON.parse(localStorage.getItem(META_KEY)||'{}')); }catch(e){}
 if(!String(meta.title||'').trim()) meta.title=DEFAULT_TITLE;
@@ -1062,7 +1271,7 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ i
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal').forEach(m=>{m.hidden=true;}); });
 
 function exportData(){
-  return {format:'flowboard-v1',student:meta.student,title:meta.title,exportedAt:new Date().toISOString(),line:state.line,
+  return {format:'flowboard-v1',task:TASK,student:meta.student,title:meta.title,exportedAt:new Date().toISOString(),line:state.line,
     order:state.order||'',
     nodes:state.nodes.map(n=>({id:n.id,type:n.type,typeName:n.role==='input'?'輸入':n.role==='output'?'輸出':(TYPE_NAME[n.type]||n.type),...(n.role?{role:n.role}:{}),text:n.text,x:n.x,y:n.y,w:n.w,h:n.h})),
     edges:state.edges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label||''}))};
@@ -1313,10 +1522,10 @@ let helpTimer=null, lastHelpKey='';
 function scheduleHelp(){ if(FREE) return; clearTimeout(helpTimer); helpTimer=setTimeout(updateHelp,drag?400:120); }
 function updateHelp(){
   if(drag&&drag.type!=='palette'){ scheduleHelp(); return; }
-  let r; try{ r=computeHelp(); }catch(err){ return; }
+  let r; try{ r=TASK==='score'?computeHelpScore():computeHelp(); }catch(err){ console.warn(err); return; }
   const {cur,done}=r, key=JSON.stringify([cur.i,cur.zh,cur.focus,done]);
   if(key===lastHelpKey) return; lastHelpKey=key;
-  $('#bSteps').innerHTML=STEP_NAMES.map((s,i)=>`<li class="${done[i]?'ok':''}${i===cur.i?' now':''}">${s}</li>`).join('');
+  $('#bSteps').innerHTML=(TASK==='score'?STEP_NAMES_SCORE:STEP_NAMES).map((s,i)=>`<li class="${done[i]?'ok':''}${i===cur.i?' now':''}">${s}</li>`).join('');
   $('#bZh').innerHTML=cur.zh; $('#bEn').textContent=cur.en;
   $('#bActs').innerHTML=(cur.acts||[]).map(a=>`<button class="btn${a.act==='check'||a.act==='asc'||a.act==='desc'?' primary':''}" data-act="${a.act}">${a.label}</button>`).join('');
   $('#buddy').classList.toggle('done',cur.i===8);
@@ -1345,14 +1554,14 @@ let lastCheck=null, certBlob=null, certTimer=null;
 function openCheck(){
   commitEdit();
   if(!state.nodes.length){ toast('Draw your flowchart first 畫布是空的，先畫流程圖'); return; }
-  const work={nodes:state.nodes,edges:state.edges}, g=grade(work), f=feedback(work,g);
+  const work={nodes:state.nodes,edges:state.edges,task:TASK}, g=gradeTask(work), f=feedbackTask(work,g);
   lastCheck=g; certBlob=null;
   $('#ckScore').innerHTML=`${g.total}<small> / 100</small>`;
   const b=$('#ckBadge'); b.textContent=g.passed?'Passed 達成':'Not yet 尚未達成'; b.classList.toggle('no',!g.passed);
   const en=$('#ckEn'); en.textContent=g.english>=100?'Bilingual Star 雙語之星':`English 英文 ${g.english}%`; en.classList.toggle('no',g.english<100);
   $('#ckGroups').innerHTML=GORDER.map(([k,e])=>{ const v=g.groups[k]; return v?`<div><span>${e?e+' ':''}${k}</span><b>${fmtN(v.got)} / ${fmtN(v.max)}</b></div>`:''; }).join('');
   $('#ckFbEn').textContent=f.en; $('#ckFbZh').textContent=f.zh;
-  $('#ckTests').innerHTML=g.full.map(t=>`<span class="${t.ok?'ok':'no'}">BMI ${t.bmi} → ${esc(t.ok?t.exp:(t.got||'?'))} ${t.ok?'✓':'✗'}</span>`).join('');
+  $('#ckTests').innerHTML=g.full.map(t=>`<span class="${t.ok?'ok':'no'}">${t.scores?`${t.scores.join(',')} (avg ${t.avg})`:`BMI ${t.bmi}`} → ${esc(t.ok?t.exp:(t.got||'?'))} ${t.ok?'✓':'✗'}</span>`).join('');
   $('#ckCert').hidden=!g.passed; $('#bCert').hidden=!g.passed;
   const st=$('#ckStatus'); st.classList.remove('err');
   st.textContent=g.passed?'':'Fix it and check again. 修正後再按一次提交批改。';
@@ -1388,7 +1597,7 @@ async function makeCert(){
   const L=100, maxW=520;
   x.textBaseline='alphabetic';
   x.fillStyle=GREEN; x.font=`500 22px ${M}`; try{ x.letterSpacing='4px'; }catch(e){}
-  x.fillText('BMI FLOWCHART · COMPLETE',L,140,maxW); try{ x.letterSpacing='0px'; }catch(e){}
+  x.fillText(TASK==='score'?'PASS OR FAIL FLOWCHART · COMPLETE':'BMI FLOWCHART · COMPLETE',L,140,maxW); try{ x.letterSpacing='0px'; }catch(e){}
   x.fillStyle=INK; x.font=`700 76px ${F}`; x.fillText('Well done!',L,240,maxW);
   x.font=`700 56px ${F}`; x.fillText('完成了！',L,312,maxW);
   const field=(label,val,y)=>{ x.fillStyle=MUTED; x.font=`400 22px ${F}`; x.fillText(label,L,y,maxW);
@@ -1401,7 +1610,7 @@ async function makeCert(){
   const sw=x.measureText(String(g.total)).width; x.fillStyle=MUTED; x.font=`400 32px ${M}`; x.fillText('/ 100',L+sw+14,725);
   let py=790;
   const pill=(t,fill,fg)=>{ x.font=`500 24px ${F}`; const tw=x.measureText(t).width+36; rrect(x,L,py-32,tw,46,23); x.fillStyle=fill; x.fill(); x.fillStyle=fg; x.fillText(t,L+18,py); py+=62; };
-  pill('✓ 8 / 8 BMI tests passed 測試全數通過','#dcefe5',GREEN);
+  pill(TASK==='score'?'✓ 8 / 8 tests passed 測試全數通過':'✓ 8 / 8 BMI tests passed 測試全數通過','#dcefe5',GREEN);
   if(g.english>=100) pill('★ Bilingual Star 雙語之星',GREEN,'#ffffff');
   x.fillStyle=MUTED; x.font=`400 22px ${M}`; x.fillText(new Date().toLocaleDateString('zh-TW'),L,915);
   const BX=700,BY=100,BW=800,BH=800;
@@ -1422,9 +1631,96 @@ $('#bCert').onclick=async()=>{
 };
 $('#bCheck').onclick=openCheck;
 
+/* ---------- helper for the average-score task ---------- */
+const STEP_NAMES_SCORE=['START','Inputs','Total','Average','Decision','Outputs','END','Lines'];
+function computeHelpScore(){
+  const N=state.nodes, done=Array(8).fill(false); let cur=null;
+  const say=(i,zh,en,focus,acts)=>{ if(!cur) cur={i,zh,en,focus:focus||null,acts:acts||[]}; };
+  const work={nodes:N,edges:state.edges}, A=sAnalyze(work);
+  /* 0 START */
+  const starts=N.filter(n=>n.type==='terminator'&&/start|開始/i.test(n.text||''));
+  if(starts.length===1) done[0]=true;
+  else if(starts.length>1) say(0,`只需要一個 ${B('START')}，把多的刪掉。`,'You only need one START.',starts[1].id);
+  else say(0,`從左邊把 ${B('START')} 拖到畫布上方，流程圖從這裡開始。`,'Drag START onto the canvas. Every flowchart begins here.');
+  /* 1 inputs */
+  const ins=N.filter(n=>ioRole(n)==='input'), outs=N.filter(n=>ioRole(n)==='output');
+  const vars=[...new Set(ins.flatMap(sInputVars))];
+  const emptyIn=ins.find(n=>!sInputVars(n).length);
+  if(vars.length>=4) done[1]=true;
+  else if(emptyIn) say(1,`雙擊這個 INPUT，打一個成績的名字，例如 ${B('s1')}。`,'Double-click the INPUT and type a name for one score, e.g. s1.',emptyIn.id);
+  else say(1,`要輸入四個成績（目前 ${vars.length} / 4）。拖 ${B('INPUT')} 打 ${B('s1')}、${B('s2')}、${B('s3')}、${B('s4')}，也可以在一個 INPUT 裡打 ${B('s1, s2, s3, s4')}。`,`Input four scores (${vars.length} / 4): s1, s2, s3, s4. One INPUT can hold all four: s1, s2, s3, s4.`);
+  /* 2-3 total & average */
+  const C=sCalcCheck(A,vars);
+  const procs=N.filter(n=>n.type==='process');
+  const defined=new Set([...vars,...C.calcs.map(c=>c.a.target)]);
+  const unknown=C.calcs.map(c=>({c,u:c.a.expr?[...c.a.expr.vars].filter(v=>!defined.has(v)):[]})).find(x=>x.u.length);
+  if(C.totalC||C.avgC) done[2]=true;
+  else if(!procs.length) say(2,`拖一個 ${B('PROCESS')}，把四個成績加起來，開頭寫 ${B('total =')}。`,'Add a PROCESS and add up the four scores, starting with total =.');
+  else if(!C.calcs.length){ const p=procs.find(x=>String(x.text||'').trim())||procs[0];
+    say(2,String(p.text||'').trim()?`算式要寫成 ${B('total = …')} 的樣子，用 ${B('+')} 相加。`:`雙擊 PROCESS，打出總分的算式，開頭寫 ${B('total =')}。`,'Write it as total = … and use + to add.',p.id); }
+  else if(unknown) say(2,`${nm(unknown.c.n)} 裡的「${esc(unknown.u[0])}」不是你輸入的成績。你的成績叫 ${vars.map(v=>B(esc(v))).join('、')||'（還沒有）'}。`,`"${unknown.u[0]}" is not one of your inputs. Use the names you typed in your INPUTs.`,unknown.c.n.id);
+  else say(2,`總分要把四個成績都加起來：${B(vars.slice(0,4).map(esc).join(' + ')||'s1 + s2 + s3 + s4')}。`,'The total should add all four scores.',C.calcs[0].n.id);
+  if(C.avgC) done[3]=true;
+  else if(done[2]){
+    const tv=C.totalC?C.totalC.a.target:'total';
+    const by3=C.calcs.find(({a})=>Math.abs(C.e[a.target]-C.sum/3)<1e-6);
+    const avgTry=C.calcs.find(({a})=>/avg|average|mean|平均/i.test(a.target));
+    if(by3) say(3,`平均要除以 ${B('4')}，因為有四個成績。`,'There are four scores, so divide by 4.',by3.n.id);
+    else if(avgTry) say(3,`平均的算式還不對：平均 = 總分 ÷ 4，例如 ${B(`avg = ${esc(tv)} / 4`)}。`,`Average = total ÷ 4, e.g. avg = ${tv} / 4.`,avgTry.n.id);
+    else say(3,`再拖一個 ${B('PROCESS')} 算平均：${B(`avg = ${esc(tv)} / 4`)}。`,`Add another PROCESS for the average: avg = ${tv} / 4.`);
+  }
+  /* 4 decision */
+  const avgVar=C.avgC?C.avgC.a.target:'avg';
+  const decs=N.filter(n=>n.type==='decision');
+  const d=decs.find(x=>{ const c=sCond(x.text||''); return c&&c.nums.includes(PASS_LINE); })||decs.find(x=>/60/.test(x.text||''));
+  if(!d) say(4,`拖一個 ${B('DECISION')}，雙擊打 ${B(`${esc(avgVar)} >= 60`)}，判斷有沒有及格。`,`Add a DECISION: ${avgVar} >= 60`);
+  else { const c=sCond(d.text||'');
+    if(!c) say(4,`小幫手看不懂判斷 ${nm(d)}，請寫成 ${B(`${esc(avgVar)} >= 60`)} 的樣子。`,`Write it like ${avgVar} >= 60.`,d.id);
+    else { const ev=v=>{ const e={}; c.vars.forEach(k=>e[k]=v); try{ return !!c.f(e); }catch(err){ return null; } };
+      const at=ev(60), below=ev(59.99);
+      if(C.avgC&&![...c.vars].includes(avgVar)) say(4,`判斷要用平均 ${B(esc(avgVar))} 和 60 比較。`,`Compare the average (${avgVar}) with 60.`,d.id);
+      else if(at===below){ if(at===false&&ev(60.01)) say(4,`平均剛好 60 也算 pass，所以要用 ${B('>=')}，不是 >。`,'An average of exactly 60 passes, so use >= 60.',d.id);
+        else say(4,`檢查一下判斷 ${nm(d)}：平均 60 和 59 應該要得到不同的結果。`,'An average of 60 and 59 should give different answers. Check the sign.',d.id); }
+      else done[4]=true; }
+  }
+  /* 5 outputs */
+  const hasP=outs.some(o=>sCat(o.text)==='pass'), hasF=outs.some(o=>sCat(o.text)==='fail');
+  const emptyOut=outs.find(o=>!bodyOf(o)), badOut=outs.find(o=>bodyOf(o)&&!sCat(o.text));
+  if(emptyOut) say(5,`雙擊這個 OUTPUT，打 ${B('pass')} 或 ${B('fail')}。`,'Double-click the OUTPUT and type pass or fail.',emptyOut.id);
+  else if(badOut) say(5,`${nm(badOut)} 不是這題的結果，OUTPUT 只能是 ${B('pass')} 或 ${B('fail')}。`,'Outputs should be pass or fail.',badOut.id);
+  else if(!hasP||!hasF){ const miss=!hasP?'pass':'fail'; say(5,`放一個 ${B('OUTPUT')}，雙擊打 ${B(miss)}。`,`Add an OUTPUT: ${miss}.`,d?d.id:null); }
+  else done[5]=true;
+  /* 6 END */
+  if(N.some(n=>n.type==='terminator'&&/^(end|結束)$/i.test(String(n.text||'').trim()))) done[6]=true;
+  else say(6,`拖一個 ${B('END')} 放在最下面，流程圖在這裡結束。`,'Add END at the bottom.');
+  /* 7 lines */
+  const g=N.length?gradeScore(work):null;
+  if(g&&g.passed) done[7]=true;
+  else if(g){
+    const inc={},out={}; N.forEach(n=>{inc[n.id]=0;out[n.id]=0;});
+    state.edges.forEach(e=>{ if(inc[e.to.node]!==undefined) inc[e.to.node]++; if(out[e.from.node]!==undefined) out[e.from.node]++; });
+    const sorted=[...N].sort((a,b)=>a.y-b.y||a.x-b.x);
+    const noOut=sorted.find(n=>!(n.type==='terminator'&&/end|結束/i.test(n.text||''))&&!out[n.id]);
+    const noIn=sorted.find(n=>!(n.type==='terminator'&&/start|開始/i.test(n.text||''))&&!inc[n.id]);
+    const yn=/^(是|yes|y|否|no|n|true|false)$/i;
+    const decBad=decs.find(x=>{ const es=state.edges.filter(e=>e.from.node===x.id); return es.length<2||es.filter(e=>yn.test(String(e.label||'').trim())).length<2; });
+    if(noOut) say(7,`${nm(noOut)} 還沒有線連出去。把滑鼠移到圖形上，從邊上的${B('小圓點')}拖到下一個圖形。`,'Connect it: drag from a small dot on its edge to the next block.',noOut.id);
+    else if(noIn) say(7,`${nm(noIn)} 還沒有線連進來，從上一步的小圓點拖一條線到它。`,'Nothing points to this block yet. Draw a line into it.',noIn.id);
+    else if(decBad) say(7,`判斷 ${nm(decBad)} 要有兩條線：一條 ${B('Yes')}、一條 ${B('No')}，雙擊線上的文字可以修改。`,'A DECISION needs two lines: Yes and No.',decBad.id);
+    else { const w=g.full.find(t=>!t.ok&&t.got), st=g.full.find(t=>t.stop);
+      if(w) say(7,`測試看看：成績 ${w.scores.join('、')}（平均 ${w.avg}）應該是 ${B(w.exp)}，你的流程會跑到 ${B(w.got)}。檢查 Yes / No 有沒有接反。`,`Test: scores ${w.scores.join(', ')} (average ${w.avg}) should be ${w.exp}, but your chart says ${w.got}. Check the Yes/No lines.`);
+      else if(st&&st.stop.node) say(7,`流程走到 ${nm(getNode(st.stop.node)||{text:''})} 就停住了：${esc(st.stop.why)}。`,'The flow gets stuck here. Check the lines.',st.stop.node);
+      else if(g.fixes.length) say(7,esc(g.fixes[0]),'Almost there! Fix this last part.');
+      else say(7,'檢查每條線的方向：要從 START 一路走到 END。','Check the arrows go from START to END.'); }
+  } else say(7,'把每個圖形用線接起來，從 START 一路接到 END。','Connect every block from START to END.');
+  if(!cur) cur={i:8,zh:`完成了！八組成績的測試全部通過。按 ${B('Check 提交批改')} 看分數、領取完成圖，再按 ${B('下載作業檔')} 繳交。`,en:'All done! Every test passed. Press Check to get your certificate, then download your file to hand it in.',focus:null,acts:[{act:'check',label:'Check 提交批改'},{act:'download',label:'Download file 下載作業檔'}]};
+  return {cur,done};
+}
+
 /* ---------- start ---------- */
 let loaded=false;
 try{ const s=localStorage.getItem(KEY); if(s){ loadStr(s); loaded=true; } }catch(e){}
+if(TASK==='score'){ $('#appName').textContent='Pass or Fail Tool 成績及格判斷工具'; document.title='Pass or Fail Tool 成績及格判斷工具'; $('#ckImg').alt='成績及格判斷完成圖'; }
 if(FREE){ $('#buddy').hidden=true; $('#bCheck').hidden=true; $('#appName').textContent='Free Draw 自由繪製'; document.title='Free Draw 自由繪製'; }
 render(); showTitle(); requestAnimationFrame(fit);
 })();
