@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flowchart Work 流程圖</title>
+<title>Flowchart Drawing Tool 流程圖繪製工具</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
@@ -16,7 +16,27 @@ main{max-width:980px;margin:0 auto;padding:56px max(16px,env(safe-area-inset-lef
 .eyebrow{font-family:"JetBrains Mono",monospace;font-size:13px;letter-spacing:.2em;color:var(--accent)}
 h1{font-size:clamp(30px,5vw,44px);margin:6px 0 4px;line-height:1.15}
 h1 small{display:block;font-size:.55em;color:var(--muted);font-weight:500;margin-top:6px}
-p.lead{color:var(--muted);margin:0 0 32px;max-width:60ch}
+p.lead{color:var(--muted);margin:0;max-width:60ch}
+.intro{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px 30px;margin-top:20px}
+.intro .text{display:flex;flex-direction:column;gap:14px;min-width:0}
+.feats{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.feats li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;font-size:14px}
+.feats li b{display:block;font-weight:500;color:var(--ink)}
+.feats li span{color:var(--muted)}
+.feats svg{width:24px;height:24px;margin-top:1px}
+.demo{width:100%;max-width:300px;justify-self:center}
+.demo .s{fill:var(--panel);stroke:var(--ink);stroke-width:1.4}
+.demo .l{fill:none;stroke:var(--ink);stroke-width:1.4}
+.demo .a{fill:var(--ink)}
+.demo text{fill:var(--ink);font-family:"JetBrains Mono",monospace;font-size:10px;text-anchor:middle;dominant-baseline:central}
+.demo .y{fill:var(--accent);font-size:9px}
+.demo .dot{fill:var(--panel);stroke:var(--accent);stroke-width:1.4}
+h2.choose{font-size:20px;margin:40px 0 4px}
+h2.choose small{font-size:15px;color:var(--muted);font-weight:500;margin-left:8px}
+p.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+.num{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:1px 9px;align-self:flex-start}
+.card .top{display:flex;justify-content:space-between;align-items:flex-start}
+@media (max-width:720px){.intro{grid-template-columns:1fr;padding:22px 18px}.demo{max-width:220px}}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
 a.card{display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;color:inherit;text-decoration:none;transition:border-color .15s,transform .15s}
 a.card:hover,a.card:focus-visible{border-color:var(--accent);transform:translateY(-2px);outline:none}
@@ -33,24 +53,48 @@ footer{margin-top:40px;font-size:12px;color:var(--muted)}
 </head>
 <body>
 <main>
-  <div class="eyebrow">FLOWCHART WORK</div>
-  <h1>Flowchart Work<small>流程圖工作室</small></h1>
-  <p class="lead">Draw any flowchart, practise the BMI task with a helper, or grade your class. 自由畫流程圖、跟著小幫手完成資訊課程 BMI 作業，或批改全班作品。</p>
+  <div class="eyebrow">FLOWCHART DRAWING TOOL</div>
+  <h1>Flowchart Drawing Tool<small>流程圖繪製工具</small></h1>
+  <section class="intro" aria-label="About 介紹">
+    <div class="text">
+      <p class="lead">A simple online tool for drawing flowcharts. Pick a shape, drop it on the canvas, connect the steps with arrows, and save your work. No installing, no signing in. 這是一個線上流程圖繪製工具：選好圖形、放到畫布上、用箭頭把步驟接起來，就能存檔。不用安裝，也不用登入。</p>
+      <ul class="feats">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="8" height="5" rx="2.5"/><path d="M14 4h7l-2 5h-7z"/><path d="M7 15l4 3-4 3-4-3z"/></svg><div><b>Standard shapes 標準流程圖符號</b><span>START / END, INPUT / OUTPUT, PROCESS, DECISION, LOOP</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h6v12h4"/></svg><div><b>Drag to connect 拖曳接線</b><span>Lines follow the shapes when you move them. 移動圖形時，線會自動跟著走。</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg><div><b>Save and share 存檔與分享</b><span>Download a .json work file or a PNG picture. 可以下載作業檔或 PNG 圖片。</span></div></li>
+      </ul>
+    </div>
+    <svg class="demo" viewBox="0 0 220 250" role="img" aria-label="Example flowchart 流程圖範例">
+      <rect class="s" x="60" y="6" width="100" height="30" rx="15"/><text x="110" y="21">START</text>
+      <path class="l" d="M110 36V52"/><path class="a" d="M106 50l4 6 4-6z"/>
+      <polygon class="s" points="72,58 168,58 156,88 60,88"/><text x="114" y="73">input n</text>
+      <path class="l" d="M110 88V106"/><path class="a" d="M106 104l4 6 4-6z"/>
+      <polygon class="s" points="110,110 162,140 110,170 58,140"/><text x="110" y="140">n &gt; 0 ?</text>
+      <path class="l" d="M162 140H186V186"/><path class="a" d="M182 184l4 6 4-6z"/><text class="y" x="174" y="132">Yes</text>
+      <path class="l" d="M110 170V186"/><path class="a" d="M106 184l4 6 4-6z"/><text class="y" x="122" y="178">No</text>
+      <polygon class="s" points="74,192 140,192 132,216 66,216"/><text x="103" y="204">"small"</text>
+      <polygon class="s" points="160,192 214,192 206,216 152,216"/><text x="183" y="204">"big"</text>
+      <circle class="dot" cx="110" cy="58" r="3"/><circle class="dot" cx="162" cy="140" r="3"/>
+    </svg>
+  </section>
+
+  <h2 class="choose">What do you want to do?<small>你想做什麼？</small></h2>
+  <p class="sub">Choose one to start. 選一個開始。</p>
   <div class="grid">
     <a class="card" href="free/">
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 7l3 3"/><rect x="3" y="3" width="6" height="4" rx="2"/></svg>
-      <h2>Free Drawing<small>自由繪製</small></h2>
+      <div class="top"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 7l3 3"/><rect x="3" y="3" width="6" height="4" rx="2"/></svg><span class="num">1</span></div>
+      <h2>Free Draw<small>自由繪製</small></h2>
       <p>Draw any flowchart you like, then save it as a file or a picture. 自由畫任何流程圖，可以存成檔案或圖片。</p>
       <span class="go">Open 開啟 →</span>
     </a>
     <a class="card" href="bmi/">
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="3" y="2" width="9" height="5" rx="2.5"/><path d="M7.5 7v4"/><path d="M7.5 11l4.5 4-4.5 4-4.5-4z"/><path d="M12 15h5v3"/><rect x="14" y="18" width="7" height="4"/></svg>
-      <h2>BMI Flowchart<small>資訊課程 BMI 繪製</small></h2>
+      <div class="top"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="3" y="2" width="9" height="5" rx="2.5"/><path d="M7.5 7v4"/><path d="M7.5 11l4.5 4-4.5 4-4.5-4z"/><path d="M12 15h5v3"/><rect x="14" y="18" width="7" height="4"/></svg><span class="num">2</span></div>
+      <h2>BMI Drawing Tool<small>BMI 繪製工具</small></h2>
       <p>For students. Follow the helper, press Check, and get your certificate. 學生作業：跟著小幫手畫 BMI 流程圖，提交批改並領取完成圖。</p>
       <span class="go">Open 開啟 →</span>
     </a>
     <a class="card" href="grader/">
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8l2 2 4-4M8 14h8M8 17h5"/></svg>
+      <div class="top"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8l2 2 4-4M8 14h8M8 17h5"/></svg><span class="num">3</span></div>
       <h2>Grading Desk<small>批改台</small></h2>
       <p>For teachers. Upload students' BMI .json files to grade the whole class. 教師使用：上傳學生的 BMI 作業檔，整班自動批改。</p>
       <span class="go">Open 開啟 →</span>

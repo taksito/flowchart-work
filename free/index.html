@@ -7,7 +7,7 @@
 <script>window.FLOW_MODE='free';</script>
 </head>
 <body>
-<title>Free Drawing 自由繪製</title>
+<title>Free Draw 自由繪製</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -218,7 +218,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
 
 <div class="app">
   <header>
-    <h1><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="2" width="9" height="5" rx="2.5" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M7.5 7v4" stroke="var(--accent)" stroke-width="1.6"/><path d="M7.5 11l4.5 4-4.5 4-4.5-4z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M12 15h5v3" stroke="var(--accent)" stroke-width="1.6" fill="none"/><rect x="14" y="18" width="7" height="4" fill="none" stroke="var(--accent)" stroke-width="1.6"/></svg><span id="appName">BMI Flowchart 資訊課程 BMI 繪製</span><span id="curTitle"></span></h1>
+    <h1><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="2" width="9" height="5" rx="2.5" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M7.5 7v4" stroke="var(--accent)" stroke-width="1.6"/><path d="M7.5 11l4.5 4-4.5 4-4.5-4z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M12 15h5v3" stroke="var(--accent)" stroke-width="1.6" fill="none"/><rect x="14" y="18" width="7" height="4" fill="none" stroke="var(--accent)" stroke-width="1.6"/></svg><span id="appName">BMI Drawing Tool BMI 繪製工具</span><span id="curTitle"></span></h1>
     <div class="tools">
       <button class="btn" id="bUndo" title="復原 (Ctrl+Z)">復原</button>
       <button class="btn" id="bRedo" title="重做 (Ctrl+Y)">重做</button>
@@ -1426,7 +1426,7 @@ $('#bCheck').onclick=openCheck;
 /* ---------- start ---------- */
 let loaded=false;
 try{ const s=localStorage.getItem(KEY); if(s){ loadStr(s); loaded=true; } }catch(e){}
-if(FREE){ $('#buddy').hidden=true; $('#bCheck').hidden=true; $('#appName').textContent='Free Drawing 自由繪製'; document.title='Free Drawing 自由繪製'; }
+if(FREE){ $('#buddy').hidden=true; $('#bCheck').hidden=true; $('#appName').textContent='Free Draw 自由繪製'; document.title='Free Draw 自由繪製'; }
 render(); showTitle(); requestAnimationFrame(fit);
 })();
 </script>

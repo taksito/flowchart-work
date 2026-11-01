@@ -1,4 +1,4 @@
-# Flowchart Work 流程圖工作室
+# Flowchart Drawing Tool 流程圖繪製工具
 
 A bilingual (English / 中文) flowchart assignment for junior-high students: draw a BMI flowchart, get step-by-step hints, check your own work, and hand in a file the teacher can grade automatically.
 
@@ -9,8 +9,8 @@ A bilingual (English / 中文) flowchart assignment for junior-high students: dr
 | Page 頁面 | Path 路徑 | For 使用者 |
 |---|---|---|
 | Home 首頁 | `index.html` | Everyone 所有人 |
-| Free Drawing 自由繪製 | `free/` | Anyone 任何人 |
-| BMI Flowchart 資訊課程 BMI 繪製 | `bmi/` | Students 學生 |
+| Free Draw 自由繪製 | `free/` | Anyone 任何人 |
+| BMI Drawing Tool BMI 繪製工具 | `bmi/` | Students 學生 |
 | Grading Desk 批改台 | `grader/` | Teachers 教師 |
 
 Live site 網址：https://taksito.github.io/flowchart-work/
@@ -30,11 +30,11 @@ Input height and weight, compute `BMI = weight ÷ height²` (height in metres), 
 | 24 ≤ BMI < 27 | overweight |
 | BMI ≥ 27 | obesity |
 
-## Free Drawing 自由繪製
+## Free Draw 自由繪製
 
 The same board without the BMI helper or Check button. Drawings are saved separately from the BMI task. 和 BMI 畫板相同，但沒有小幫手與提交批改；作品和 BMI 作業分開儲存。
 
-## BMI Flowchart 資訊課程 BMI 繪製
+## BMI Drawing Tool BMI 繪製工具
 
 - Shapes: START, END, INPUT, OUTPUT, PROCESS, DECISION, LOOP, DOCUMENT, CONNECTOR.
 - INPUT / OUTPUT add the prefix automatically (type `height` → `input height`). INPUT／OUTPUT 會自動加上前綴。
