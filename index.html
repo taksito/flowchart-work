@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flowchart Work 流程圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#f4f7f5;--panel:#fff;--ink:#1e2a2c;--muted:#5b6b6e;--line:#d3ddd8;--accent:#17795a;--soft:rgba(23,121,90,.10);color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#121817;--panel:#1a2220;--ink:#e2ebe7;--muted:#93a39e;--line:#2c3835;--accent:#4cc49a;--soft:rgba(76,196,154,.14);color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.6;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px;background-position:-1px -1px}
+main{max-width:980px;margin:0 auto;padding:56px max(16px,env(safe-area-inset-left,0px)) 48px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:13px;letter-spacing:.2em;color:var(--accent)}
+h1{font-size:clamp(30px,5vw,44px);margin:6px 0 4px;line-height:1.15}
+h1 small{display:block;font-size:.55em;color:var(--muted);font-weight:500;margin-top:6px}
+p.lead{color:var(--muted);margin:0 0 32px;max-width:60ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+a.card{display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;color:inherit;text-decoration:none;transition:border-color .15s,transform .15s}
+a.card:hover,a.card:focus-visible{border-color:var(--accent);transform:translateY(-2px);outline:none}
+.card svg{width:44px;height:44px}
+.card h2{margin:0;font-size:20px}
+.card h2 small{font-size:14px;color:var(--muted);font-weight:500;margin-left:6px}
+.card p{margin:0;color:var(--muted);font-size:14px}
+.card .go{margin-top:auto;padding-top:8px;color:var(--accent);font-weight:500;font-size:14px}
+ol{padding-left:20px;color:var(--muted);font-size:14px}
+h3{font-size:15px;margin:36px 0 6px}
+footer{margin-top:40px;font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){a.card{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">FLOWCHART WORK</div>
+  <h1>Flowchart Work<small>流程圖工作室</small></h1>
+  <p class="lead">Draw any flowchart, practise the BMI task with a helper, or grade your class. 自由畫流程圖、跟著小幫手完成資訊課程 BMI 作業，或批改全班作品。</p>
+  <div class="grid">
+    <a class="card" href="free/">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 7l3 3"/><rect x="3" y="3" width="6" height="4" rx="2"/></svg>
+      <h2>Free Drawing<small>自由繪製</small></h2>
+      <p>Draw any flowchart you like, then save it as a file or a picture. 自由畫任何流程圖，可以存成檔案或圖片。</p>
+      <span class="go">Open 開啟 →</span>
+    </a>
+    <a class="card" href="bmi/">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="3" y="2" width="9" height="5" rx="2.5"/><path d="M7.5 7v4"/><path d="M7.5 11l4.5 4-4.5 4-4.5-4z"/><path d="M12 15h5v3"/><rect x="14" y="18" width="7" height="4"/></svg>
+      <h2>BMI Flowchart<small>資訊課程 BMI 繪製</small></h2>
+      <p>For students. Follow the helper, press Check, and get your certificate. 學生作業：跟著小幫手畫 BMI 流程圖，提交批改並領取完成圖。</p>
+      <span class="go">Open 開啟 →</span>
+    </a>
+    <a class="card" href="grader/">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8l2 2 4-4M8 14h8M8 17h5"/></svg>
+      <h2>Grading Desk<small>批改台</small></h2>
+      <p>For teachers. Upload students' BMI .json files to grade the whole class. 教師使用：上傳學生的 BMI 作業檔，整班自動批改。</p>
+      <span class="go">Open 開啟 →</span>
+    </a>
+  </div>
+  <h3>How to hand in the BMI task 繳交 BMI 作業</h3>
+  <ol>
+    <li>Type your name, then press “下載作業檔” to save a .json file. 填好座號姓名，按「下載作業檔」存成 .json 檔。</li>
+    <li>Upload the file where your teacher tells you. 把檔案交到老師指定的地方。</li>
+    <li>To keep working later, use “開啟檔案”. 下次要接著畫，用「開啟檔案」。</li>
+  </ol>
+  <footer>Your drawings are saved only in this browser. 作品只存在這台電腦的瀏覽器裡，換電腦前請先下載作業檔。</footer>
+</main>
+</body>
+</html>

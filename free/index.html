@@ -1,0 +1,1435 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>window.FLOW_MODE='free';</script>
+</head>
+<body>
+<title>Free Drawing 自由繪製</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: drafting table — a translucent green plastic stencil on the left, graph-paper canvas filling the rest */
+:root{
+  --bg:#f4f7f5;
+  --grid:#e1e9e5;
+  --grid-major:#cbd9d2;
+  --panel:#ffffff;
+  --ink:#1e2a2c;
+  --muted:#5b6b6e;
+  --line:#d3ddd8;
+  --shape:#ffffff;
+  --accent:#17795a;
+  --accent-soft:rgba(23,121,90,.10);
+  --stencil:rgba(46,150,112,.13);
+  --stencil-edge:rgba(23,121,90,.35);
+  --danger:#b4372f;
+  --warn:#c27a0e;
+  --marq:rgba(23,121,90,.16);
+  --warn-soft:rgba(194,122,14,.12);
+  --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121817;--grid:#1b2321;--grid-major:#25302d;--panel:#1a2220;--ink:#e2ebe7;--muted:#93a39e;
+  --line:#2c3835;--shape:#1c2523;--accent:#4cc49a;--accent-soft:rgba(76,196,154,.14);
+  --stencil:rgba(76,196,154,.09);--stencil-edge:rgba(76,196,154,.35);--danger:#ef7d72;--warn:#f0b24a;--warn-soft:rgba(240,178,74,.14);--marq:rgba(76,196,154,.18);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121817;--grid:#1b2321;--grid-major:#25302d;--panel:#1a2220;--ink:#e2ebe7;--muted:#93a39e;
+  --line:#2c3835;--shape:#1c2523;--accent:#4cc49a;--accent-soft:rgba(76,196,154,.14);
+  --stencil:rgba(76,196,154,.09);--stencil-edge:rgba(76,196,154,.35);--danger:#ef7d72;--warn:#f0b24a;--warn-soft:rgba(240,178,74,.14);--marq:rgba(76,196,154,.18);color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow:hidden}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr}
+
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:17px;font-weight:700;margin:0;letter-spacing:.04em;margin-right:auto;display:flex;align-items:center;gap:8px}
+h1 svg{width:22px;height:22px;flex:none}
+.tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sep{width:1px;height:22px;background:var(--line)}
+button{font:inherit;color:inherit}
+.btn{font-size:13px;padding:6px 11px;border-radius:6px;border:1px solid var(--line);background:var(--panel);cursor:pointer;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.btn.primary:hover{color:var(--panel);filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font-size:13px;padding:6px 10px;border:0;background:var(--panel);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:500}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.main{display:grid;grid-template-columns:148px 1fr;min-height:0}
+.stencil{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;
+  padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:12px}
+.plate{background:var(--stencil);border:1px solid var(--stencil-edge);border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;gap:6px}
+.plate-title{font-size:11px;letter-spacing:.12em;color:var(--accent);font-weight:700;text-align:center;padding-bottom:2px}
+.tool{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px 6px;border-radius:8px;border:1px dashed transparent;background:transparent;cursor:grab;touch-action:pan-x;user-select:none;-webkit-user-select:none}
+.tool:hover{border-color:var(--stencil-edge);background:var(--accent-soft)}
+.tool svg{width:76px;height:44px;overflow:visible}
+.tool svg .shape{fill:var(--panel);stroke:var(--ink);stroke-width:1.4}
+.tool span{font-size:12px;color:var(--ink);font-weight:500;letter-spacing:.04em;line-height:1.25;text-align:center}
+.tool span small{display:block;font-size:11px;color:var(--muted);font-weight:400;letter-spacing:0}
+.tool svg text{fill:var(--ink);font-family:var(--font-mono);font-size:10px;text-anchor:middle;dominant-baseline:central;stroke:none}
+.node text.ph{fill:var(--muted);font-size:12px}
+.node.focus .shape{stroke:var(--warn);stroke-width:3;stroke-dasharray:7 5;animation:march 1s linear infinite}
+@keyframes march{to{stroke-dashoffset:-24}}
+.buddy{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(680px,calc(100% - 200px));
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 24px rgba(20,40,34,.10);z-index:4;overflow:hidden}
+.b-head{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 12px;border-bottom:1px solid var(--line);background:var(--stencil)}
+.b-head>b{font-size:13px;white-space:nowrap}
+.b-ico{width:22px;height:22px;flex:none}
+.b-steps{display:flex;gap:3px;list-style:none;margin:0 0 0 auto;padding:0;flex-wrap:wrap;justify-content:flex-end;min-width:0}
+.b-steps li{font-size:10.5px;line-height:1;padding:4px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--panel);white-space:nowrap}
+.b-steps li.ok{border-color:var(--accent);color:var(--accent)}
+.b-steps li.ok::before{content:"✓ "}
+.b-steps li.now{background:var(--warn-soft);border-color:var(--warn);color:var(--ink);font-weight:500}
+.b-min{border:0;background:transparent;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:16px;color:var(--muted);flex:none}
+.b-min:hover{background:var(--accent-soft);color:var(--accent)}
+.b-body{padding:10px 14px 12px;display:flex;flex-direction:column;gap:4px}
+.b-zh{margin:0;font-size:13px;line-height:1.65;color:var(--muted)}
+.b-zh b{color:var(--accent);font-family:var(--font-mono);font-weight:500;background:var(--accent-soft);padding:0 4px;border-radius:4px}
+.b-en{margin:0;font-size:14px;color:var(--ink);font-weight:500;line-height:1.55}
+.b-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.b-acts:empty{display:none}
+.b-acts .btn{font-size:13px}
+.buddy.min .b-body{display:none}
+.buddy.min .b-steps{display:none}
+.buddy.done .b-head{background:var(--accent-soft)}
+
+
+.canvas-wrap{position:relative;min-width:0;min-height:0;overflow:hidden}
+#board{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;cursor:default}
+#board.panning{cursor:grabbing}
+.gminor{fill:none;stroke:var(--grid);stroke-width:1}
+.gmajor{fill:none;stroke:var(--grid-major);stroke-width:1}
+
+.node{cursor:move}
+.node .shape{fill:var(--shape);stroke:var(--ink);stroke-width:1.6}
+.node.sel .shape{stroke:var(--accent);stroke-width:2.6}
+.node.target .shape{stroke:var(--accent);stroke-width:2.6;fill:var(--accent-soft)}
+.node text{fill:var(--ink);font-family:var(--font-body);font-size:14px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.port-dot{fill:var(--panel);stroke:var(--accent);stroke-width:1.6;opacity:0;pointer-events:none;transition:opacity .12s}
+.port{fill:transparent;cursor:crosshair}
+.node:hover .port-dot,.node.sel .port-dot,#board.connecting .port-dot{opacity:1}
+.port:hover + .port-dot,.port-dot.hot{fill:var(--accent)}
+.handle{fill:var(--accent);cursor:nwse-resize}
+.edge .line{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round}
+.edge .hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer}
+.edge.sel .line{stroke:var(--accent);stroke-width:2.4}
+.arrow{fill:var(--ink)} .arrow-sel{fill:var(--accent)}
+.elabel{cursor:pointer}
+.elabel rect{fill:var(--bg);stroke:var(--line)}
+.elabel.sel rect{stroke:var(--accent)}
+.elabel text{fill:var(--ink);font-family:var(--font-body);font-size:13px;font-weight:500;text-anchor:middle;dominant-baseline:central}
+#marq{fill:var(--marq);stroke:var(--accent);stroke-width:2;stroke-dasharray:8 5;vector-effect:non-scaling-stroke;pointer-events:none}
+#board.selmode{cursor:crosshair}
+.node.msel .shape{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2.6}
+.selbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:var(--accent);color:var(--panel);border-radius:999px;padding:5px 6px 5px 14px;font-size:13px;z-index:5;box-shadow:0 4px 16px rgba(20,40,34,.18);white-space:nowrap}
+.selbar button{font-size:12px;border:0;border-radius:999px;padding:4px 10px;background:var(--panel);color:var(--accent);cursor:pointer;font-weight:500}
+.selbar button.x{background:transparent;color:var(--panel);padding:4px 8px}
+.modetip{position:absolute;top:12px;left:16px;font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;pointer-events:none;z-index:3}
+#board.panmode{cursor:grab}
+#temp{fill:none;stroke:var(--accent);stroke-width:1.8;stroke-dasharray:6 4;pointer-events:none}
+
+#editor{position:absolute;resize:none;border:2px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);
+  font-family:var(--font-body);text-align:center;padding:4px;line-height:1.3;outline:none;z-index:5}
+
+.hint{position:absolute;left:16px;bottom:calc(14px + env(safe-area-inset-bottom,0px));font-size:12px;color:var(--muted);
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 11px;max-width:min(560px,calc(100% - 200px));line-height:1.6;pointer-events:none}
+.hint b{color:var(--ink);font-weight:500}
+.zoom{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.zoom button{border:0;background:transparent;width:34px;height:32px;cursor:pointer;font-size:16px}
+.zoom button:hover{color:var(--accent)}
+.zoom output{font-family:var(--font-mono);font-size:12px;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;color:var(--muted)}
+.zoom .fit{width:auto;padding:0 10px;font-size:12px;border-left:1px solid var(--line)}
+
+.modal{position:fixed;inset:0;background:rgba(10,16,15,.55);display:grid;place-items:center;z-index:20;padding:16px}
+.dialog{background:var(--panel);border-radius:12px;padding:18px;max-width:min(860px,100%);max-height:100%;display:flex;flex-direction:column;gap:12px;min-width:0}
+.dialog h2{margin:0;font-size:16px}
+.dialog p{margin:0;font-size:13px;color:var(--muted)}
+.dialog .imgbox{overflow:auto;border:1px solid var(--line);border-radius:8px;min-height:0;background:var(--bg)}
+.dialog img{display:block;max-width:100%;height:auto;margin:auto}
+.dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+#curTitle{font-size:13px;font-weight:400;color:var(--muted);margin-left:4px}
+.dialog.narrow{width:min(540px,100%);overflow-y:auto}
+.dialog .row{align-items:center}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.field input{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
+.field input:focus,textarea.code:focus{border-color:var(--accent);outline:none}
+textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical;width:100%;box-sizing:border-box;min-height:140px}
+.status{font-size:12px;color:var(--accent);margin-right:auto;min-width:0;flex:1 1 180px;line-height:1.5}
+.status.err{color:var(--danger)}
+.works{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;max-height:260px;overflow-y:auto}
+.works li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line)}
+.works li:first-child{border-top:0}
+.works .wi{display:flex;flex-direction:column;min-width:0;flex:1}
+.works .wi b{font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.works .wi span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.works .wa{display:flex;gap:6px;flex:none}
+.works .empty{color:var(--muted);font-size:13px;justify-content:center;text-align:center}
+.ck-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.ck-score{font-family:var(--font-mono);font-size:44px;line-height:1;font-weight:500;font-variant-numeric:tabular-nums}
+.ck-score small{font-size:16px;color:var(--muted)}
+.ck-badge{font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.ck-badge.no{background:var(--warn-soft);color:var(--warn)}
+.ck-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 16px;font-size:12px}
+.ck-groups div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:3px 0}
+.ck-groups b{font-family:var(--font-mono);font-weight:500;font-variant-numeric:tabular-nums}
+.ck-fb{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.dialog .ck-fb p{margin:0;font-size:14px;color:var(--ink);line-height:1.65}
+.dialog .ck-fb p.zh{font-size:13px;color:var(--muted)}
+.ck-tests{display:flex;flex-wrap:wrap;gap:4px}
+.ck-tests span{font-family:var(--font-mono);font-size:11px;padding:2px 6px;border-radius:4px;border:1px solid var(--line)}
+.ck-tests span.ok{border-color:var(--accent);color:var(--accent)}
+.ck-tests span.no{border-color:var(--danger);color:var(--danger)}
+.ck-cert img{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);font-size:13px;padding:8px 14px;border-radius:8px;z-index:40;max-width:calc(100% - 32px)}
+.drop{display:grid;place-items:center;border:2px dashed var(--stencil-edge);border-radius:10px;padding:30px 16px;cursor:pointer;color:var(--muted);font-size:14px;background:var(--stencil);text-align:center}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--accent)}
+.dialog p.fname{color:var(--ink);font-size:13px;overflow-wrap:anywhere}
+.dialog p.fname b{font-family:var(--font-mono);font-weight:500}
+@media (max-width:480px){.fields{grid-template-columns:1fr}}
+@media (max-width:700px){
+  .main{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  .stencil{order:2;border-right:0;border-top:1px solid var(--line);overflow-x:auto;overflow-y:hidden;padding-block:8px;
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .plate{flex-direction:row;width:max-content;padding:6px}
+  .plate-title{display:none}
+  .tool svg{width:60px;height:34px}
+  .hint{display:none}
+  .buddy{left:8px;right:8px;width:auto;bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+  .b-steps{display:none}
+  .b-en{font-size:13px}
+  h1{font-size:15px}
+  .btn,.seg button{font-size:12px;padding:5px 8px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header>
+    <h1><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="2" width="9" height="5" rx="2.5" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M7.5 7v4" stroke="var(--accent)" stroke-width="1.6"/><path d="M7.5 11l4.5 4-4.5 4-4.5-4z" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M12 15h5v3" stroke="var(--accent)" stroke-width="1.6" fill="none"/><rect x="14" y="18" width="7" height="4" fill="none" stroke="var(--accent)" stroke-width="1.6"/></svg><span id="appName">BMI Flowchart 資訊課程 BMI 繪製</span><span id="curTitle"></span></h1>
+    <div class="tools">
+      <button class="btn" id="bUndo" title="復原 (Ctrl+Z)">復原</button>
+      <button class="btn" id="bRedo" title="重做 (Ctrl+Y)">重做</button>
+      <span class="sep"></span>
+      <div class="seg" role="group" aria-label="滑鼠模式">
+        <button id="mSelect" aria-pressed="true" title="在空白處拖曳可以框選多個圖形">Select 框選</button>
+        <button id="mPan" aria-pressed="false" title="在空白處拖曳可以移動畫布（也可以按住空白鍵）">Pan 移動畫布</button>
+      </div>
+      <button class="btn" id="bCopySel" title="複製選取的圖形 (Ctrl+C)">複製</button>
+      <button class="btn" id="bPaste" title="貼上 (Ctrl+V)">貼上</button>
+      <button class="btn" id="bEdit" title="編輯選取物件的文字">編輯文字</button>
+      <button class="btn" id="bDel" title="刪除 (Delete)">刪除</button>
+      <span class="sep"></span>
+      <div class="seg" role="group" aria-label="連線樣式">
+        <button id="lElbow" aria-pressed="true">折線</button>
+        <button id="lStraight" aria-pressed="false">直線</button>
+      </div>
+      <span class="sep"></span>
+      <button class="btn" id="bClear">清空</button>
+      <span class="sep"></span>
+      <button class="btn" id="bWorks">我的作品</button>
+      <button class="btn" id="bImport">開啟檔案</button>
+      <button class="btn" id="bCopy">下載作業檔</button>
+      <button class="btn" id="bExport">匯出圖片</button>
+      <button class="btn primary" id="bCheck">Check 提交批改</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <aside class="stencil">
+      <div class="plate" id="plate"><div class="plate-title">SHAPES 圖形</div></div>
+    </aside>
+    <div class="canvas-wrap" id="wrap">
+      <svg id="board" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="gMinor" width="20" height="20" patternUnits="userSpaceOnUse"><path class="gminor" d="M20 0H0V20"/></pattern>
+          <pattern id="gMajor" width="100" height="100" patternUnits="userSpaceOnUse"><rect width="100" height="100" fill="url(#gMinor)"/><path class="gmajor" d="M100 0H0V100"/></pattern>
+          <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="arrow" d="M0 0L10 5L0 10z"/></marker>
+          <marker id="arrowSel" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto"><path class="arrow-sel" d="M0 0L10 5L0 10z"/></marker>
+        </defs>
+        <rect id="gridRect" width="100%" height="100%" fill="url(#gMajor)"/>
+        <g id="world">
+          <g id="lEdges"></g><g id="lNodes"></g><g id="lLabels"></g><path id="temp" d=""/><rect id="marq" width="0" height="0" hidden/>
+        </g>
+      </svg>
+      <textarea id="editor" hidden spellcheck="false"></textarea>
+      <div class="modetip" id="modeTip">Drag on empty space to select · 在空白處拖曳可以框選</div>
+      <div class="selbar" id="selBar" hidden><span id="selCount"></span><button id="sbCopy">Copy 複製</button><button id="sbDup">Duplicate 再複製一份</button><button id="sbDel">Delete 刪除</button><button class="x" id="sbX" aria-label="Clear selection 取消選取">✕</button></div>
+      <section class="buddy" id="buddy" aria-live="polite">
+        <div class="b-head">
+          <svg class="b-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M12 7V4" stroke="var(--accent)" stroke-width="1.6"/><circle cx="12" cy="3.4" r="1.3" fill="var(--accent)"/><circle cx="9" cy="13" r="1.5" fill="var(--accent)"/><circle cx="15" cy="13" r="1.5" fill="var(--accent)"/><path d="M2 12v3M22 12v3" stroke="var(--accent)" stroke-width="1.6"/></svg>
+          <b>Helper 小幫手</b>
+          <ol class="b-steps" id="bSteps"></ol>
+          <button class="b-min" id="bMin" aria-label="收合小幫手" title="收合">–</button>
+        </div>
+        <div class="b-body"><p class="b-en" id="bEn"></p><p class="b-zh" id="bZh"></p><div class="b-acts" id="bActs"></div></div>
+      </section>
+      <div class="zoom">
+        <button id="zOut" aria-label="縮小">−</button><output id="zVal">100%</output><button id="zIn" aria-label="放大">+</button>
+        <button class="fit" id="zFit">置中</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="dialog">
+    <h2>匯出圖片</h2>
+    <p>在圖片上按右鍵選「另存圖片」即可儲存；手機請長按圖片。</p>
+    <div class="imgbox"><img id="outImg" alt="流程圖圖片"></div>
+    <div class="row"><button class="btn" id="bCopyImg">複製圖片</button><button class="btn primary" id="bCloseModal">關閉</button></div>
+  </div>
+</div>
+
+<div class="modal" id="worksModal" hidden>
+  <div class="dialog narrow">
+    <h2>我的作品</h2>
+    <p>作品會存在這台電腦的這個瀏覽器裡。換電腦前，請先用「下載作業檔」把作品帶走。</p>
+    <div class="fields">
+      <label class="field"><span>Name 座號與姓名</span><input type="text" id="wStudent" placeholder="例：12 王小明" autocomplete="off"></label>
+      <label class="field"><span>Title 作品名稱（已自動填好）</span><input type="text" id="wTitle" placeholder="BMI Flowchart" autocomplete="off"></label>
+    </div>
+    <div class="row"><span class="status" id="worksStatus"></span><button class="btn primary" id="bSaveWork">儲存目前作品</button></div>
+    <ul class="works" id="worksList"></ul>
+    <div class="row"><button class="btn" data-close>關閉</button></div>
+  </div>
+</div>
+
+<div class="modal" id="copyModal" hidden>
+  <div class="dialog narrow">
+    <h2>下載作業檔</h2>
+    <p>Type your name, then download. 填好座號與姓名後按「下載」，會存成一個 .json 檔。把這個檔案交到老師指定的地方；下次用「開啟檔案」就能接著畫。</p>
+    <div class="fields" style="grid-template-columns:1fr">
+      <label class="field"><span>Name 座號與姓名</span><input type="text" id="cStudent" placeholder="例：12 王小明" autocomplete="off"></label>
+      <label class="field" hidden><span>Title 作品名稱</span><input type="text" id="cTitle" autocomplete="off"></label>
+    </div>
+    <p class="fname">檔名：<b id="fileName"></b></p>
+    <div id="copyFallback" hidden>
+      <p>這個畫面無法下載檔案。請按「複製」，把下面的文字貼到繳交表單或自己的筆記保存。</p>
+      <textarea class="code" id="copyText" readonly rows="6"></textarea>
+    </div>
+    <div class="row"><span class="status" id="copyStatus"></span><button class="btn" data-close>關閉</button><button class="btn primary" id="bDoCopy">下載</button></div>
+  </div>
+</div>
+
+<div class="modal" id="importModal" hidden>
+  <div class="dialog narrow">
+    <h2>開啟作業檔</h2>
+    <p>選擇之前下載的 .json 作業檔。畫布上目前的內容會被取代，需要時可以按「復原」找回。也可以直接把檔案拖到畫布上。</p>
+    <label class="drop" id="dropZone"><input type="file" id="fileInput" accept=".json,application/json" hidden><span>點這裡選擇檔案，或把檔案拖進來</span></label>
+    <div class="row"><span class="status err" id="importErr"></span><button class="btn" data-close>取消</button></div>
+  </div>
+</div>
+
+<div class="modal" id="checkModal" hidden>
+  <div class="dialog narrow" style="width:min(680px,100%)">
+    <h2>Check my flowchart 提交批改</h2>
+    <div class="ck-top"><span class="ck-score" id="ckScore"></span><span class="ck-badge" id="ckBadge"></span><span class="ck-badge" id="ckEn"></span></div>
+    <div class="ck-groups" id="ckGroups"></div>
+    <div class="ck-fb"><p id="ckFbEn"></p><p class="zh" id="ckFbZh"></p></div>
+    <div><p style="margin:0 0 4px;font-size:12px">BMI tests 測試</p><div class="ck-tests" id="ckTests"></div></div>
+    <div class="ck-cert" id="ckCert" hidden>
+      <div class="fields">
+        <label class="field"><span>Name 座號與姓名</span><input type="text" id="ckStudent" placeholder="例：12 王小明" autocomplete="off"></label>
+        <label class="field" hidden><span>Title 作品名稱</span><input type="text" id="ckTitle" autocomplete="off"></label>
+      </div>
+      <p style="margin:8px 0">Certificate 完成圖</p>
+      <img id="ckImg" alt="BMI 流程圖完成圖">
+    </div>
+    <div class="row"><span class="status" id="ckStatus"></span><button class="btn" data-close>Keep editing 繼續修改</button><button class="btn primary" id="bCert" hidden>Download PNG 下載完成圖</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+/*GRADER-START*/
+/* BMI flowchart grader — shared by the teacher page (inlined) and node tests */
+const CATS=[
+  {key:'thin',name:'thin',re:/thin|underweight|過輕|太瘦|偏瘦/i},
+  {key:'normal',name:'normal',re:/normal|正常|適中/i},
+  {key:'overweight',name:'overweight',re:/overweight|over weight|過重/i},
+  {key:'obesity',name:'obesity',re:/obes|肥胖/i},
+];
+const EN_WORDS={'身高':'height','體重':'weight','輸入':'input','輸出':'output','過輕':'thin','偏瘦':'thin','太瘦':'thin','正常':'normal','適中':'normal','過重':'overweight','肥胖':'obesity','開始':'START','結束':'END','計算':'bmi =','公尺':'m','公分':'cm','公斤':'kg','小於':'<','大於':'>','等於':'=','是':'Yes','否':'No'};
+const expectCat=b=>b<18.5?'thin':b<24?'normal':b<27?'overweight':'obesity';
+const CASES=[16,18.4,18.5,22,24,25.5,27,32];
+const TEST_H=1.6;
+
+const RE_START=/開始|start|begin/i, RE_END=/結束|end|stop|結尾|完成/i;
+const RE_H=/身高|height|高度|(^|[^a-z])h([^a-z]|$)|^\s*(input|輸入)?\s*m\s*$/i, RE_W=/體重|weight|重量|(^|[^a-z])w([^a-z]|$)|(^|[^a-z(])kg([^a-z)]|$)/i;
+const RE_IN=/輸入|input|讀入|讀取|read|enter|請輸入|scan/i, RE_OUT=/輸出|output|print|顯示|印出|show|display/i;
+const RE_YES=/^(是|yes|y|true|t|對|成立|真|o|ok)$/i, RE_NO=/^(否|no|n|false|f|不成立|不是|假|x)$/i;
+
+function catOf(text){ const t=String(text||''); for(const c of CATS) if(c.re.test(t)) return c.key; return null; }
+function norm(s){
+  return String(s||'').replace(/[（]/g,'(').replace(/[）]/g,')').replace(/[＜]/g,'<').replace(/[＞]/g,'>').replace(/[＝]/g,'=')
+    .replace(/[≦≤]/g,'<=').replace(/[≧≥]/g,'>=').replace(/[．]/g,'.').replace(/[０-９]/g,d=>String.fromCharCode(d.charCodeAt(0)-0xFEE0))
+    .replace(/[÷]/g,'/').replace(/[×✕·]/g,'*').replace(/²/g,'^2').replace(/[？?。，,：:]/g,' ');
+}
+function heightUnit(text){
+  const t=norm(text).toLowerCase();
+  if(/cm|公分|釐米|厘米/.test(t)) return 'cm';
+  if(/\(m\)|公尺|米|(\d|\s)m(\s|$|\))|meter/.test(t)) return 'm';
+  return null;
+}
+/* expression → function of vars, only H W B numbers and arithmetic */
+function compileExpr(src){
+  let e=norm(src).toLowerCase()
+    .replace(/\((kg|cm|m|公斤|公分|公尺)\)/g,'')
+    .replace(/bmi/g,'B').replace(/體重|weight|重量/g,'W').replace(/身高|height|高度/g,'H')
+    .replace(/kg/g,'W').replace(/(^|[^a-z])w(?![a-z])/g,'$1W').replace(/(^|[^a-z])h(?![a-z])/g,'$1H').replace(/(^|[^a-z])m(?![a-z])/g,'$1H');
+  e=e.replace(/(?<=[\dHWB)])\s*x\s*(?=[\dHWB(])/g,'*').replace(/\^/g,'**').replace(/\s+/g,'');
+  e=e.replace(/(?<=[\dHWB)])(?=[HWB(])/g,'*'); // implicit multiplication like 2H or H(H)
+  if(!e||!/^[\d.HWB+\-*/()]+$/.test(e)) return null;
+  try{ const f=new Function('H','W','B','return ('+e+');'); f(1.7,60,20); return f; }catch(err){ return null; }
+}
+/* "BMI = expr" or "expr → BMI" */
+function parseAssign(text){
+  const t=norm(text);
+  let m=t.match(/^\s*([^=←<>]+?)\s*(?:=|←|:=)\s*(.+)$/);
+  let lhs,rhs; if(m){ lhs=m[1]; rhs=m[2]; } else { m=t.match(/^(.+?)(?:→|->)\s*(\S+)\s*$/); if(!m) return null; lhs=m[2]; rhs=m[1]; }
+  const l=lhs.toLowerCase().replace(/計算|算出|令|set|let|\s/g,'');
+  const target=/bmi/.test(l)?'B':/身高|height|^h$/.test(l)?'H':/體重|weight|^w$/.test(l)?'W':null;
+  if(!target) return null;
+  const f=compileExpr(rhs); return f?{target,f,rhs}:{target,f:null,rhs};
+}
+/* decision text → predicate on B */
+function compileCond(text){
+  let t=norm(text).toLowerCase()
+    .replace(/大於或等於|大於等於|不小於/g,'>=').replace(/小於或等於|小於等於|不大於/g,'<=')
+    .replace(/大於|超過|高於/g,'>').replace(/小於|低於|未滿/g,'<').replace(/等於/g,'=')
+    .replace(/bmi(值)?/g,'B').replace(/嗎|是否|呢|值/g,'');
+  const parts=t.split(/&&|且|and|並且|而且/);
+  const fns=[];
+  for(const p of parts){
+    const toks=p.replace(/\s+/g,'').split(/(<=|>=|==|=|<|>)/).filter(x=>x!=='');
+    if(toks.length<3||toks.length%2===0) return null;
+    for(let i=1;i<toks.length;i+=2){
+      const a=toks[i-1],op=toks[i],b=toks[i+1];
+      const val=x=>x==='B'?(v=>v):/^\d+(\.\d+)?$/.test(x)?(()=>+x):null;
+      const A=val(a),Bv=val(b); if(!A||!Bv) return null;
+      const o=op==='='?'==':op;
+      fns.push(v=>{ const x=A(v),y=Bv(v); return o==='<'?x<y:o==='<='?x<=y:o==='>'?x>y:o==='>='?x>=y:Math.abs(x-y)<1e-9; });
+    }
+  }
+  if(!fns.length) return null;
+  return v=>fns.every(f=>f(v));
+}
+
+function analyze(work){
+  const nodes=work.nodes||[], edges=work.edges||[];
+  const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
+  const out={}, inc={};
+  nodes.forEach(n=>{out[n.id]=[];inc[n.id]=[];});
+  edges.forEach(e=>{ if(byId[e.from.node]&&byId[e.to.node]&&e.from.node!==e.to.node){ out[e.from.node].push(e); inc[e.to.node].push(e); } });
+  const starts=nodes.filter(n=>n.type==='terminator'&&RE_START.test(n.text));
+  const ends=nodes.filter(n=>n.type==='terminator'&&RE_END.test(n.text)&&!RE_START.test(n.text));
+  const isProcessLike=n=>/=|←|→/.test(norm(n.text))&&!/[<>]/.test(norm(n.text));
+  const role=n=>{
+    const t=n.text||'';
+    if(n.type==='terminator') return RE_START.test(t)?'start':RE_END.test(t)?'end':'terminator';
+    if(n.type==='decision') return 'decision';
+    if(catOf(t)&&!RE_IN.test(t)) return 'output';
+    if(RE_IN.test(t)) return 'input';
+    if(RE_OUT.test(t)) return 'output';
+    if(isProcessLike(n)) return 'calc';
+    if(RE_H.test(t)||RE_W.test(t)) return 'input';
+    if(/[<>]/.test(norm(t))&&/bmi/i.test(t)) return 'decision-text';
+    return 'other';
+  };
+  nodes.forEach(n=>n._role=role(n));
+  /* decision exits */
+  const exits=n=>{
+    const es=out[n.id]; let yes=null,no=null; const unk=[];
+    es.forEach(e=>{ const l=String(e.label||'').trim(); if(RE_YES.test(l)&&!yes) yes=e; else if(RE_NO.test(l)&&!no) no=e; else unk.push(e); });
+    if(!yes&&no&&unk.length===1) yes=unk[0]; else if(yes&&!no&&unk.length===1) no=unk[0];
+    return {yes,no,count:es.length};
+  };
+  return {nodes,edges,byId,out,inc,starts,ends,exits};
+}
+
+function inputUnit(A){
+  const hn=A.nodes.find(n=>n._role==='input'&&RE_H.test(n.text));
+  let u=hn?heightUnit(hn.text):null;
+  if(!u){ const calc=A.nodes.filter(n=>n._role==='calc').map(n=>norm(n.text)).join(' '); u=/100/.test(calc)?'cm':'m'; }
+  return u;
+}
+
+function run(A,startNode,vars,unit){
+  const outputs=[], path=[]; let n=startNode, steps=0, reachedEnd=false, stop=null;
+  while(n&&steps++<200){
+    path.push(n.id);
+    const r=n._role;
+    if(r==='end'){ reachedEnd=true; break; }
+    if(r==='input'){ const t=n.text; if(RE_H.test(t)){ const u=heightUnit(t)||unit; vars.H=u==='cm'?TEST_H*100:TEST_H; } if(RE_W.test(t)) vars.W=vars._W; }
+    else if(r==='calc'){ const a=parseAssign(n.text); if(a&&a.f){ try{ let v=a.f(vars.H,vars.W,vars.B); if(isFinite(v)){ if(a.target==='B') v=Math.round(v*100)/100; vars[a.target]=v; } }catch(e){} } }
+    else if(r==='output'){ const c=catOf(n.text); if(c) outputs.push(c); }
+    if(n.type==='decision'){
+      const cond=compileCond(n.text);
+      if(!cond){ stop={node:n.id,why:'看不懂判斷條件'}; break; }
+      if(vars.B===undefined||!isFinite(vars.B)){ stop={node:n.id,why:'判斷前還沒有算出 BMI'}; break; }
+      const ex=A.exits(n), ans=cond(vars.B), e=ans?ex.yes:ex.no;
+      if(!e){ stop={node:n.id,why:`缺少「${ans?'是':'否'}」的路線`}; break; }
+      n=A.byId[e.to.node]; continue;
+    }
+    const es=A.out[n.id];
+    if(!es.length){ stop={node:n.id,why:'這裡沒有接下一步'}; break; }
+    n=A.byId[es[0].to.node];
+  }
+  if(steps>=200) stop={node:n&&n.id,why:'流程繞圈出不來'};
+  return {outputs,path,reachedEnd,stop};
+}
+
+function grade(work){
+  const A=analyze(work), items=[], issues=[], bad=new Set();
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  const nodes=A.nodes;
+  /* --- A structure (20) --- */
+  const start=A.starts[0]||null, end=A.ends[0]||null;
+  add('結構','有「開始」符號',3,start?3:0,start?'':'找不到寫著「開始」的開始／結束符號');
+  add('結構','有「結束」符號',3,end?3:0,end?'':'找不到寫著「結束」的開始／結束符號');
+  let reach=false;
+  if(start&&end){ const seen=new Set([start.id]), q=[start.id]; while(q.length){ const id=q.shift(); if(id===end.id){reach=true;break;} for(const e of A.out[id]) if(!seen.has(e.to.node)){seen.add(e.to.node);q.push(e.to.node);} } }
+  add('結構','從開始能一路走到結束',4,reach?4:0,reach?'':(start&&end?'開始和結束之間有斷掉的地方':'缺少開始或結束，無法檢查'));
+  const loose=[];
+  nodes.forEach(n=>{
+    const r=n._role;
+    if(r!=='start'&&!A.inc[n.id].length){ loose.push(`「${n.text||'(空白)'}」沒有線連進來`); bad.add(n.id); }
+    if(r!=='end'&&!A.out[n.id].length){ loose.push(`「${n.text||'(空白)'}」沒有線連出去`); bad.add(n.id); }
+  });
+  add('結構','每個圖形都有接上線',4,4-loose.length,loose.join('；'));
+  const decs=nodes.filter(n=>n.type==='decision'); let decOK=0; const decNotes=[];
+  decs.forEach(n=>{ const ex=A.exits(n);
+    if(ex.yes&&ex.no) decOK++;
+    else { bad.add(n.id); decNotes.push(ex.count<2?`「${n.text}」只有 ${ex.count} 條出口，判斷要有「是」和「否」兩條路`:`「${n.text}」的出口沒有標清楚「是／否」`); } });
+  add('結構','每個判斷都有「是／否」兩條路',6,decs.length?6*decOK/decs.length:0,decs.length?decNotes.join('；'):'沒有判斷符號');
+  /* --- B input (15) --- */
+  const hIn=nodes.filter(n=>n._role==='input'&&RE_H.test(n.text)), wIn=nodes.filter(n=>n._role==='input'&&RE_W.test(n.text));
+  add('輸入','輸入身高',4,hIn.length?4:0,hIn.length?'':'沒有找到輸入身高的步驟');
+  add('輸入','輸入體重',4,wIn.length?4:0,wIn.length?'':'沒有找到輸入體重的步驟');
+  const ins=[...new Set([...hIn,...wIn])], insIO=ins.filter(n=>n.type==='io');
+  add('輸入','輸入使用「輸入／輸出」符號',2,ins.length?2*insIO.length/ins.length:0,ins.length&&insIO.length<ins.length?'輸入要用平行四邊形（輸入／輸出）符號':(ins.length?'':'沒有輸入步驟'));
+  /* --- C calc (15) --- */
+  const unit=inputUnit(A);
+  const calcs=nodes.filter(n=>n._role==='calc'), bmiCalc=calcs.find(n=>{const a=parseAssign(n.text);return a&&a.target==='B';});
+  add('計算','有計算 BMI 的步驟',3,bmiCalc?(bmiCalc.type==='process'?3:2):0,bmiCalc?(bmiCalc.type==='process'?'':'計算要放在長方形（處理）符號裡'):'沒有找到「BMI = …」的計算');
+  let fScore=0, fNote='沒有可以檢查的公式';
+  if(bmiCalc){
+    const pre=calcs.filter(n=>n!==bmiCalc).map(n=>parseAssign(n.text)).filter(a=>a&&a.f&&a.target!=='B');
+    const evalWith=(hm,w)=>{ const v={H:unit==='cm'?hm*100:hm,W:w}; pre.forEach(a=>{try{const r=a.f(v.H,v.W,v.B); if(isFinite(r)) v[a.target]=r;}catch(e){}}); const a=parseAssign(bmiCalc.text); return a.f(v.H,v.W,v.B); };
+    const a=parseAssign(bmiCalc.text);
+    if(!a.f){ fNote=`看不懂算式「${a.rhs}」`; }
+    else { let ok=false; try{ ok=[[1.6,56.32],[1.75,70]].every(([h,w])=>Math.abs(evalWith(h,w)-w/(h*h))<0.05); }catch(e){}
+      const usesBoth=/W/.test(compileSrc(a.rhs))&&/H/.test(compileSrc(a.rhs));
+      if(ok){ fScore=7; fNote=''; }
+      else { fScore=usesBoth?3:1; fNote=`公式應為 體重 ÷ 身高²（身高用公尺）`+(unit==='cm'?'；身高用公分時要先 ÷100':''); bad.add(bmiCalc.id); } }
+  }
+  add('計算','BMI 公式正確',7,fScore,fNote);
+  /* --- D decisions (20) --- */
+  const decText=decs.map(n=>norm(n.text)).join(' '), allText=nodes.map(n=>norm(n.text)).join(' ');
+  const has=(txt,num)=>new RegExp('(^|[^\\d.])'+num.replace('.','\\.')+'(?![\\d]|\\.\\d)').test(txt);
+  [['18.5','thin 與 normal 的分界'],['24','normal 與 overweight 的分界'],['27','overweight 與 obesity 的分界']].forEach(([num,desc])=>{
+    const inDec=has(decText,num), any=has(allText,num);
+    add('判斷',`有 ${num} 的判斷（${desc}）`,5,inDec?5:any?3:0,inDec?'':any?`${num} 沒有寫在判斷符號裡`:`缺少 BMI 和 ${num} 的比較`);
+  });
+  const decTextNodes=nodes.filter(n=>n._role==='decision-text');
+  add('判斷','條件寫在「判斷」符號（菱形）裡',5,decs.length&&!decTextNodes.length?5:decs.length?3:0,!decs.length?'沒有使用判斷符號':decTextNodes.length?'有條件寫在別的符號裡':'');
+  /* --- E outputs (10) --- */
+  CATS.forEach(c=>{
+    const io=nodes.find(n=>n.type==='io'&&catOf(n.text)===c.key), other=nodes.find(n=>catOf(n.text)===c.key);
+    add('輸出',`輸出 ${c.name}`,2.5,io?2.5:other?1:0,io?'':other?`「${c.name}」要用輸入／輸出符號`:`缺少 ${c.name} 的輸出`);
+  });
+  /* --- F tests (20) --- */
+  const firstDec=(()=>{ const fromDec=new Set(); decs.forEach(d=>A.out[d.id].forEach(e=>fromDec.add(e.to.node)));
+    const roots=decs.filter(d=>!fromDec.has(d.id)); return (roots.length?roots:decs).sort((a,b)=>a.y-b.y)[0]||null; })();
+  const logic=CASES.map(b=>{ const exp=expectCat(b); if(!firstDec) return {bmi:b,exp,got:null,ok:false,why:'沒有判斷符號'};
+    const r=run(A,firstDec,{B:b},unit); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
+    const ok=got===exp&&new Set(r.outputs).size===1; return {bmi:b,exp,got,ok,why:got?'':(r.stop?r.stop.why:'沒有輸出結果')}; });
+  const lp=logic.filter(t=>t.ok).length;
+  add('執行測試','判斷邏輯測試（直接給 BMI）',15,15*lp/CASES.length,`${lp} / ${CASES.length} 題正確`);
+  const full=CASES.map(b=>{ const exp=expectCat(b), w=+(b*TEST_H*TEST_H).toFixed(4); if(!start) return {bmi:b,exp,got:null,ok:false,why:'沒有開始'};
+    const r=run(A,start,{_W:w},unit); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
+    const ok=got===exp&&new Set(r.outputs).size===1; return {bmi:b,h:TEST_H,w,exp,got,ok,why:got?'':(r.stop?r.stop.why:'沒有輸出結果'),stop:r.stop}; });
+  const fp=full.filter(t=>t.ok).length;
+  add('執行測試','完整流程測試（輸入身高體重）',15,15*fp/CASES.length,`${fp} / ${CASES.length} 題正確`);
+  const firstStop=full.find(t=>t.stop);
+  if(firstStop&&firstStop.stop.node) bad.add(firstStop.stop.node);
+  /* --- G English (10) --- */
+  const CJK=/[\u3400-\u9fff]/;
+  const textNodes=nodes.filter(n=>String(n.text||'').trim()&&['terminator','io','process','decision'].includes(n.type));
+  const zhNodes=textNodes.filter(n=>CJK.test(n.text));
+  const decLabels=A.edges.filter(e=>A.byId[e.from.node]&&A.byId[e.from.node].type==='decision'&&String(e.label||'').trim());
+  const zhLabels=decLabels.filter(e=>CJK.test(e.label));
+  const words=[...new Set([...zhNodes.map(n=>n.text),...zhLabels.map(e=>e.label)].join(' ').match(/[\u3400-\u9fff]+/g)||[])];
+  const sug=words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean);
+  const enNote=sug.length?'試試看用英文 Try English：'+[...new Set(sug)].slice(0,5).join('、'):'';
+  const enUnits=textNodes.length+decLabels.length, english=enUnits?Math.round(100*(enUnits-zhNodes.length-zhLabels.length)/enUnits):0;
+  /* totals */
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  logic.filter(t=>!t.ok&&t.got).slice(0,3).forEach(t=>fixes.push(`BMI ${t.bmi} 應該輸出 ${t.exp}，你的流程輸出 ${t.got}`));
+  if(firstStop&&fp===0) fixes.push(`完整流程執行到「${(A.byId[firstStop.stop.node]||{}).text||''}」就停住：${firstStop.stop.why}`);
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
+  return {total,level,items,groups,logic,full,fixes:[...new Set(fixes)],bad:[...bad],unit,passed:gotAll>=maxAll-1e-6,english,enNote,zhWords:words,enTips:[...new Set(sug)]};
+}
+function compileSrc(rhs){ return norm(rhs).toLowerCase().replace(/\((kg|cm|m|公斤|公分|公尺)\)/g,'').replace(/體重|weight|重量|kg/g,'W').replace(/身高|height|高度/g,'H').replace(/(^|[^a-z])w(?![a-z])/g,'$1W').replace(/(^|[^a-z])h(?![a-z])/g,'$1H').replace(/(^|[^a-z])m(?![a-z])/g,'$1H'); }
+
+/* bilingual feedback built from a grade result */
+function feedback(work,g){
+  const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9;
+  const nodes=work.nodes||[], edges=work.edges||[], q=t=>`"${String(t||'').replace(/\n/g,' ')}"`;
+  const enOK=g.english>=100;
+  if(g.passed) return {
+    en:'Excellent! Your flowchart is complete and all 8 BMI tests passed.'+(enOK?' You wrote everything in English. Great job!':' Next time, try writing every label in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
+    zh:'流程圖完整又正確，八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'，讓作品更完整。')};
+  const pos=[],posZ=[];
+  if(full(it('BMI 公式正確'))){ pos.push('your BMI formula is correct'); posZ.push('BMI 公式寫得正確'); }
+  if(full(it('輸入身高'))&&full(it('輸入體重'))){ pos.push('your height and weight inputs are clear'); posZ.push('身高和體重的輸入很清楚'); }
+  if(['18.5','24','27'].every(n=>full(it('有 '+n)))){ pos.push('all three cut-off values are there'); posZ.push('三個分界值都有判斷到'); }
+  if(enOK){ pos.push('you used English throughout'); posZ.push('全部都用英文'); }
+  const fx=[],fz=[]; const add=(e,z)=>{ fx.push(e); fz.push(z); };
+  const inc={},out={}; nodes.forEach(n=>{inc[n.id]=0;out[n.id]=0;});
+  edges.forEach(e=>{ if(inc[e.to.node]!==undefined) inc[e.to.node]++; if(out[e.from.node]!==undefined) out[e.from.node]++; });
+  const sorted=[...nodes].sort((a,b)=>a.y-b.y);
+  const isS=n=>n.type==='terminator'&&RE_START.test(n.text), isE=n=>n.type==='terminator'&&RE_END.test(n.text)&&!RE_START.test(n.text);
+  const loose=sorted.find(n=>(!isE(n)&&!out[n.id])||(!isS(n)&&!inc[n.id]));
+  if(!nodes.some(isS)) add('add a START at the top','最前面要有 START（開始）');
+  if(!(it('輸入身高')||{}).got||!(it('輸入體重')||{}).got) add('input both height and weight','要先輸入身高和體重');
+  const calc=it('有計算 BMI');
+  if(calc&&!calc.got) add('add a process: bmi = weight / height^2','加上計算步驟：bmi = weight / height^2');
+  else if(!full(it('BMI 公式正確'))) add('fix the formula: BMI = weight ÷ height² (height in metres)','公式要改成「體重 ÷ 身高²」，身高用公尺');
+  const miss=['18.5','24','27'].filter(n=>!full(it('有 '+n))); if(miss.length) add(`add decisions for ${miss.join(', ')}`,`還少了和 ${miss.join('、')} 比較的判斷`);
+  const outs=CATS.filter(c=>!(it('輸出 '+c.name)||{}).got).map(c=>c.name); if(outs.length) add(`add outputs for ${outs.join(', ')}`,`缺少 ${outs.join('、')} 的輸出`);
+  if(loose) add(`connect ${q(loose.text)} with lines`,`把 ${q(loose.text)} 用線接好，流程才不會斷掉`);
+  const br=nodes.find(n=>n.type==='decision'&&edges.filter(e=>e.from.node===n.id).length<2);
+  if(br) add(`the decision ${q(br.text)} needs two lines: Yes and No`,`判斷 ${q(br.text)} 要有 Yes 和 No 兩條線`);
+  if(!nodes.some(isE)) add('finish with an END','最後記得加上 END（結束）');
+  const wrong=g.logic.find(t=>!t.ok&&t.got);
+  let en=(pos.length?`Good work: ${pos.slice(0,2).join(' and ')}.`:'Thank you for your flowchart!');
+  let zh=(posZ.length?posZ.slice(0,2).join('，')+'，很不錯！':'謝謝你完成這份流程圖！');
+  if(fx.length){ en+=` To improve: ${fx.slice(0,2).join('; ')}.`; zh+='需要修正：'+fz.slice(0,2).join('；')+'。'; }
+  if(wrong){ en+=` Right now BMI ${wrong.bmi} gives ${wrong.got}, but it should be ${wrong.exp}.`; zh+=`目前 BMI ${wrong.bmi} 會變成 ${wrong.got}，正確應該是 ${wrong.exp}。`; }
+  if(!enOK&&g.enTips.length){ en+=` Try more English: ${g.enTips.slice(0,3).join(', ')}.`; zh+=`也試著多用英文：${g.enTips.slice(0,3).join('、')}。`; }
+  en+=g.level==='優秀'?' Almost perfect, keep going!':g.level==='良好'?' Fix these and you are done. You can do it!':' Fix these step by step and check again. You can do it!';
+  zh+=g.level==='優秀'?'只差一點點，繼續保持！':g.level==='良好'?'修正後就完整了，加油！':'照著修改，再檢查一次，一定會更好！';
+  return {en,zh};
+}
+
+if(typeof module!=='undefined') module.exports={feedback,grade,CASES,expectCat,CATS,parseAssign,compileCond,heightUnit,catOf,norm,RE_H,RE_W};
+
+/*GRADER-END*/
+</script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const svg=$('#board'), world=$('#world'), wrap=$('#wrap'), editor=$('#editor');
+const FREE=window.FLOW_MODE==='free';
+const KEY=FREE?'flowchart-free-v1':'flowboard-v2', SNAP=10;
+
+const TOOLS=[
+  {key:'start',label:'START',sub:'開始',type:'terminator',w:120,h:48,text:'START',mini:[64,26],tag:'START'},
+  {key:'end',label:'END',sub:'結束',type:'terminator',w:120,h:48,text:'END',mini:[64,26],tag:'END'},
+  {key:'input',label:'INPUT',sub:'輸入',type:'io',role:'input',w:180,h:56,text:'input',mini:[68,30],tag:'input',edit:true},
+  {key:'output',label:'OUTPUT',sub:'輸出',type:'io',role:'output',w:180,h:56,text:'output',mini:[68,30],tag:'output',edit:true},
+  {key:'process',label:'PROCESS',sub:'處理',type:'process',w:220,h:60,text:'',mini:[64,32],edit:true},
+  {key:'decision',label:'DECISION',sub:'判斷',type:'decision',w:180,h:96,text:'',mini:[66,40],edit:true},
+  {key:'loop',label:'LOOP',sub:'重複',type:'loop',w:170,h:60,text:'repeat',mini:[68,30],edit:true},
+  {key:'document',label:'DOCUMENT',sub:'文件',type:'document',w:140,h:70,text:'',mini:[60,36],edit:true},
+  {key:'connector',label:'CONNECTOR',sub:'連接點',type:'connector',w:44,h:44,text:'A',mini:[28,28]},
+];
+const TOOL=Object.fromEntries(TOOLS.map(t=>[t.key,t]));
+const PH={input:'height / weight',output:'thin / normal …',process:'bmi = …',decision:'BMI < 18.5'};
+const KINDS={
+  terminator:{label:'開始／結束',w:120,h:48,text:'START',mini:[64,26]},
+  process:{label:'處理',w:140,h:60,text:'',mini:[64,34]},
+  decision:{label:'判斷',w:160,h:90,text:'',mini:[66,40]},
+  io:{label:'輸入／輸出',w:150,h:56,text:'input',mini:[68,32]},
+  document:{label:'文件',w:140,h:70,text:'文件',mini:[60,38]},
+  loop:{label:'重複',w:170,h:60,text:'重複 i = 1 到 10',mini:[68,32]},
+  connector:{label:'連接點',w:44,h:44,text:'A',mini:[30,30]},
+};
+const DIR={top:{x:0,y:-1},right:{x:1,y:0},bottom:{x:0,y:1},left:{x:-1,y:0}};
+const PORTS=['top','right','bottom','left'];
+
+let state={nodes:[],edges:[],line:'elbow',order:''};
+let helperFocus=null;
+let multi=new Set(), mode='select', spaceHeld=false, clip=null, pasteN=0;
+const isSel=id=>multi.has(id)||(sel&&sel.kind==='node'&&sel.id===id);
+function clearSel(){ sel=null; multi=new Set(); }
+function selNodeIds(){ return multi.size?[...multi]:(sel&&sel.kind==='node'?[sel.id]:[]); }
+let view={tx:0,ty:0,k:1};
+let sel=null, drag=null, editing=null, hoverTarget=null, lastTap=null;
+let undoStack=[], redoStack=[], counter=0;
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const snapv=v=>Math.round(v/SNAP)*SNAP;
+const uid=p=>p+Date.now().toString(36)+(counter++);
+const getNode=id=>state.nodes.find(n=>n.id===id);
+const getEdge=id=>state.edges.find(e=>e.id===id);
+const snap=()=>JSON.stringify(state);
+function commit(before){ const now=snap(); if(before!==now){undoStack.push(before); if(undoStack.length>100)undoStack.shift(); redoStack=[];} save(); }
+function save(){ try{localStorage.setItem(KEY,snap());}catch(e){} }
+function loadStr(s){ const o=JSON.parse(s); state={nodes:o.nodes||[],edges:o.edges||[],line:o.line||'elbow',order:o.order||''}; }
+
+/* ---------- geometry ---------- */
+const skew=(w,h)=>Math.min(22,w*0.16);
+function shapeSVG(type,w,h){
+  const hw=w/2, hh=h/2;
+  switch(type){
+    case 'terminator': return `<rect class="shape" x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="${hh}"/>`;
+    case 'process': return `<rect class="shape" x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="2"/>`;
+    case 'decision': return `<polygon class="shape" points="0,${-hh} ${hw},0 0,${hh} ${-hw},0"/>`;
+    case 'io': { const s=skew(w,h); return `<polygon class="shape" points="${-hw+s},${-hh} ${hw},${-hh} ${hw-s},${hh} ${-hw},${hh}"/>`; }
+    case 'document': { const a=h*0.24, b=hh-a/2;
+      return `<path class="shape" d="M${-hw},${-hh}H${hw}V${b}Q${w/4},${b-a} 0,${b}T${-hw},${b}Z"/>`; }
+    case 'predefined': { const i=Math.min(12,w*0.09);
+      return `<rect class="shape" x="${-hw}" y="${-hh}" width="${w}" height="${h}" rx="2"/><path class="shape" style="fill:none" d="M${-hw+i},${-hh}V${hh}M${hw-i},${-hh}V${hh}"/>`; }
+    case 'connector': return `<circle class="shape" cx="0" cy="0" r="${Math.min(w,h)/2}"/>`;
+    case 'loop': { const i=Math.min(20,w*0.14);
+      return `<polygon class="shape" points="${-hw},0 ${-hw+i},${-hh} ${hw-i},${-hh} ${hw},0 ${hw-i},${hh} ${-hw+i},${hh}"/>`; }
+  }
+  return '';
+}
+function portLocal(n,p){
+  let x=0,y=0; const {w,h}=n;
+  if(p==='top')y=-h/2; if(p==='bottom')y=h/2; if(p==='left')x=-w/2; if(p==='right')x=w/2;
+  if(n.type==='io'&&(p==='left'||p==='right')) x+=(p==='left'?1:-1)*skew(w,h)/2;
+  return {x,y};
+}
+function portWorld(n,p){ const l=portLocal(n,p); return {x:n.x+l.x,y:n.y+l.y}; }
+function nearestPort(n,pt){ let best='top',bd=1e9; for(const p of PORTS){const q=portWorld(n,p); const d=(q.x-pt.x)**2+(q.y-pt.y)**2; if(d<bd){bd=d;best=p;}} return best; }
+function box(n){ return {l:n.x-n.w/2,r:n.x+n.w/2,t:n.y-n.h/2,b:n.y+n.h/2}; }
+
+function route(a,da,b,db,A,B){
+  if(state.line==='straight') return [a,b];
+  const S=20;
+  const a1={x:a.x+da.x*S,y:a.y+da.y*S}, b1={x:b.x+db.x*S,y:b.y+db.y*S};
+  const av=da.x===0, bv=db.x===0; let mid;
+  if(av&&bv){
+    if(da.y===db.y){ const my=da.y>0?Math.max(a1.y,b1.y):Math.min(a1.y,b1.y); mid=[{x:a1.x,y:my},{x:b1.x,y:my}]; }
+    else if(da.y>0&&b1.y<a1.y || da.y<0&&b1.y>a1.y){ const ba=box(A),bb=box(B); const sx=Math.max(ba.r,bb.r)+30; mid=[{x:sx,y:a1.y},{x:sx,y:b1.y}]; }
+    else { const my=(a1.y+b1.y)/2; mid=[{x:a1.x,y:my},{x:b1.x,y:my}]; }
+  } else if(!av&&!bv){
+    if(da.x===db.x){ const mx=da.x>0?Math.max(a1.x,b1.x):Math.min(a1.x,b1.x); mid=[{x:mx,y:a1.y},{x:mx,y:b1.y}]; }
+    else if(da.x>0&&b1.x<a1.x || da.x<0&&b1.x>a1.x){ const ba=box(A),bb=box(B); const sy=Math.max(ba.b,bb.b)+30; mid=[{x:a1.x,y:sy},{x:b1.x,y:sy}]; }
+    else { const mx=(a1.x+b1.x)/2; mid=[{x:mx,y:a1.y},{x:mx,y:b1.y}]; }
+  } else if(av){ mid=[{x:a1.x,y:b1.y}]; }
+  else { mid=[{x:b1.x,y:a1.y}]; }
+  const pts=[a,a1,...mid,b1,b], out=[];
+  for(const p of pts){ const q=out[out.length-1]; if(!q||Math.abs(q.x-p.x)>.5||Math.abs(q.y-p.y)>.5) out.push(p); }
+  return out;
+}
+function edgePts(e){
+  const A=getNode(e.from.node), B=getNode(e.to.node); if(!A||!B) return null;
+  return route(portWorld(A,e.from.port),DIR[e.from.port],portWorld(B,e.to.port),DIR[e.to.port],A,B);
+}
+function pointAt(pts,d){
+  for(let i=1;i<pts.length;i++){ const a=pts[i-1],b=pts[i]; const L=Math.hypot(b.x-a.x,b.y-a.y);
+    if(d<=L){ const t=L?d/L:0; return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t}; } d-=L; }
+  return pts[pts.length-1];
+}
+function labelPos(pts){ let T=0; for(let i=1;i<pts.length;i++) T+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); return pointAt(pts,Math.min(T/2,40)); }
+const textW=s=>[...s].reduce((w,c)=>w+(c.charCodeAt(0)<256?7.6:14),0);
+
+/* ---------- render ---------- */
+function render(){
+  let E='',L='',N='';
+  for(const e of state.edges){
+    const pts=edgePts(e); if(!pts) continue;
+    const s=sel&&sel.kind==='edge'&&sel.id===e.id;
+    const d='M'+pts.map(p=>`${p.x},${p.y}`).join('L');
+    E+=`<g class="edge${s?' sel':''}" data-edge="${e.id}"><path class="hit" d="${d}"/><path class="line" d="${d}" marker-end="url(#${s?'arrowSel':'arrow'})"/></g>`;
+    if(e.label){ const p=labelPos(pts), lines=e.label.split('\n'); const w=Math.max(...lines.map(textW))+12, h=lines.length*17+6;
+      L+=`<g class="elabel${s?' sel':''}" data-edge="${e.id}" transform="translate(${p.x},${p.y})"><rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="4"/>`+
+        lines.map((l,i)=>`<text x="0" y="${(i-(lines.length-1)/2)*17}">${esc(l)}</text>`).join('')+`</g>`; }
+  }
+  for(const n of state.nodes){
+    const s=isSel(n.id), single=sel&&sel.kind==='node'&&sel.id===n.id&&!multi.size;
+    const lines=String(n.text||'').split('\n'), off=n.type==='document'?-n.h*0.06:0;
+    let g=`<g class="node${s?' sel':''}${multi.has(n.id)?' msel':''}${hoverTarget===n.id?' target':''}${helperFocus===n.id?' focus':''}" data-id="${n.id}" transform="translate(${n.x},${n.y})">${shapeSVG(n.type,n.w,n.h)}`;
+    if(!String(n.text||'').trim()) g+=`<text class="ph" x="0" y="${off}">double-click 雙擊打字</text>`;
+    else g+=lines.map((l,i)=>`<text x="0" y="${(i-(lines.length-1)/2)*18+off}">${esc(l)}</text>`).join('');
+    for(const p of PORTS){ const q=portLocal(n,p); g+=`<circle class="port" data-port="${p}" cx="${q.x}" cy="${q.y}" r="10"/><circle class="port-dot" cx="${q.x}" cy="${q.y}" r="5"/>`; }
+    if(single) g+=`<rect class="handle" x="${n.w/2-6}" y="${n.h/2-6}" width="12" height="12" rx="2"/>`;
+    N+=g+'</g>';
+  }
+  $('#lEdges').innerHTML=E; $('#lNodes').innerHTML=N; $('#lLabels').innerHTML=L;
+  applyView(); syncUI(); scheduleHelp();
+}
+function applyView(){
+  world.setAttribute('transform',`translate(${view.tx},${view.ty}) scale(${view.k})`);
+  for(const id of ['gMinor','gMajor']) document.getElementById(id).setAttribute('patternTransform',`translate(${view.tx},${view.ty}) scale(${view.k})`);
+  $('#zVal').textContent=Math.round(view.k*100)+'%';
+  if(editing) placeEditor();
+}
+function syncUI(){
+  $('#bUndo').disabled=!undoStack.length; $('#bRedo').disabled=!redoStack.length;
+  const any=!!sel||multi.size>0;
+  $('#bDel').disabled=!any; $('#bEdit').disabled=!sel||multi.size>0;
+  $('#bCopySel').disabled=!selNodeIds().length; $('#bPaste').disabled=!clip;
+  $('#mSelect').setAttribute('aria-pressed',mode==='select'); $('#mPan').setAttribute('aria-pressed',mode==='pan');
+  svg.classList.toggle('panmode',mode==='pan'||spaceHeld); svg.classList.toggle('selmode',mode==='select'&&!spaceHeld);
+  $('#selBar').hidden=multi.size<2; $('#selCount').textContent=`${multi.size} selected 已選取 ${multi.size} 個`;
+  $('#modeTip').hidden=multi.size>=2; $('#modeTip').textContent=mode==='pan'?'Drag to move the canvas · 拖曳移動畫布':'Drag on empty space to select · 在空白處拖曳框選（Shift＋點擊可加選）';
+  $('#lElbow').setAttribute('aria-pressed',state.line==='elbow'); $('#lStraight').setAttribute('aria-pressed',state.line==='straight');
+}
+
+/* ---------- coordinates & view ---------- */
+function toWorld(cx,cy){ const r=svg.getBoundingClientRect(); return {x:(cx-r.left-view.tx)/view.k,y:(cy-r.top-view.ty)/view.k}; }
+function zoomAt(k,px,py){ k=Math.min(3,Math.max(.25,k)); view.tx=px-(px-view.tx)*k/view.k; view.ty=py-(py-view.ty)*k/view.k; view.k=k; applyView(); }
+function fit(){
+  const r=svg.getBoundingClientRect();
+  if(!state.nodes.length){ view={tx:r.width/2,ty:r.height/2,k:1}; applyView(); return; }
+  let l=1e9,t=1e9,R=-1e9,B=-1e9;
+  for(const n of state.nodes){ const b=box(n); l=Math.min(l,b.l);t=Math.min(t,b.t);R=Math.max(R,b.r);B=Math.max(B,b.b); }
+  const bud=$('#buddy'), bh=bud?bud.getBoundingClientRect().height+16:0, H=Math.max(160,r.height-bh);
+  const pad=60, k=Math.min(1.4,Math.max(.25,Math.min(r.width/(R-l+pad*2),H/(B-t+pad*2))));
+  view={k,tx:r.width/2-(l+R)/2*k,ty:H/2-(t+B)/2*k}; applyView();
+}
+
+/* ---------- actions ---------- */
+let addCount=0;
+function addNode(key,x,y){
+  const T=TOOL[key], before=snap();
+  const n={id:uid('n'),type:T.type,x:snapv(x),y:snapv(y),w:T.w,h:T.h,text:T.text};
+  if(T.role) n.role=T.role;
+  state.nodes.push(n); clearSel(); sel={kind:'node',id:n.id}; commit(before); render();
+  if(T.edit) setTimeout(()=>startEdit('node',n.id),0);
+}
+function addEdge(from,to){
+  if(state.edges.some(e=>e.from.node===from.node&&e.from.port===from.port&&e.to.node===to.node&&e.to.port===to.port)) return;
+  const before=snap(), src=getNode(from.node); let label='';
+  if(src&&src.type==='decision'){ const c=state.edges.filter(e=>e.from.node===src.id).length; label=c===0?'Yes':c===1?'No':''; }
+  const e={id:uid('e'),from,to,label}; state.edges.push(e); clearSel(); sel={kind:'edge',id:e.id}; commit(before);
+}
+function deleteSel(){
+  if(multi.size){ const before=snap(), ids=multi; state.nodes=state.nodes.filter(n=>!ids.has(n.id)); state.edges=state.edges.filter(e=>!ids.has(e.from.node)&&!ids.has(e.to.node)); clearSel(); commit(before); render(); return; }
+  if(!sel) return; const before=snap();
+  if(sel.kind==='node'){ state.nodes=state.nodes.filter(n=>n.id!==sel.id); state.edges=state.edges.filter(e=>e.from.node!==sel.id&&e.to.node!==sel.id); }
+  else state.edges=state.edges.filter(e=>e.id!==sel.id);
+  sel=null; commit(before); render();
+}
+function copySel(){
+  const ids=new Set(selNodeIds()); if(!ids.size) return;
+  clip={nodes:state.nodes.filter(n=>ids.has(n.id)).map(n=>({...n})),edges:state.edges.filter(e=>ids.has(e.from.node)&&ids.has(e.to.node)).map(e=>({...e,from:{...e.from},to:{...e.to}}))};
+  pasteN=0; try{ localStorage.setItem('flowboard-clip',JSON.stringify(clip)); }catch(e){}
+  toast(`Copied ${ids.size} shapes 已複製 ${ids.size} 個圖形`); syncUI();
+}
+function pasteClip(){
+  if(!clip||!clip.nodes.length) return; const before=snap(); pasteN++; const off=pasteN*40, map={};
+  const ns=clip.nodes.map(n=>{ const id=uid('n'); map[n.id]=id; return {...n,id,x:n.x+off,y:n.y+off}; });
+  const es=clip.edges.map(e=>({...e,id:uid('e'),from:{node:map[e.from.node],port:e.from.port},to:{node:map[e.to.node],port:e.to.port}}));
+  state.nodes.push(...ns); state.edges.push(...es);
+  clearSel(); if(ns.length===1) sel={kind:'node',id:ns[0].id}; else multi=new Set(ns.map(n=>n.id));
+  commit(before); render();
+}
+function selectAll(){ clearSel(); multi=new Set(state.nodes.map(n=>n.id)); if(multi.size===1){ sel={kind:'node',id:[...multi][0]}; multi=new Set(); } render(); }
+function nudge(dx,dy){ const ids=selNodeIds(); if(!ids.length) return; const before=snap(); ids.forEach(id=>{ const n=getNode(id); if(n){ n.x+=dx; n.y+=dy; } }); commit(before); render(); }
+function undo(){ if(!undoStack.length)return; redoStack.push(snap()); loadStr(undoStack.pop()); clearSel(); save(); render(); }
+function redo(){ if(!redoStack.length)return; undoStack.push(snap()); loadStr(redoStack.pop()); clearSel(); save(); render(); }
+
+/* ---------- text editing ---------- */
+function startEdit(kind,id){
+  commitEdit();
+  const obj=kind==='node'?getNode(id):getEdge(id); if(!obj) return;
+  if(kind==='node'&&obj.type==='terminator'&&/^(start|end)$/i.test(obj.text||'')){ return; }
+  editing={kind,id,before:snap()};
+  if(kind==='node'){ editor.value=obj.role?bodyOf(obj):(obj.text||''); editor.placeholder=PH[obj.role||obj.type]||''; }
+  else { editor.value=obj.label||''; editor.placeholder='Yes / No'; }
+  editor.hidden=false; placeEditor(); editor.focus(); editor.select();
+}
+function placeEditor(){
+  if(!editing) return; let cx,cy,w,h;
+  if(editing.kind==='node'){ const n=getNode(editing.id); if(!n) return; cx=n.x;cy=n.y;w=Math.max(n.w,110);h=Math.max(n.h,48); }
+  else { const e=getEdge(editing.id), pts=e&&edgePts(e); if(!pts) return; const p=labelPos(pts); cx=p.x;cy=p.y;w=110;h=48; }
+  const k=view.k; editor.style.left=(cx*k+view.tx-w*k/2)+'px'; editor.style.top=(cy*k+view.ty-h*k/2)+'px';
+  editor.style.width=w*k+'px'; editor.style.height=h*k+'px'; editor.style.fontSize=Math.max(12,14*k)+'px';
+}
+function commitEdit(cancel){
+  if(!editing) return; const ed=editing; editing=null; editor.hidden=true;
+  if(!cancel){ const v=editor.value.replace(/\s+$/,'');
+    if(ed.kind==='node'){ const n=getNode(ed.id); if(n){ if(n.role){ const b=v.trim().replace(/^(input|output|輸入|輸出)\s*[:：]?\s*/i,''); n.text=n.role+(b?' '+b:''); } else n.text=v; } } else { const e=getEdge(ed.id); if(e) e.label=v; }
+    commit(ed.before); }
+  render();
+}
+editor.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); commitEdit(); }
+  else if(e.key==='Escape'){ e.preventDefault(); commitEdit(true); }
+  e.stopPropagation();
+});
+editor.addEventListener('blur',()=>commitEdit());
+
+/* ---------- canvas pointer ---------- */
+function tapCheck(key){
+  const now=Date.now();
+  if(lastTap&&lastTap.key===key&&now-lastTap.t<380){ lastTap=null; return true; }
+  lastTap={key,t:now}; return false;
+}
+svg.addEventListener('contextmenu',e=>e.preventDefault());
+svg.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='mouse'&&e.button!==0){ if(e.button===1||e.button===2){ drag={type:'pan',sx:e.clientX,sy:e.clientY,tx:view.tx,ty:view.ty}; svg.classList.add('panning'); e.preventDefault(); } return; }
+  if(editing) commitEdit();
+  const t=e.target, p=toWorld(e.clientX,e.clientY);
+  const portEl=t.closest('[data-port]');
+  if(portEl){ drag={type:'connect',from:{node:portEl.closest('.node').dataset.id,port:portEl.dataset.port}}; svg.classList.add('connecting'); e.preventDefault(); return; }
+  const h=t.closest('.handle');
+  if(h){ const n=getNode(h.closest('.node').dataset.id); drag={type:'resize',id:n.id,before:snap(),l:n.x-n.w/2,t:n.y-n.h/2}; e.preventDefault(); return; }
+  const nodeEl=t.closest('.node');
+  if(nodeEl){ const n=getNode(nodeEl.dataset.id);
+    if(e.shiftKey||e.ctrlKey||e.metaKey){ const ids=new Set(selNodeIds()); ids.has(n.id)?ids.delete(n.id):ids.add(n.id); clearSel();
+      if(ids.size===1) sel={kind:'node',id:[...ids][0]}; else multi=ids; render(); e.preventDefault(); return; }
+    if(multi.size>1&&multi.has(n.id)){ drag={type:'gmove',before:snap(),p0:p,orig:[...multi].map(id=>{const m=getNode(id);return {id,x:m.x,y:m.y};}),sx:e.clientX,sy:e.clientY,moved:false}; e.preventDefault(); return; }
+    clearSel(); sel={kind:'node',id:n.id};
+    drag={type:'move',id:n.id,before:snap(),dx:p.x-n.x,dy:p.y-n.y,sx:e.clientX,sy:e.clientY,moved:false}; render(); e.preventDefault(); return; }
+  const edgeEl=t.closest('[data-edge]');
+  if(edgeEl){ clearSel(); sel={kind:'edge',id:edgeEl.dataset.edge}; drag={type:'tapEdge',id:sel.id,sx:e.clientX,sy:e.clientY,moved:false}; render(); e.preventDefault(); return; }
+  if(mode==='pan'||spaceHeld||e.pointerType==='touch'&&mode!=='select'){ clearSel(); drag={type:'pan',sx:e.clientX,sy:e.clientY,tx:view.tx,ty:view.ty}; svg.classList.add('panning'); render(); e.preventDefault(); return; }
+  const base=e.shiftKey?new Set(selNodeIds()):new Set(); if(!e.shiftKey) clearSel();
+  drag={type:'marq',x0:p.x,y0:p.y,base,sx:e.clientX,sy:e.clientY,moved:false}; render(); e.preventDefault();
+});
+window.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  if(drag.sx!==undefined&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>4) drag.moved=true;
+  const p=toWorld(e.clientX,e.clientY);
+  switch(drag.type){
+    case 'move':{ if(!drag.moved) return; const n=getNode(drag.id); n.x=snapv(p.x-drag.dx); n.y=snapv(p.y-drag.dy); render(); break; }
+    case 'resize':{ const n=getNode(drag.id); let w=Math.max(40,snapv(p.x-drag.l)), h=Math.max(30,snapv(p.y-drag.t));
+      if(n.type==='connector'){ w=h=Math.max(w,h); } n.w=w;n.h=h;n.x=drag.l+w/2;n.y=drag.t+h/2; render(); break; }
+    case 'gmove':{ if(!drag.moved) return; const dx=snapv(p.x-drag.p0.x), dy=snapv(p.y-drag.p0.y); drag.orig.forEach(o=>{ const n=getNode(o.id); if(n){ n.x=o.x+dx; n.y=o.y+dy; } }); render(); break; }
+    case 'marq':{ if(!drag.moved) return; const m=$('#marq'), x=Math.min(drag.x0,p.x), y=Math.min(drag.y0,p.y);
+      m.removeAttribute('hidden'); m.setAttribute('x',x); m.setAttribute('y',y); m.setAttribute('width',Math.abs(p.x-drag.x0)); m.setAttribute('height',Math.abs(p.y-drag.y0));
+      drag.rect={l:x,t:y,r:Math.max(drag.x0,p.x),b:Math.max(drag.y0,p.y)}; break; }
+    case 'pan': view.tx=drag.tx+e.clientX-drag.sx; view.ty=drag.ty+e.clientY-drag.sy; applyView(); break;
+    case 'connect':{
+      const a=portWorld(getNode(drag.from.node),drag.from.port);
+      $('#temp').setAttribute('d',`M${a.x},${a.y}L${p.x},${p.y}`);
+      const el=document.elementFromPoint(e.clientX,e.clientY), ne=el&&svg.contains(el)?el.closest('.node'):null;
+      const tid=ne&&ne.dataset.id!==drag.from.node?ne.dataset.id:null;
+      if(tid!==hoverTarget){ hoverTarget=tid; render(); }
+      break; }
+    case 'palette':{
+      if(!drag.moved) return;
+      if(!drag.ghost){ const g=document.createElement('div'); g.style.cssText='position:fixed;pointer-events:none;z-index:30;opacity:.85;transform:translate(-50%,-50%)';
+        g.innerHTML=`<svg width="90" height="54" viewBox="-45 -27 90 54" style="overflow:visible"><g style="fill:var(--panel);stroke:var(--accent);stroke-width:1.6">${shapeSVG(TOOL[drag.kind].type,80,TOOL[drag.kind].mini[1]*1.25)}</g></svg>`;
+        document.body.appendChild(g); drag.ghost=g; }
+      drag.ghost.style.left=e.clientX+'px'; drag.ghost.style.top=e.clientY+'px'; break; }
+  }
+});
+function endDrag(e,cancelled){
+  if(!drag) return; const d=drag; drag=null; svg.classList.remove('panning','connecting');
+  switch(d.type){
+    case 'move':
+      if(d.moved) commit(d.before);
+      else if(tapCheck('n'+d.id)) startEdit('node',d.id);
+      break;
+    case 'tapEdge': if(!d.moved&&tapCheck('e'+d.id)) startEdit('edge',d.id); break;
+    case 'gmove': if(d.moved) commit(d.before); else { const id=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.node')?.dataset.id; if(id){ clearSel(); sel={kind:'node',id}; render(); } } break;
+    case 'marq':{ $('#marq').setAttribute('hidden','');
+      if(d.moved&&d.rect){ const R=d.rect, ids=new Set(d.base);
+        state.nodes.forEach(n=>{ const b=box(n); if(b.r>=R.l&&b.l<=R.r&&b.b>=R.t&&b.t<=R.b) ids.add(n.id); });
+        clearSel(); if(ids.size===1) sel={kind:'node',id:[...ids][0]}; else multi=ids; }
+      render(); break; }
+    case 'resize': commit(d.before); break;
+    case 'connect':{
+      $('#temp').setAttribute('d','');
+      const tid=hoverTarget; hoverTarget=null;
+      if(!cancelled&&tid){ const el=document.elementFromPoint(e.clientX,e.clientY), pe=el&&el.closest('[data-port]');
+        const port=pe&&pe.closest('.node').dataset.id===tid?pe.dataset.port:nearestPort(getNode(tid),toWorld(e.clientX,e.clientY));
+        addEdge(d.from,{node:tid,port}); }
+      render(); break; }
+    case 'palette':{
+      if(d.ghost) d.ghost.remove();
+      if(cancelled) break;
+      if(d.moved){ const el=document.elementFromPoint(e.clientX,e.clientY);
+        if(el&&svg.contains(el)){ const p=toWorld(e.clientX,e.clientY); addNode(d.kind,p.x,p.y); } }
+      else addAtCenter(d.kind);
+      break; }
+  }
+}
+window.addEventListener('pointerup',e=>endDrag(e,false));
+window.addEventListener('pointercancel',e=>endDrag(e,true));
+svg.addEventListener('wheel',e=>{ e.preventDefault(); const r=svg.getBoundingClientRect(); zoomAt(view.k*Math.exp(-e.deltaY*0.0015),e.clientX-r.left,e.clientY-r.top); },{passive:false});
+
+function addAtCenter(kind){
+  const r=svg.getBoundingClientRect(), c=toWorld(r.left+r.width/2,r.top+r.height/2), o=(addCount++%6)*20;
+  addNode(kind,c.x+o,c.y+o);
+}
+
+/* ---------- stencil ---------- */
+const plate=$('#plate');
+for(const K of TOOLS){ const kind=K.key;
+  const b=document.createElement('button'); b.className='tool'; b.type='button'; b.title='拖曳到畫布，或點一下加入：'+K.label+' '+K.sub;
+  b.innerHTML=`<svg viewBox="-38 -22 76 44">${shapeSVG(K.type,K.mini[0],K.mini[1])}${K.tag?`<text x="0" y="0">${K.tag}</text>`:''}</svg><span>${K.label}<small>${K.sub}</small></span>`;
+  b.addEventListener('pointerdown',e=>{ if(e.pointerType==='mouse'&&e.button!==0) return; if(editing) commitEdit(); drag={type:'palette',kind,sx:e.clientX,sy:e.clientY,moved:false}; if(e.pointerType==='mouse') e.preventDefault(); });
+  b.addEventListener('click',e=>{ if(e.detail===0) addAtCenter(kind); });
+  plate.appendChild(b);
+}
+
+/* ---------- toolbar ---------- */
+$('#bUndo').onclick=undo; $('#bRedo').onclick=redo; $('#bDel').onclick=deleteSel;
+$('#bEdit').onclick=()=>{ if(sel) startEdit(sel.kind,sel.id); };
+function setLine(m){ if(state.line===m) return; const b=snap(); state.line=m; commit(b); render(); }
+$('#lElbow').onclick=()=>setLine('elbow'); $('#lStraight').onclick=()=>setLine('straight');
+let clearTimer=null; const bClear=$('#bClear');
+bClear.onclick=()=>{
+  if(!bClear.classList.contains('danger')){ bClear.classList.add('danger'); bClear.textContent='確定清空？';
+    clearTimeout(clearTimer); clearTimer=setTimeout(()=>{bClear.classList.remove('danger');bClear.textContent='清空';},3000); return; }
+  clearTimeout(clearTimer); bClear.classList.remove('danger'); bClear.textContent='清空';
+  const b=snap(); state.nodes=[]; state.edges=[]; state.order=''; clearSel(); commit(b); render();
+};
+const zc=()=>{const r=svg.getBoundingClientRect(); return [r.width/2,r.height/2];};
+$('#zIn').onclick=()=>zoomAt(view.k*1.2,...zc()); $('#zOut').onclick=()=>zoomAt(view.k/1.2,...zc()); $('#zFit').onclick=fit;
+
+document.addEventListener('keydown',e=>{
+  if(editing||/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  const mod=e.ctrlKey||e.metaKey;
+  if(mod&&e.key.toLowerCase()==='z'&&!e.shiftKey){ e.preventDefault(); undo(); }
+  else if(mod&&(e.key.toLowerCase()==='y'||e.key.toLowerCase()==='z'&&e.shiftKey)){ e.preventDefault(); redo(); }
+  else if(mod&&e.key.toLowerCase()==='c'){ if(selNodeIds().length){ e.preventDefault(); copySel(); } }
+  else if(mod&&e.key.toLowerCase()==='x'){ if(selNodeIds().length){ e.preventDefault(); copySel(); deleteSel(); } }
+  else if(mod&&e.key.toLowerCase()==='v'){ if(clip){ e.preventDefault(); pasteClip(); } }
+  else if(mod&&e.key.toLowerCase()==='a'){ e.preventDefault(); selectAll(); }
+  else if(e.key.startsWith('Arrow')&&selNodeIds().length){ e.preventDefault(); const st=e.shiftKey?40:10; nudge(e.key==='ArrowLeft'?-st:e.key==='ArrowRight'?st:0,e.key==='ArrowUp'?-st:e.key==='ArrowDown'?st:0); }
+  else if(e.key===' '&&!spaceHeld){ e.preventDefault(); spaceHeld=true; syncUI(); }
+  else if((e.key==='Delete'||e.key==='Backspace')&&(sel||multi.size)){ e.preventDefault(); deleteSel(); }
+  else if(e.key==='F2'&&sel){ e.preventDefault(); startEdit(sel.kind,sel.id); }
+  else if(e.key==='Escape'){ clearSel(); render(); }
+});
+document.addEventListener('keyup',e=>{ if(e.key===' '&&spaceHeld){ spaceHeld=false; syncUI(); } });
+window.addEventListener('blur',()=>{ if(spaceHeld){ spaceHeld=false; syncUI(); } });
+$('#mSelect').onclick=()=>{ mode='select'; syncUI(); };
+$('#mPan').onclick=()=>{ mode='pan'; syncUI(); };
+$('#bCopySel').onclick=copySel; $('#bPaste').onclick=pasteClip;
+$('#sbCopy').onclick=copySel; $('#sbDup').onclick=()=>{ copySel(); pasteClip(); }; $('#sbDel').onclick=deleteSel; $('#sbX').onclick=()=>{ clearSel(); render(); };
+try{ const c=localStorage.getItem('flowboard-clip'); if(c) clip=JSON.parse(c); }catch(e){}
+
+/* ---------- export ---------- */
+let pngBlob=null;
+$('#bExport').onclick=()=>{
+  if(!state.nodes.length) return;
+  const keep=sel, km=multi, kf=helperFocus; sel=null; multi=new Set(); helperFocus=null; render();
+  const bb=world.getBBox(), pad=24, x=bb.x-pad, y=bb.y-pad, w=bb.width+pad*2, h=bb.height+pad*2;
+  const props=['fill','stroke','stroke-width','stroke-linejoin','font-size','font-family','font-weight','text-anchor','dominant-baseline','opacity'];
+  const inline=(src,dst)=>{ const s=[src,...src.querySelectorAll('*')], d=[dst,...dst.querySelectorAll('*')];
+    s.forEach((el,i)=>{ const cs=getComputedStyle(el); props.forEach(p=>d[i].style.setProperty(p,cs.getPropertyValue(p))); }); };
+  const defs=svg.querySelector('defs'), dc=defs.cloneNode(true); inline(defs,dc); dc.querySelectorAll('pattern').forEach(p=>p.remove());
+  const wc=world.cloneNode(true); inline(world,wc); wc.removeAttribute('transform');
+  wc.querySelectorAll('.port,.port-dot,.hit,.handle,#temp,.ph').forEach(el=>el.remove());
+  const bg=getComputedStyle(document.body).backgroundColor;
+  const str=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${bg}"/>${new XMLSerializer().serializeToString(dc)}${new XMLSerializer().serializeToString(wc)}</svg>`;
+  sel=keep; multi=km; helperFocus=kf; render();
+  const img=new Image();
+  img.onload=()=>{ const c=document.createElement('canvas'), s=2; c.width=w*s; c.height=h*s; const g=c.getContext('2d'); g.scale(s,s); g.drawImage(img,0,0,w,h);
+    $('#outImg').src=c.toDataURL('image/png'); c.toBlob(b=>pngBlob=b,'image/png'); $('#modal').hidden=false; $('#bCopyImg').textContent='複製圖片'; };
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(str);
+};
+$('#bCloseModal').onclick=()=>{$('#modal').hidden=true;};
+$('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') $('#modal').hidden=true; });
+$('#bCopyImg').onclick=async()=>{
+  const b=$('#bCopyImg');
+  try{ await navigator.clipboard.write([new ClipboardItem({'image/png':pngBlob})]); b.textContent='已複製'; }
+  catch(err){ b.textContent='無法複製，請用右鍵另存'; }
+};
+
+/* ---------- works: save, load, copy, import ---------- */
+const META_KEY=FREE?'flowchart-free-meta':'flowboard-meta', WORKS_KEY=FREE?'flowchart-free-works':'flowboard-works';
+const TYPE_NAME={terminator:'START／END',process:'處理',decision:'判斷',io:'輸入／輸出',document:'文件',loop:'重複',connector:'連接點',predefined:'預設處理'};
+const DEFAULT_TITLE=FREE?'My Flowchart':'BMI Flowchart';
+let meta={student:'',title:DEFAULT_TITLE};
+try{ meta=Object.assign(meta,JSON.parse(localStorage.getItem(META_KEY)||'{}')); }catch(e){}
+if(!String(meta.title||'').trim()) meta.title=DEFAULT_TITLE;
+function showTitle(){ $('#curTitle').textContent=meta.title?'· '+meta.title:''; }
+function saveMeta(){ try{localStorage.setItem(META_KEY,JSON.stringify(meta));}catch(e){} showTitle(); }
+function readWorks(){ try{ return JSON.parse(localStorage.getItem(WORKS_KEY)||'[]'); }catch(e){ return []; } }
+function writeWorks(w){ try{ localStorage.setItem(WORKS_KEY,JSON.stringify(w)); return true; }catch(e){ return false; } }
+let toastTimer; function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.hidden=true;},2400); }
+function openModal(id){ commitEdit(); document.getElementById(id).hidden=false; }
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m||e.target.closest('[data-close]')) m.hidden=true; }));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal').forEach(m=>{m.hidden=true;}); });
+
+function exportData(){
+  return {format:'flowboard-v1',student:meta.student,title:meta.title,exportedAt:new Date().toISOString(),line:state.line,
+    order:state.order||'',
+    nodes:state.nodes.map(n=>({id:n.id,type:n.type,typeName:n.role==='input'?'輸入':n.role==='output'?'輸出':(TYPE_NAME[n.type]||n.type),...(n.role?{role:n.role}:{}),text:n.text,x:n.x,y:n.y,w:n.w,h:n.h})),
+    edges:state.edges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label||''}))};
+}
+function parseWork(text){
+  let o; try{ o=JSON.parse(text); }catch(e){ throw new Error('這個檔案不是流程圖畫板的作業檔。'); }
+  if(!o||!Array.isArray(o.nodes)||!Array.isArray(o.edges)) throw new Error('檔案裡找不到流程圖資料，請確認是用「下載作業檔」存下來的檔案。');
+  const nodes=o.nodes.filter(n=>n&&n.id!=null&&isFinite(n.x)&&isFinite(n.y)).map(n=>({id:String(n.id),type:(KINDS[n.type]||n.type==='predefined')?n.type:'process',
+    x:+n.x,y:+n.y,w:+n.w||KINDS.process.w,h:+n.h||KINDS.process.h,text:String(n.text==null?'':n.text),
+    ...(n.type==='io'?{role:(n.role==='input'||n.role==='output')?n.role:/^(input|輸入)/i.test(n.text||'')?'input':/^(output|輸出|print)/i.test(n.text||'')?'output':undefined}:{})}));
+  nodes.forEach(n=>{ if(n.role===undefined) delete n.role; });
+  const ids=new Set(nodes.map(n=>n.id));
+  const edges=o.edges.filter(e=>e&&e.from&&e.to&&ids.has(String(e.from.node))&&ids.has(String(e.to.node))&&DIR[e.from.port]&&DIR[e.to.port])
+    .map(e=>({id:String(e.id||uid('e')),from:{node:String(e.from.node),port:e.from.port},to:{node:String(e.to.node),port:e.to.port},label:String(e.label||'')}));
+  if(!nodes.length) throw new Error('這份作業裡沒有任何圖形。');
+  return {nodes,edges,line:o.line==='straight'?'straight':'elbow',order:o.order==='asc'||o.order==='desc'?o.order:'',student:o.student||'',title:o.title||''};
+}
+function applyWork(w){ const b=snap(); state={nodes:w.nodes,edges:w.edges,line:w.line||'elbow',order:w.order||''}; clearSel(); commit(b); render(); fit(); }
+
+/* download */
+const browserSave={save:async({filename,data})=>{ const blob=data instanceof Blob?data:new Blob([data],{type:/\.png$/i.test(filename)?'image/png':/\.csv$/i.test(filename)?'text/csv':'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); return {status:'saved'}; }};
+const dlPromise=(async()=>{ try{ return (window.claude&&window.claude.use)?await window.claude.use('downloads'):browserSave; }catch(e){ return null; } })();
+let dlBroken=false;
+const cleanName=s=>String(s).replace(/[\\/:*?"<>|\n\r\t]/g,'').trim();
+function fileName(){ return `${cleanName(meta.student)||'未填姓名'}_${cleanName(meta.title)||'流程圖'}.json`; }
+function workJSON(){ return JSON.stringify(exportData(),null,1); }
+function refreshCopy(){ $('#fileName').textContent=fileName(); $('#copyText').value=workJSON(); }
+async function setCopyMode(){
+  const dl=await dlPromise, fb=!dl||dlBroken;
+  $('#copyFallback').hidden=!fb; $('#bDoCopy').textContent=fb?'複製':'下載';
+}
+$('#bCopy').onclick=()=>{ $('#cStudent').value=meta.student; $('#cTitle').value=meta.title||DEFAULT_TITLE; refreshCopy(); $('#copyStatus').textContent=''; setCopyMode(); openModal('copyModal'); };
+[['cStudent','student'],['cTitle','title']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{ meta[k]=e.target.value; saveMeta(); refreshCopy(); }));
+$('#bDoCopy').onclick=async()=>{
+  const st=$('#copyStatus'); st.classList.remove('err');
+  const fail=m=>{ st.textContent=m; st.classList.add('err'); };
+  if(!meta.student.trim()){ fail('請先填寫座號與姓名。'); $('#cStudent').focus(); return; }
+  if(!state.nodes.length){ fail('畫布是空的，先畫好流程圖再下載。'); return; }
+  const dl=await dlPromise;
+  if(dl&&!dlBroken){
+    try{ await dl.save({filename:fileName(),data:workJSON()}); st.textContent='已下載「'+fileName()+'」。'; toast('作業檔已下載'); }
+    catch(err){ const c=err&&err.code;
+      if(c==='declined') st.textContent='已取消下載。';
+      else if(c==='rate_limited') fail('下載視窗已經開著，請先完成它，或稍後再試。');
+      else { dlBroken=true; setCopyMode(); fail('這個畫面無法下載檔案，請改用下方文字複製。'); } }
+    return;
+  }
+  const ta=$('#copyText');
+  try{ await navigator.clipboard.writeText(ta.value); st.textContent='已複製！貼到繳交表單就完成了。'; }
+  catch(err){ ta.focus(); ta.select(); st.textContent='文字已全部選取，請按 Ctrl+C（手機長按選「複製」）。'; }
+};
+
+/* open file */
+function importError(m){ $('#importErr').textContent=m; $('#importModal').hidden=false; }
+function loadText(text,name){
+  try{ const w=parseWork(text); applyWork(w);
+    if(w.title||w.student){ meta.title=w.title; meta.student=w.student; saveMeta(); }
+    $('#importModal').hidden=true; toast('已開啟「'+(w.title||name)+'」'+(w.student?'：'+w.student:'')); }
+  catch(e){ importError(e.message); }
+}
+function readFile(f){
+  if(!f) return;
+  if(!/\.json$/i.test(f.name)&&f.type!=='application/json'){ importError('請選擇 .json 作業檔。'); return; }
+  const r=new FileReader();
+  r.onload=()=>loadText(String(r.result),f.name.replace(/\.json$/i,''));
+  r.onerror=()=>importError('檔案讀取失敗，請再試一次。');
+  r.readAsText(f);
+}
+$('#bImport').onclick=()=>{ $('#importErr').textContent=''; $('#fileInput').value=''; openModal('importModal'); };
+$('#fileInput').addEventListener('change',e=>{ readFile(e.target.files[0]); e.target.value=''; });
+const dz=$('#dropZone');
+[dz,wrap].forEach(el=>{
+  el.addEventListener('dragover',e=>{ if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files')){ e.preventDefault(); dz.classList.add('over'); } });
+  el.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  el.addEventListener('drop',e=>{ e.preventDefault(); dz.classList.remove('over'); const f=e.dataTransfer&&e.dataTransfer.files[0]; if(f){ $('#importErr').textContent=''; readFile(f); } });
+});
+
+/* my works */
+const pad2=v=>String(v).padStart(2,'0');
+function fmtTime(t){ const d=new Date(t); return `${d.getMonth()+1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+function renderWorks(){
+  const list=readWorks().sort((a,b)=>b.savedAt-a.savedAt), ul=$('#worksList');
+  if(!list.length){ ul.innerHTML='<li class="empty">還沒有存過作品。填好作品名稱後按「儲存目前作品」。</li>'; return; }
+  ul.innerHTML=list.map(w=>`<li><div class="wi"><b>${esc(w.title)}</b><span>${w.student?esc(w.student)+' · ':''}${fmtTime(w.savedAt)} · ${(w.data&&w.data.nodes||[]).length} 個圖形</span></div>`+
+    `<div class="wa"><button class="btn" data-load="${esc(w.id)}">讀取</button><button class="btn" data-del="${esc(w.id)}">刪除</button></div></li>`).join('');
+}
+$('#bWorks').onclick=()=>{ $('#wStudent').value=meta.student; $('#wTitle').value=meta.title||DEFAULT_TITLE; $('#worksStatus').textContent=''; renderWorks(); openModal('worksModal'); };
+$('#bSaveWork').onclick=()=>{
+  const st=$('#worksStatus'); st.classList.remove('err');
+  const title=$('#wTitle').value.trim()||DEFAULT_TITLE;
+  if(!title){ st.textContent='請先輸入作品名稱。'; st.classList.add('err'); $('#wTitle').focus(); return; }
+  if(!state.nodes.length){ st.textContent='畫布是空的，沒有可以儲存的內容。'; st.classList.add('err'); return; }
+  meta.title=title; meta.student=$('#wStudent').value.trim(); saveMeta();
+  const list=readWorks(), ex=list.find(w=>w.title===title), data={nodes:state.nodes,edges:state.edges,line:state.line,order:state.order};
+  if(ex){ ex.data=data; ex.student=meta.student; ex.savedAt=Date.now(); }
+  else list.push({id:uid('w'),title,student:meta.student,savedAt:Date.now(),data});
+  if(writeWorks(list)){ st.textContent=(ex?'已更新「':'已儲存「')+title+'」。'; }
+  else { st.textContent='這個瀏覽器不允許儲存，請改用「下載作業檔」保存。'; st.classList.add('err'); }
+  renderWorks();
+};
+$('#worksList').addEventListener('click',e=>{
+  const l=e.target.closest('[data-load]'), d=e.target.closest('[data-del]');
+  if(l){ const w=readWorks().find(x=>x.id===l.dataset.load); if(!w||!w.data) return;
+    applyWork(w.data); meta.title=w.title; if(w.student) meta.student=w.student; saveMeta();
+    $('#worksModal').hidden=true; toast('已讀取「'+w.title+'」'); }
+  if(d){ if(d.dataset.confirm){ writeWorks(readWorks().filter(x=>x.id!==d.dataset.del)); renderWorks(); }
+    else { d.dataset.confirm='1'; d.textContent='確定刪除？'; d.classList.add('danger'); } }
+});
+
+/* ---------- helper (rule-based, BMI task) ---------- */
+const H_TOK=/^(h|height|m|身高)\s*(\(\s*(m|cm|公尺|公分)\s*\)|\s(m|cm))?$/i;
+const W_TOK=/^(w|weight|kg|體重)\s*(\(\s*(kg|公斤)\s*\)|\skg)?$/i;
+function bodyOf(n){ return String(n.text||'').replace(/^(input|output|輸入|輸出)\s*[:：]?\s*/i,'').trim(); }
+function ioRole(n){ if(n.type!=='io') return null; if(n.role) return n.role; const t=String(n.text||''); return /^(input|輸入)/i.test(t)?'input':/^(output|輸出|print)/i.test(t)?'output':null; }
+const STEP_NAMES=['START','Height','Weight','Formula','Order','Decisions','END','Lines'];
+const B=s=>`<b>${s}</b>`;
+const nm=n=>`「${esc(String(n.text||'').replace(/\n/g,' ')||'空白')}」`;
+const PLANS={
+  asc:{steps:[{t:18.5,cat:'thin'},{t:24,cat:'normal'},{t:27,cat:'overweight'}],last:'obesity',op:'<'},
+  desc:{steps:[{t:27,cat:'obesity'},{t:24,cat:'overweight'},{t:18.5,cat:'normal'}],last:'thin',op:'>='},
+};
+const hasNum=(txt,t)=>new RegExp('(^|[^\\d.])'+String(t).replace('.','\\.')+'(?![\\d]|\\.\\d)').test(norm(txt));
+
+function computeHelp(){
+  const N=state.nodes, done=Array(8).fill(false); let cur=null;
+  const say=(i,zh,en,focus,acts)=>{ if(!cur) cur={i,zh,en,focus:focus||null,acts:acts||[]}; };
+
+  /* 0 START */
+  const starts=N.filter(n=>n.type==='terminator'&&/start|開始/i.test(n.text||''));
+  if(starts.length===1) done[0]=true;
+  else if(starts.length>1) say(0,`只需要一個 ${B('START')}，把多的那一個刪掉。`,'You only need one START.',starts[1].id);
+  else say(0,`從左邊把 ${B('START')} 拖到畫布上方，流程圖從這裡開始。`,'Drag START onto the canvas. Every flowchart begins here.');
+
+  /* 1-2 INPUT */
+  const ins=N.filter(n=>ioRole(n)==='input'), outs=N.filter(n=>ioRole(n)==='output');
+  const hIn=ins.find(n=>H_TOK.test(bodyOf(n))), wIn=ins.find(n=>W_TOK.test(bodyOf(n)));
+  const badIn=ins.find(n=>bodyOf(n)&&!H_TOK.test(bodyOf(n))&&!W_TOK.test(bodyOf(n)));
+  const emptyIn=ins.find(n=>!bodyOf(n));
+  const misOut=outs.find(n=>H_TOK.test(bodyOf(n))||W_TOK.test(bodyOf(n)));
+  if(hIn) done[1]=true;
+  if(wIn) done[2]=true;
+  if(misOut) say(hIn?2:1,`${nm(misOut)} 是要讓使用者輸入的資料，請改用 ${B('INPUT')}，不是 OUTPUT。`,'Height and weight are typed in by the user, so use INPUT, not OUTPUT.',misOut.id);
+  if(badIn) say(hIn?2:1,`小幫手看不懂 ${nm(badIn)}。身高寫 ${B('height')}、${B('h')}、${B('m')} 或 ${B('身高')}；體重寫 ${B('weight')}、${B('w')}、${B('kg')} 或 ${B('體重')}。檢查一下拼字！`,'Check the spelling: height / h / m, or weight / w / kg.',badIn.id);
+  if(!hIn){
+    if(emptyIn) say(1,`雙擊這個 INPUT，打 ${B('height')}，畫面會自動變成「input height」。`,'Double-click the INPUT and type height.',emptyIn.id);
+    else say(1,`拖一個 ${B('INPUT')} 放在 START 下面，雙擊後打 ${B('height')}（也可以打 h、m 或 身高）。`,'Add an INPUT under START and type height (or h, m).');
+  }
+  if(!wIn){
+    if(emptyIn) say(2,`雙擊這個 INPUT，打 ${B('weight')}。`,'Double-click the INPUT and type weight.',emptyIn.id);
+    else say(2,`再拖一個 ${B('INPUT')}，雙擊後打 ${B('weight')}（也可以打 w、kg 或 體重）。`,'Add another INPUT and type weight (or w, kg).');
+  }
+
+  /* 3 BMI formula */
+  const unit=hIn?(heightUnit(hIn.text)||'m'):'m';
+  const procs=N.filter(n=>n.type==='process');
+  let bmiP=null, bmiA=null;
+  for(const p of procs){ const a=parseAssign(p.text||''); if(a&&a.target==='B'){ bmiP=p; bmiA=a; break; } }
+  const fval=(hm,w)=>{ try{ return bmiA.f(unit==='cm'?hm*100:hm,w,undefined); }catch(e){ return NaN; } };
+  let formulaOK=false;
+  if(bmiA&&bmiA.f) formulaOK=[[1.6,56.32],[1.75,70]].every(([h,w])=>Math.abs(fval(h,w)-w/(h*h))<0.05);
+  if(formulaOK) done[3]=true;
+  else if(!procs.length) say(3,`拖一個 ${B('PROCESS')}，雙擊後自己打出計算 BMI 的公式，開頭寫 ${B('bmi =')}。`,'Add a PROCESS and type the BMI formula yourself, starting with bmi =.');
+  else if(!bmiP){ const p=procs.find(x=>String(x.text||'').trim())||procs[0];
+    if(!String(p.text||'').trim()) say(3,`雙擊 PROCESS，打出 BMI 的公式，開頭寫 ${B('bmi =')}。`,'Double-click the PROCESS and start with bmi =.',p.id);
+    else say(3,`公式要寫成 ${B('bmi = …')} 的樣子：等號左邊是 bmi，右邊是算式。`,'Write it as bmi = … (bmi on the left).',p.id); }
+  else if(!bmiA.f) say(3,`小幫手看不懂算式「${esc(bmiA.rhs)}」。除法用 ${B('/')}，平方用 ${B('^2')} 或 ${B('h*h')}，變數用你 INPUT 裡的名字（例如 w、h）。`,'Use / for divide and ^2 (or h*h) for square, with the names from your INPUTs.',bmiP.id);
+  else {
+    const v1=fval(1.6,56.32), noSq=Math.abs(v1-56.32/1.6)<0.05, flip=Math.abs(v1-(1.6*1.6)/56.32)<0.01;
+    let zh='BMI 公式還不對。想一想：BMI 是「體重 ÷ 身高的平方」。', en='Not quite. BMI = weight ÷ height².';
+    if(noSq){ zh='快對了！身高要先「平方」再去除，可以用 ^2 或 h*h。'; en='Almost! Height must be squared: ^2 or h*h.'; }
+    else if(flip){ zh='除的方向反了：要用「體重」去除以「身高的平方」。'; en='Flip it: weight divided by height squared.'; }
+    if(unit==='cm'&&!noSq&&!flip){ zh+=' 你的身高單位是公分（cm），算 BMI 要先換成公尺（÷100）。'; en+=' Your height is in cm, so change it to metres first (÷100).'; }
+    say(3,zh,en,bmiP.id);
+  }
+
+  /* 4 order */
+  const decs=N.filter(n=>n.type==='decision');
+  let order=state.order;
+  if(!order){ if(decs.some(d=>hasNum(d.text,'18.5'))) order='asc'; else if(decs.some(d=>hasNum(d.text,'27'))) order='desc'; }
+  if(order) done[4]=true;
+  else say(4,'公式完成！接下來要用判斷把 BMI 分成四種結果。你想從哪一邊開始判斷？','Formula done! Which end do you want to start checking from?',null,
+    [{act:'asc',label:'Start with BMI < 18.5 從小到大'},{act:'desc',label:'Start with BMI ≥ 27 從大到小'}]);
+
+  /* 5 decisions + outputs */
+  if(order){
+    const P=PLANS[order], sw={act:'switch',label:'Switch order 換另一種順序'};
+    let ok5=true;
+    P.steps.forEach((st,k)=>{
+      const d=decs.find(x=>hasNum(x.text,st.t));
+      const first=k===0?'':'在上一個判斷的 No 下面，';
+      const want=`BMI ${P.op} ${st.t}`;
+      if(!d){ ok5=false; say(5,`${first}放一個 ${B('DECISION')}，雙擊打 ${B(want)}。`,`Add a DECISION: ${want}`,null,k===0?[sw]:[]); return; }
+      const c=compileCond(d.text||'');
+      if(!c){ ok5=false; say(5,`小幫手看不懂判斷 ${nm(d)}，請寫成 ${B(want)} 的樣子。`,`Write it like ${want}.`,d.id); return; }
+      const good=order==='asc'?(c(st.t-0.01)&&!c(st.t)):(c(st.t)&&!c(st.t-0.01));
+      if(!good){ ok5=false;
+        if(order==='asc'&&c(st.t)&&c(st.t-0.01)) say(5,`BMI 剛好 ${st.t} 不算 ${st.cat}，所以要用 ${B('<')}，不是 <=。`,`BMI = ${st.t} is not ${st.cat}, so use <.`,d.id);
+        else if(order==='desc'&&!c(st.t)&&!c(st.t-0.01)) say(5,`BMI 剛好 ${st.t} 也算 ${st.cat}，所以要用 ${B('>=')}，不是 >。`,`BMI = ${st.t} counts as ${st.cat}, so use >=.`,d.id);
+        else say(5,`這個判斷的方向反了，改成 ${B(want)}。`,`Flip the sign: ${want}.`,d.id);
+        return; }
+      const o=outs.find(x=>catOf(bodyOf(x))===st.cat);
+      if(!o){ ok5=false; say(5,`在 ${nm(d)} 的 Yes 旁邊放一個 ${B('OUTPUT')}，雙擊打 ${B(st.cat)}。`,`Add an OUTPUT for Yes: ${st.cat}.`,d.id); }
+    });
+    if(!outs.find(x=>catOf(bodyOf(x))===P.last)){ ok5=false; say(5,`最後一種情況：上面的判斷全部都是 No，就放一個 ${B('OUTPUT')} 打 ${B(P.last)}。`,`If every check is No, add an OUTPUT: ${P.last}.`); }
+    const badOut=outs.find(x=>bodyOf(x)&&!catOf(bodyOf(x))&&!H_TOK.test(bodyOf(x))&&!W_TOK.test(bodyOf(x)));
+    if(badOut){ ok5=false; say(5,`${nm(badOut)} 不是這題的結果。OUTPUT 只能是 ${B('thin')}、${B('normal')}、${B('overweight')}、${B('obesity')}。`,'Outputs should be thin, normal, overweight or obesity.',badOut.id); }
+    const emptyOut=outs.find(x=>!bodyOf(x));
+    if(emptyOut){ ok5=false; say(5,'雙擊這個 OUTPUT，打上結果（thin、normal、overweight 或 obesity）。','Double-click the OUTPUT and type a result.',emptyOut.id); }
+    if(ok5) done[5]=true;
+  }
+
+  /* 6 END */
+  const ends=N.filter(n=>n.type==='terminator'&&/^(end|結束)$/i.test(String(n.text||'').trim()));
+  if(ends.length) done[6]=true; else say(6,`拖一個 ${B('END')} 放在最下面，流程圖在這裡結束。`,'Add END at the bottom.');
+
+  /* 7 lines */
+  let g=null;
+  if(N.length) g=grade({nodes:N,edges:state.edges});
+  if(g&&g.total>=100) done[7]=true;
+  else if(g){
+    const inc={},out={}; N.forEach(n=>{inc[n.id]=0;out[n.id]=0;});
+    state.edges.forEach(e=>{ if(inc[e.to.node]!==undefined) inc[e.to.node]++; if(out[e.from.node]!==undefined) out[e.from.node]++; });
+    const sorted=[...N].sort((a,b)=>a.y-b.y||a.x-b.x);
+    const noOut=sorted.find(n=>!(n.type==='terminator'&&/end|結束/i.test(n.text||''))&&!out[n.id]);
+    const noIn=sorted.find(n=>!(n.type==='terminator'&&/start|開始/i.test(n.text||''))&&!inc[n.id]);
+    const yn=/^(是|yes|y|否|no|n|true|false)$/i;
+    const decBad=decs.find(d=>{ const es=state.edges.filter(e=>e.from.node===d.id); return es.length<2||es.filter(e=>yn.test(String(e.label||'').trim())).length<2; });
+    if(noOut) say(7,`${nm(noOut)} 還沒有線連出去。把滑鼠移到圖形上，從邊上的${B('小圓點')}拖到下一個圖形。`,'Connect it: drag from a small dot on its edge to the next block.',noOut.id);
+    else if(noIn) say(7,`${nm(noIn)} 還沒有線連進來，從上一步的小圓點拖一條線到它。`,'Nothing points to this block yet. Draw a line into it.',noIn.id);
+    else if(decBad){ const n=state.edges.filter(e=>e.from.node===decBad.id).length;
+      say(7,n<2?`判斷 ${nm(decBad)} 要有兩條線：一條 ${B('Yes')}、一條 ${B('No')}。`:`判斷 ${nm(decBad)} 的線要標 ${B('Yes')} 和 ${B('No')}，雙擊線上的文字可以修改。`,'A DECISION needs two lines: Yes and No.',decBad.id); }
+    else {
+      const wrong=g.logic.find(t=>!t.ok);
+      const stop=g.full.find(t=>t.stop);
+      if(wrong&&wrong.got) say(7,`測試看看：BMI ${wrong.bmi} 應該是 ${B(wrong.exp)}，你的流程會跑到 ${B(wrong.got)}。檢查 Yes / No 有沒有接反，或接到錯的 OUTPUT。`,`Test: BMI ${wrong.bmi} should be ${wrong.exp}, but your chart says ${wrong.got}. Check the Yes/No lines.`);
+      else if(stop&&stop.stop.node) say(7,`流程走到 ${nm(getNode(stop.stop.node)||{text:''})} 就停住了：${esc(stop.stop.why)}。`,'The flow gets stuck here. Check the lines.',stop.stop.node);
+      else if(g.fixes.length) say(7,esc(g.fixes[0]),'Almost there! Fix this last part.');
+      else say(7,'檢查每條線的方向：要從 START 一路走到 END。','Check the arrows go from START to END.');
+    }
+  } else say(7,'把每個圖形用線接起來，從 START 一路接到 END。','Connect every block from START to END.');
+
+  if(!cur) cur={i:8,zh:`完成了！八種 BMI 的測試全部通過。按 ${B('Check 提交批改')} 看分數、領取完成圖，再按 ${B('下載作業檔')} 繳交。`,en:'All done! Every BMI test passed. Press Check to get your certificate, then download your file to hand it in.',focus:null,acts:[{act:'check',label:'Check 提交批改'},{act:'download',label:'Download file 下載作業檔'}]};
+  return {cur,done};
+}
+
+let helpTimer=null, lastHelpKey='';
+function scheduleHelp(){ if(FREE) return; clearTimeout(helpTimer); helpTimer=setTimeout(updateHelp,drag?400:120); }
+function updateHelp(){
+  if(drag&&drag.type!=='palette'){ scheduleHelp(); return; }
+  let r; try{ r=computeHelp(); }catch(err){ return; }
+  const {cur,done}=r, key=JSON.stringify([cur.i,cur.zh,cur.focus,done]);
+  if(key===lastHelpKey) return; lastHelpKey=key;
+  $('#bSteps').innerHTML=STEP_NAMES.map((s,i)=>`<li class="${done[i]?'ok':''}${i===cur.i?' now':''}">${s}</li>`).join('');
+  $('#bZh').innerHTML=cur.zh; $('#bEn').textContent=cur.en;
+  $('#bActs').innerHTML=(cur.acts||[]).map(a=>`<button class="btn${a.act==='check'||a.act==='asc'||a.act==='desc'?' primary':''}" data-act="${a.act}">${a.label}</button>`).join('');
+  $('#buddy').classList.toggle('done',cur.i===8);
+  if(helperFocus!==cur.focus){
+    const old=helperFocus&&document.querySelector(`.node[data-id="${helperFocus}"]`); if(old) old.classList.remove('focus');
+    helperFocus=cur.focus;
+    const nw=helperFocus&&document.querySelector(`.node[data-id="${helperFocus}"]`); if(nw) nw.classList.add('focus');
+  }
+}
+$('#bActs').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return; const a=b.dataset.act;
+  if(a==='asc'||a==='desc'){ const bf=snap(); state.order=a; commit(bf); render(); }
+  else if(a==='switch'){ const bf=snap(); state.order=state.order==='asc'?'desc':'asc'; commit(bf); render(); }
+  else if(a==='download') $('#bCopy').click();
+  else if(a==='check') openCheck();
+});
+const HELP_MIN='flowboard-helper-min';
+function setMin(m){ $('#buddy').classList.toggle('min',m); $('#bMin').textContent=m?'+':'–'; $('#bMin').setAttribute('aria-label',m?'展開小幫手':'收合小幫手'); try{ localStorage.setItem(HELP_MIN,m?'1':''); }catch(e){} }
+$('#bMin').onclick=()=>setMin(!$('#buddy').classList.contains('min'));
+try{ if(localStorage.getItem(HELP_MIN)) setMin(true); }catch(e){}
+
+/* ---------- self check & certificate ---------- */
+const GORDER=[['結構','Structure'],['輸入','Input'],['計算','Process'],['判斷','Decision'],['輸出','Output'],['執行測試','Test run']];
+const fmtN=v=>Number.isInteger(v)?String(v):(Math.round(v*10)/10).toFixed(1);
+let lastCheck=null, certBlob=null, certTimer=null;
+function openCheck(){
+  commitEdit();
+  if(!state.nodes.length){ toast('Draw your flowchart first 畫布是空的，先畫流程圖'); return; }
+  const work={nodes:state.nodes,edges:state.edges}, g=grade(work), f=feedback(work,g);
+  lastCheck=g; certBlob=null;
+  $('#ckScore').innerHTML=`${g.total}<small> / 100</small>`;
+  const b=$('#ckBadge'); b.textContent=g.passed?'Passed 達成':'Not yet 尚未達成'; b.classList.toggle('no',!g.passed);
+  const en=$('#ckEn'); en.textContent=g.english>=100?'Bilingual Star 雙語之星':`English 英文 ${g.english}%`; en.classList.toggle('no',g.english<100);
+  $('#ckGroups').innerHTML=GORDER.map(([k,e])=>{ const v=g.groups[k]; return v?`<div><span>${e?e+' ':''}${k}</span><b>${fmtN(v.got)} / ${fmtN(v.max)}</b></div>`:''; }).join('');
+  $('#ckFbEn').textContent=f.en; $('#ckFbZh').textContent=f.zh;
+  $('#ckTests').innerHTML=g.full.map(t=>`<span class="${t.ok?'ok':'no'}">BMI ${t.bmi} → ${esc(t.ok?t.exp:(t.got||'?'))} ${t.ok?'✓':'✗'}</span>`).join('');
+  $('#ckCert').hidden=!g.passed; $('#bCert').hidden=!g.passed;
+  const st=$('#ckStatus'); st.classList.remove('err');
+  st.textContent=g.passed?'':'Fix it and check again. 修正後再按一次提交批改。';
+  $('#checkModal').hidden=false;
+  if(g.passed){ $('#ckStudent').value=meta.student; $('#ckTitle').value=meta.title||DEFAULT_TITLE; makeCert(); }
+}
+[['ckStudent','student'],['ckTitle','title']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{ meta[k]=e.target.value; saveMeta(); clearTimeout(certTimer); certTimer=setTimeout(makeCert,300); }));
+
+function chartSVG(){
+  const keep=sel, km=multi, kf=helperFocus; sel=null; multi=new Set(); helperFocus=null; render();
+  const bb=world.getBBox(), pad=16, x=bb.x-pad, y=bb.y-pad, w=bb.width+pad*2, h=bb.height+pad*2;
+  const wc=world.cloneNode(true); wc.removeAttribute('transform'); wc.removeAttribute('id');
+  wc.querySelectorAll('.port,.port-dot,.hit,.handle,#temp,#marq,.ph').forEach(el=>el.remove());
+  sel=keep; multi=km; helperFocus=kf; render();
+  const css='.shape{fill:#ffffff;stroke:#1e2a2c;stroke-width:1.6}text{fill:#1e2a2c;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",Arial,sans-serif;font-size:14px;text-anchor:middle;dominant-baseline:central}.line{fill:none;stroke:#1e2a2c;stroke-width:1.6;stroke-linejoin:round}.arrow,.arrow-sel{fill:#1e2a2c}.elabel rect{fill:#eef4f1;stroke:#cbd9d2}.elabel text{font-size:13px;font-weight:500}';
+  const mk=id=>`<marker id="${id}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="arrow" d="M0 0L10 5L0 10z"/></marker>`;
+  return {str:`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}"><style>${css}</style><defs>${mk('arrow')}${mk('arrowSel')}</defs>${new XMLSerializer().serializeToString(wc)}</svg>`,w,h};
+}
+function rrect(x,X,Y,W,H,r){ x.beginPath(); x.moveTo(X+r,Y); x.lineTo(X+W-r,Y); x.quadraticCurveTo(X+W,Y,X+W,Y+r); x.lineTo(X+W,Y+H-r); x.quadraticCurveTo(X+W,Y+H,X+W-r,Y+H); x.lineTo(X+r,Y+H); x.quadraticCurveTo(X,Y+H,X,Y+H-r); x.lineTo(X,Y+r); x.quadraticCurveTo(X,Y,X+r,Y); x.closePath(); }
+async function makeCert(){
+  const g=lastCheck; if(!g||!g.passed) return;
+  const {str,w,h}=chartSVG();
+  const img=await new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>res(null); i.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(str); });
+  try{ await document.fonts.ready; }catch(e){}
+  const W=1600,H=1000,c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+  const F='"Noto Sans TC","PingFang TC","Microsoft JhengHei",Arial,sans-serif', M='"JetBrains Mono",Menlo,Consolas,monospace';
+  const GREEN='#17795a', INK='#1e2a2c', MUTED='#5b6b6e';
+  x.fillStyle='#f6f9f7'; x.fillRect(0,0,W,H);
+  x.strokeStyle='#e2eae6'; x.lineWidth=1;
+  for(let i=0;i<=W;i+=25){ x.beginPath(); x.moveTo(i+.5,0); x.lineTo(i+.5,H); x.stroke(); }
+  for(let j=0;j<=H;j+=25){ x.beginPath(); x.moveTo(0,j+.5); x.lineTo(W,j+.5); x.stroke(); }
+  x.strokeStyle=GREEN; x.lineWidth=8; x.strokeRect(28,28,W-56,H-56); x.lineWidth=1.5; x.strokeRect(46,46,W-92,H-92);
+  const L=100, maxW=520;
+  x.textBaseline='alphabetic';
+  x.fillStyle=GREEN; x.font=`500 22px ${M}`; try{ x.letterSpacing='4px'; }catch(e){}
+  x.fillText('BMI FLOWCHART · COMPLETE',L,140,maxW); try{ x.letterSpacing='0px'; }catch(e){}
+  x.fillStyle=INK; x.font=`700 76px ${F}`; x.fillText('Well done!',L,240,maxW);
+  x.font=`700 56px ${F}`; x.fillText('完成了！',L,312,maxW);
+  const field=(label,val,y)=>{ x.fillStyle=MUTED; x.font=`400 22px ${F}`; x.fillText(label,L,y,maxW);
+    x.fillStyle=INK; x.font=`500 38px ${F}`; x.fillText(val,L,y+50,maxW);
+    x.strokeStyle='#cbd9d2'; x.lineWidth=2; x.beginPath(); x.moveTo(L,y+68); x.lineTo(L+maxW,y+68); x.stroke(); };
+  field('Student 學生',meta.student||'—',400);
+  field('Title 作品',meta.title||'BMI Flowchart',510);
+  x.fillStyle=MUTED; x.font=`400 22px ${F}`; x.fillText('Score 分數',L,630);
+  x.fillStyle=GREEN; x.font=`500 96px ${M}`; x.fillText(String(g.total),L,725);
+  const sw=x.measureText(String(g.total)).width; x.fillStyle=MUTED; x.font=`400 32px ${M}`; x.fillText('/ 100',L+sw+14,725);
+  let py=790;
+  const pill=(t,fill,fg)=>{ x.font=`500 24px ${F}`; const tw=x.measureText(t).width+36; rrect(x,L,py-32,tw,46,23); x.fillStyle=fill; x.fill(); x.fillStyle=fg; x.fillText(t,L+18,py); py+=62; };
+  pill('✓ 8 / 8 BMI tests passed 測試全數通過','#dcefe5',GREEN);
+  if(g.english>=100) pill('★ Bilingual Star 雙語之星',GREEN,'#ffffff');
+  x.fillStyle=MUTED; x.font=`400 22px ${M}`; x.fillText(new Date().toLocaleDateString('zh-TW'),L,915);
+  const BX=700,BY=100,BW=800,BH=800;
+  rrect(x,BX,BY,BW,BH,18); x.fillStyle='#ffffff'; x.fill(); x.strokeStyle='#cbd9d2'; x.lineWidth=2; x.stroke();
+  if(img){ const pad=36, k=Math.min((BW-pad*2)/w,(BH-pad*2)/h,2); const dw=w*k, dh=h*k; x.drawImage(img,BX+(BW-dw)/2,BY+(BH-dh)/2,dw,dh); }
+  certBlob=await new Promise(res=>c.toBlob(res,'image/png'));
+  $('#ckImg').src=c.toDataURL('image/png');
+}
+$('#bCert').onclick=async()=>{
+  const st=$('#ckStatus'); st.classList.remove('err');
+  if(!String(meta.student||'').trim()){ st.textContent='Enter your name first. 請先填寫座號與姓名。'; st.classList.add('err'); $('#ckStudent').focus(); return; }
+  await makeCert(); if(!certBlob){ st.textContent='Something went wrong. Try again. 完成圖產生失敗，請再試一次。'; st.classList.add('err'); return; }
+  const name=`完成圖_${cleanName(meta.student)||'BMI'}.png`;
+  const dl=await dlPromise;
+  if(dl){ try{ await dl.save({filename:name,data:certBlob}); st.textContent='Saved! 已下載完成圖'; return; }
+    catch(err){ if(err&&err.code==='declined'){ st.textContent='Cancelled 已取消下載'; return; } if(err&&err.code==='rate_limited'){ st.textContent='A download window is already open. 下載視窗已經開著。'; return; } } }
+  st.textContent='Right-click the image to save it. 請在完成圖上按右鍵「另存圖片」（手機請長按）。';
+};
+$('#bCheck').onclick=openCheck;
+
+/* ---------- start ---------- */
+let loaded=false;
+try{ const s=localStorage.getItem(KEY); if(s){ loadStr(s); loaded=true; } }catch(e){}
+if(FREE){ $('#buddy').hidden=true; $('#bCheck').hidden=true; $('#appName').textContent='Free Drawing 自由繪製'; document.title='Free Drawing 自由繪製'; }
+render(); showTitle(); requestAnimationFrame(fit);
+})();
+</script>
+
+</body>
+</html>
