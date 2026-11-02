@@ -67,6 +67,8 @@ button{font:inherit;color:inherit}
 .askbox button{border:0;border-radius:50%;width:32px;height:32px;background:#5CB1D6;color:#fff;cursor:pointer;font-size:16px}
 .monitors{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px}
 .mon{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);border:1px solid #d5dcd9;border-radius:6px;padding:2px 4px 2px 8px;font-size:12px;color:#1e2a2c}
+.mon.hint{background:rgba(255,255,255,.85);color:#5b6b6e;font-size:11px;max-width:200px;line-height:1.4;padding:4px 8px}
+.mon.ans b{background:#5CB1D6}
 .mon b{background:#FF8C1A;color:#fff;border-radius:4px;padding:0 6px;font-family:var(--font-mono);font-weight:500;min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
 .stagebar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
 .stagebar .dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
@@ -140,7 +142,7 @@ button{font:inherit;color:inherit}
 
 <div class="app">
   <header>
-    <h1><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.6"><path d="M3 6h7l1 1h2l1-1h7v5H14l-1 1h-2l-1-1H3z"/><path d="M3 14h7l1 1h2l1-1h4v5H3z"/></svg>Scratch Lab: Pass or Fail <small>積木程式：成績及格判斷</small></h1>
+    <h1><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.6"><path d="M3 6h7l1 1h2l1-1h7v5H14l-1 1h-2l-1-1H3z"/><path d="M3 14h7l1 1h2l1-1h4v5H3z"/></svg><span id="h1Name">Scratch Lab</span> <small id="h1Zh"></small></h1>
     <div class="tools">
       <button class="btn go" id="bRun" title="Run 執行"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M5 3v18" stroke="#fff" stroke-width="2"/><path d="M6 4c4-2 6 2 12 0v9c-6 2-8-2-12 0z"/></svg>Run 執行</button>
       <button class="btn stop" id="bStop" disabled title="Stop 停止"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg>Stop 停止</button>
@@ -174,7 +176,7 @@ button{font:inherit;color:inherit}
           <div class="bubble" id="bubble" hidden></div>
           <form class="askbox" id="askbox" hidden><input id="askInput" autocomplete="off" aria-label="Your answer 你的回答"><button type="submit" aria-label="OK 確定">✓</button></form>
         </div>
-        <div class="stagebar" id="stagebar"><span class="dot"></span><span id="stageMsg">Press Run to try your program. 按 Run 執行看看你的程式。</span></div>
+        <div class="stagebar" id="stagebar"><span class="dot"></span><span id="stageMsg">Press Run to try your program. Click a variable or answer block to watch its value. 按 Run 執行；點變數或 answer 積木，可以在舞台上看到它的值。</span></div>
       </div>
       <section class="buddy" id="buddy" aria-live="polite">
         <div class="b-head">
@@ -940,14 +942,126 @@ function feedbackScratch(work,g){
   gradeTask=function(w){ return taskOf(w)==='scratch'?gradeScratch(w):_grade(w); };
   feedbackTask=function(w,g){ return (g.task||taskOf(w))==='scratch'?feedbackScratch(w,g):_fb(w,g); };
 })();
-if(typeof module!=='undefined') Object.assign(module.exports,{sbExec,sbRunSync,sbOutline,sbFacts,gradeScratch,feedbackScratch,gradeTask,feedbackTask,taskOf});
+
+/* ===== Scratch BMI task ===== */
+const SBB_H=1.5, SBB_CASES=[16,18.4,18.5,22,24,25.5,27,32];
+/* run where each ask is answered by a function of (question, index) */
+function sbRunFn(ws,fn){
+  const says=[], asks=[]; let err=null, st=null, send;
+  const it=sbExec(ws);
+  try{ while(true){ const r=it.next(send); send=undefined; if(r.done){ st=r.value; break; }
+    const e=r.value; if(e.type==='ask'){ send=String(fn(e.q,asks.length)); asks.push(e.q); } else if(e.type==='say') says.push(e.msg); } }
+  catch(e){ err=e.message; }
+  return {says,asks,vars:st?st.vars:{},err};
+}
+const SBB_W=/weight|體重|kg|公斤|(^|[^a-z])w([^a-z]|$)/i, SBB_HT=/height|身高|cm|公分|(^|[^a-z])h([^a-z]|$)|(^|[^a-z])m([^a-z]|$)|公尺/i;
+function sbbAnswerer(bmi,unit){
+  const w=+(bmi*SBB_H*SBB_H).toFixed(4); let used={h:false,w:false};
+  return (q)=>{ q=String(q||''); let kind=null;
+    if(SBB_W.test(q)&&!/height|身高/i.test(q)) kind='w'; else if(SBB_HT.test(q)) kind='h';
+    if(!kind) kind=!used.h?'h':'w';
+    used[kind]=true;
+    if(kind==='w') return w;
+    const u=/cm|公分/i.test(q)?'cm':unit; return u==='cm'?SBB_H*100:SBB_H; };
+}
+function gradeScratchBMI(work){
+  const ws=work.workspace||{}, F=sbFacts(ws), items=[], bad=new Set();
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  add('結構','有「當綠旗被點擊」',5,F.flags.length?5:0,F.flags.length?'':'程式要從「when ⚑ clicked 當綠旗被點擊」開始');
+  add('結構','沒有散落的積木',5,5-2.5*F.loose.length,F.loose.length?`有 ${F.loose.length} 組積木沒有接在綠旗下面`:'');
+  F.loose.forEach(b=>bad.add(b.id));
+  add('結構','使用「如果…那麼…否則」',5,F.ifs.length?5:0,F.ifs.length?'':'要用「if then else 如果那麼否則」做判斷');
+  /* choose the height unit that works best */
+  const runAll=unit=>SBB_CASES.map(b=>{ const r=sbRunFn(ws,sbbAnswerer(b,unit)); const cats=r.says.map(catOf).filter(Boolean); const got=cats.length?cats[cats.length-1]:null;
+    return {bmi:b,h:SBB_H,w:+(b*SBB_H*SBB_H).toFixed(4),exp:expectCat(b),got,ok:got===expectCat(b)&&new Set(cats).size===1,why:r.err?'程式停不下來':got?'':(F.flags.length?'沒有說出結果':'沒有綠旗程式'),run:r}; });
+  let unit='m', full=runAll('m'); const cm=runAll('cm');
+  if(cm.filter(t=>t.ok).length>full.filter(t=>t.ok).length){ unit='cm'; full=cm; }
+  const r0=full[3].run, bmi0=22;
+  const near=(x,y)=>String(x).trim()!==''&&Math.abs(sbNum(x)-y)<0.01;
+  const bmiVar=Object.entries(r0.vars).find(([k,v])=>near(v,bmi0));
+  /* input 15 */
+  const askN=Math.min(2,r0.asks.length);
+  add('輸入','詢問身高和體重',8,4*askN,r0.asks.length>=2?'':`目前詢問了 ${r0.asks.length} 次，要詢問身高和體重`);
+  const stored=Math.min(2,F.stores.length);
+  add('輸入','把答案存進變數',7,7*stored/2,stored>=2?'':'每次詢問後，用「set [height] to (answer)」把答案存進變數');
+  /* process 20 */
+  let bNote='';
+  if(!bmiVar){ const vals=Object.values(r0.vars).map(sbNum), w=+(bmi0*SBB_H*SBB_H).toFixed(4);
+    if(vals.some(v=>Math.abs(v-w/SBB_H)<0.01||Math.abs(v-w/(SBB_H*100))<0.001)) bNote='身高要平方：weight / (height * height)';
+    else if(vals.some(v=>Math.abs(v-w/(SBB_H*100*SBB_H*100))<1e-6)) bNote='身高是公分，要先 ÷ 100 換成公尺';
+    else bNote='用變數 bmi 存 weight / (height * height)'; }
+  add('計算','算出 BMI',20,bmiVar?20:(Object.keys(r0.vars).length>2?5:0),bNote);
+  /* decision 20 */
+  const nums=(F.condText.match(/-?\d+(\.\d+)?/g)||[]).map(Number);
+  [[18.5,'thin 與 normal'],[24,'normal 與 overweight'],[27,'overweight 與 obesity']].forEach(([t,d])=>{
+    const ok=nums.some(v=>Math.abs(v-t)<0.011); add('判斷',`有 ${t} 的判斷（${d}）`,20/3,ok?20/3:0,ok?'':`「如果」裡缺少和 ${t} 的比較`); });
+  /* output 10 */
+  CATS.forEach(c=>{ const ok=F.sayTexts.some(t=>catOf(t)===c.key); add('輸出',`說出 ${c.name}`,2.5,ok?2.5:0,ok?'':`要用「say 說」說出 ${c.name}`); });
+  /* tests 20 */
+  const fp=full.filter(t=>t.ok).length;
+  add('執行測試','執行測試（八組身高體重）',20,20*fp/SBB_CASES.length,`${fp} / ${SBB_CASES.length} 題正確`);
+  /* english */
+  const CJK=/[㐀-鿿]/; const units=[...F.texts,...F.varNames]; const zh=units.filter(t=>CJK.test(t));
+  const english=units.length?Math.round(100*(units.length-zh.length)/units.length):0;
+  const words=[...new Set(zh.join(' ').match(/[㐀-鿿]+/g)||[])];
+  const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max-1e-9&&i.note&&!/題正確$/.test(i.note)).forEach(i=>fixes.push(i.note));
+  full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`BMI ${t.bmi} 應該說 ${t.exp}，你的程式說 ${t.got}`));
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
+  full.forEach(t=>delete t.run);
+  return {task:'scratch-bmi',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,facts:F,run0:r0,bmiVar,unit};
+}
+function feedbackScratchBMI(work,g){
+  const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
+  if(g.passed) return {en:'Excellent! Your program asks for height and weight, works out the BMI and says the right result in all 8 tests.'+(enOK?' Everything is in English. Great job!':' Next time, try writing every message in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
+    zh:'程式完整又正確，八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
+  const pos=[],pz=[],fx=[],fz=[]; const add=(e,z)=>{fx.push(e);fz.push(z);};
+  if(full(it('詢問身高'))){ pos.push('you ask for height and weight'); pz.push('身高體重都有詢問'); }
+  if(full(it('算出 BMI'))){ pos.push('your BMI formula is correct'); pz.push('BMI 算對了'); }
+  if(full(it('使用「如果'))){ pos.push('you used if-then-else'); pz.push('有用到如果否則'); }
+  if(!full(it('有「當綠旗'))) add('start with "when ⚑ clicked"','程式要從「當綠旗被點擊」開始');
+  if(!full(it('詢問身高'))) add('ask for height and weight','要詢問身高和體重');
+  if(!full(it('把答案存進變數'))) add('save each answer: set [height] to (answer)','每次詢問後把答案存進變數');
+  if(!full(it('算出 BMI'))) add('set bmi to weight / (height * height)','用 bmi 算出 weight / (height * height)');
+  const miss=['18.5','24','27'].filter(t=>!full(it('有 '+t))); if(miss.length) add(`add if blocks for ${miss.join(', ')}`,`還少了和 ${miss.join('、')} 比較的判斷`);
+  const outs=CATS.filter(c=>!full(it('說出 '+c.name))).map(c=>c.name); if(outs.length) add(`say ${outs.join(', ')}`,`還要說出 ${outs.join('、')}`);
+  if(!full(it('沒有散落'))) add('attach every block under the green flag','把每塊積木都接在綠旗下面');
+  const wrong=g.full.find(t=>!t.ok&&t.got);
+  let en=pos.length?`Good work: ${pos.slice(0,2).join(' and ')}.`:'Thank you for your program!';
+  let zh=pz.length?pz.slice(0,2).join('，')+'，很不錯！':'謝謝你完成這個程式！';
+  if(fx.length){ en+=` To improve: ${fx.slice(0,2).join('; ')}.`; zh+='需要修正：'+fz.slice(0,2).join('；')+'。'; }
+  if(wrong){ en+=` Right now BMI ${wrong.bmi} says ${wrong.got}, but it should say ${wrong.exp}.`; zh+=`目前 BMI ${wrong.bmi} 會說 ${wrong.got}，正確應該是 ${wrong.exp}。`; }
+  if(!enOK&&g.enTips.length){ en+=` Try more English: ${g.enTips.slice(0,3).join(', ')}.`; zh+=`也試著多用英文：${g.enTips.slice(0,3).join('、')}。`; }
+  en+=g.level==='優秀'?' Almost perfect, keep going!':' Fix these step by step and run it again. You can do it!';
+  zh+=g.level==='優秀'?'只差一點點，繼續保持！':'照著修改，再按綠旗試一次，一定會更好！';
+  return {en,zh};
+}
+(function(){
+  const _taskOf=taskOf, _grade=gradeTask, _fb=feedbackTask;
+  taskOf=function(w){ if(w&&w.task==='scratch-bmi') return 'scratch-bmi'; return _taskOf(w); };
+  gradeTask=function(w){ return taskOf(w)==='scratch-bmi'?gradeScratchBMI(w):_grade(w); };
+  feedbackTask=function(w,g){ return (g.task||taskOf(w))==='scratch-bmi'?feedbackScratchBMI(w,g):_fb(w,g); };
+})();
+Object.assign(EN_WORDS,{'答案':'answer','身高':'height','體重':'weight'});
+
+if(typeof module!=='undefined') Object.assign(module.exports,{sbExec,sbRunSync,sbOutline,sbFacts,gradeScratch,feedbackScratch,gradeScratchBMI,feedbackScratchBMI,sbRunFn,gradeTask,feedbackTask,taskOf});
 
 </script>
 <script>
 (function(){
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const KEY='blocklab-score-v1', META_KEY='blocklab-meta', TITLE='Scratch Pass or Fail';
+const SBT=window.SB_TASK==='bmi'?'bmi':'score';
+const TC={
+  score:{key:'blocklab-score-v1',title:'Scratch Pass or Fail',unit:'scratch',h1:'Scratch Lab: Pass or Fail',zh:'積木程式：成績及格判斷',eyebrow:'SCRATCH LAB · PASS OR FAIL · COMPLETE',ask:'Score 1?',says:['pass','fail'],tests:'✓ 8 / 8 tests passed 測試全數通過'},
+  bmi:{key:'blocklab-bmi-v1',title:'Scratch BMI',unit:'scratch-bmi',h1:'Scratch Lab: BMI',zh:'積木程式：BMI 判斷',eyebrow:'SCRATCH LAB · BMI · COMPLETE',ask:'Height (m)?',says:['thin','normal','overweight','obesity'],tests:'✓ 8 / 8 BMI tests passed 測試全數通過'}}[SBT];
+const KEY=TC.key, META_KEY='blocklab-meta', TITLE=TC.title;
+const gradeFn=w=>SBT==='bmi'?gradeScratchBMI(w):gradeScratch(w), fbFn=(w,g)=>SBT==='bmi'?feedbackScratchBMI(w,g):feedbackScratch(w,g);
+document.title=TC.h1.replace('Scratch Lab: ','Scratch ')+' '+TC.zh.replace('積木程式：','');
+$('#h1Name').textContent=TC.h1; $('#h1Zh').textContent=TC.zh;
 let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},2600); }
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m||e.target.closest('[data-close]')) m.hidden=true; }));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal').forEach(m=>{ if(m.id!=='promptModal') m.hidden=true; }); });
@@ -1006,7 +1120,7 @@ const sh=(type,f)=>({shadow:{type,fields:f}});
 const T=(s)=>sh('sc_text',{TEXT:s}), N=(n)=>sh('sc_num',{NUM:n});
 const toolbox={kind:'categoryToolbox',contents:[
   {kind:'category',name:'Events 事件',categorystyle:'events',contents:[{kind:'block',type:'sc_flag'}]},
-  {kind:'category',name:'Sensing 偵測',categorystyle:'sensing',contents:[{kind:'block',type:'sc_ask',inputs:{Q:T('Score 1?')}},{kind:'block',type:'sc_answer'}]},
+  {kind:'category',name:'Sensing 偵測',categorystyle:'sensing',contents:[{kind:'block',type:'sc_ask',inputs:{Q:T(TC.ask)}},{kind:'block',type:'sc_answer'}]},
   {kind:'category',name:'Variables 變數',categorystyle:'variables',custom:'SC_VARS'},
   {kind:'category',name:'Operators 運算',categorystyle:'operators',contents:[
     {kind:'block',type:'sc_add',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_sub',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_mul',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_div',inputs:{A:N(''),B:N(4)}},
@@ -1014,7 +1128,7 @@ const toolbox={kind:'categoryToolbox',contents:[
     {kind:'block',type:'sc_and'},{kind:'block',type:'sc_or'},{kind:'block',type:'sc_not'},
     {kind:'block',type:'sc_join',inputs:{A:T('Average: '),B:T('')}},{kind:'block',type:'sc_round',inputs:{A:N('')}}]},
   {kind:'category',name:'Control 控制',categorystyle:'control',contents:[{kind:'block',type:'sc_ifelse'},{kind:'block',type:'sc_if'},{kind:'block',type:'sc_repeat',inputs:{TIMES:N(4)}},{kind:'block',type:'sc_wait',inputs:{SECS:N(1)}}]},
-  {kind:'category',name:'Looks 外觀',categorystyle:'looks',contents:[{kind:'block',type:'sc_say',inputs:{MSG:T('pass')}},{kind:'block',type:'sc_say',inputs:{MSG:T('fail')}}]},
+  {kind:'category',name:'Looks 外觀',categorystyle:'looks',contents:TC.says.map(t=>({kind:'block',type:'sc_say',inputs:{MSG:T(t)}}))},
 ]};
 /* in-page dialogs (window.prompt/confirm/alert are not reliable) */
 let pmCb=null;
@@ -1043,6 +1157,14 @@ ws.registerToolboxCategoryCallback('SC_VARS',w=>{
     out.push({kind:'block',type:'sc_set',fields:{VAR:{id:v.getId()}},inputs:{VALUE:{block:{type:'sc_answer'}}}});
     out.push({kind:'block',type:'sc_change',fields:{VAR:{id:v.getId()}},inputs:{BY:{shadow:{type:'sc_num',fields:{NUM:1}}}}}); }
   return out; });
+try{
+  const reg=Blockly.ContextMenuRegistry.registry; if(reg.getItem('blockDuplicate')) reg.unregister('blockDuplicate');
+  reg.register({id:'blockDuplicate',scopeType:Blockly.ContextMenuRegistry.ScopeType.BLOCK,weight:1,
+    displayText:()=>'Duplicate 複製（含下方積木）',
+    preconditionFn:sc=>{ const b=sc.block; return b&&!b.isInFlyout&&!b.isShadow()&&b.isDeletable()&&b.isMovable()?'enabled':'hidden'; },
+    callback:sc=>{ const b=sc.block; const j=Blockly.serialization.blocks.save(b,{addCoordinates:true,addNextBlocks:true}); const xy=b.getRelativeToSurfaceXY(); j.x=xy.x+32; j.y=xy.y+32; delete j.id;
+      Blockly.Events.setGroup(true); try{ const nb=Blockly.serialization.blocks.append(j,b.workspace); if(nb&&nb.select) nb.select(); }finally{ Blockly.Events.setGroup(false); } } });
+}catch(e){ console.warn('duplicate menu',e); }
 ws.registerButtonCallback('MAKE_VAR',b=>Blockly.Variables.createVariableButtonHandler(b.getTargetWorkspace(),null,''));
 const wsJSON=()=>Blockly.serialization.workspaces.save(ws);
 function loadJSON(j){ ws.clear(); try{ Blockly.serialization.workspaces.load(j,ws); }catch(e){ console.warn(e); } }
@@ -1057,15 +1179,30 @@ new ResizeObserver(()=>Blockly.svgResize(ws)).observe($('#blocks'));
 /* ---------- stage runner ---------- */
 let running=null;
 function showBubble(t){ const b=$('#bubble'); if(t==null||t===''){ b.hidden=true; return; } b.textContent=t; b.hidden=false; }
-function renderMonitors(vars){ const m=$('#monitors'); const names=ws.getVariablesOfType('').map(v=>v.name);
-  m.innerHTML=names.slice(0,8).map(n=>`<div class="mon">${esc(n)}<b>${esc(vars&&vars[n]!==undefined?(typeof vars[n]==='number'?Math.round(vars[n]*1000)/1000:vars[n]):0)}</b></div>`).join(''); }
+const WKEY=KEY+'-watch'; let watched=[]; try{ watched=JSON.parse(localStorage.getItem(WKEY)||'[]'); }catch(e){}
+let lastVals={}, lastAnswer='';
+const fmtV=v=>v===undefined?0:(typeof v==='number'?Math.round(v*1000)/1000:v);
+function renderMonitors(vars,answer){ if(vars) lastVals=vars; if(answer!==undefined) lastAnswer=answer;
+  const m=$('#monitors'), names=ws.getVariablesOfType('').map(v=>v.name);
+  const list=watched.filter(n=>n==='answer'||names.includes(n));
+  if(!list.length){ m.innerHTML='<div class="mon hint">Click a variable block to watch it here. 點變數積木，就能在這裡看到它的值。</div>'; return; }
+  m.innerHTML=list.map(n=>n==='answer'?`<div class="mon ans">answer 答案<b>${esc(lastAnswer===''?'':lastAnswer)}</b></div>`:`<div class="mon">${esc(n)}<b>${esc(fmtV(lastVals[n]))}</b></div>`).join(''); }
+function toggleWatch(b){ if(!b) return; let n=null;
+  if(b.type==='sc_var') n=b.getField('VAR').getText(); else if(b.type==='sc_answer') n='answer'; if(!n) return;
+  const i=watched.indexOf(n); if(i>=0){ watched.splice(i,1); toast(`Stopped watching ${n} 不再顯示 ${n}`); } else { watched.push(n); toast(`Watching ${n} 舞台上顯示 ${n}`); }
+  try{ localStorage.setItem(WKEY,JSON.stringify(watched)); }catch(e){} renderMonitors(); }
+const clickWatch=w=>e=>{ if(e.type===Blockly.Events.CLICK&&e.blockId) toggleWatch(w.getBlockById(e.blockId)); };
+ws.addChangeListener(clickWatch(ws));
+try{ const fw=ws.getFlyout()&&ws.getFlyout().getWorkspace(); if(fw) fw.addChangeListener(clickWatch(fw)); }catch(e){}
+ws.addChangeListener(e=>{ if(e.type===Blockly.Events.VAR_RENAME){ const k=watched.indexOf(e.oldName); if(k>=0){ watched[k]=e.newName; try{ localStorage.setItem(WKEY,JSON.stringify(watched)); }catch(err){} } } if(e.type===Blockly.Events.VAR_CREATE||e.type===Blockly.Events.VAR_DELETE||e.type===Blockly.Events.VAR_RENAME) renderMonitors(); });
 function setRunning(on,msg){ $('#bRun').disabled=on; $('#bStop').disabled=!on; $('#stage').classList.toggle('running',on); $('#stagebar').classList.toggle('on',on); if(msg) $('#stageMsg').textContent=msg; }
 async function runProgram(){
   if(running) return;
   const j=wsJSON(); if(!sbTop(j).some(t=>t.type==='sc_flag')){ toast('Add “when ⚑ clicked” first. 先放「當綠旗被點擊」。'); return; }
   const token={stop:false}; running=token; showBubble(''); setRunning(true,'Running… 執行中…');
   let liveSt=null; const it=sbExec(j,{expose:s=>{liveSt=s;},onBlock:id=>{ try{ ws.highlightBlock(id); }catch(e){} }}); let send, r, st={vars:{}};
-  const vt=setInterval(()=>{ if(liveSt) renderMonitors(liveSt.vars); },200);
+  lastVals={}; lastAnswer='';
+  const vt=setInterval(()=>{ if(liveSt) renderMonitors(liveSt.vars,liveSt.answer); },150);
   try{
     while(!token.stop){
       r=it.next(send); send=undefined;
@@ -1076,7 +1213,7 @@ async function runProgram(){
       else if(e.type==='ask'){ showBubble(e.q); send=await askUser(token); }
     }
   }catch(err){ showBubble(''); toast(err.message==='too_many_steps'?'The program did not stop, so it was stopped. 程式停不下來，已經幫你停止。':'Something went wrong. 程式執行出錯。'); }
-  clearInterval(vt); renderMonitors((st&&st.vars)||(liveSt&&liveSt.vars)||{}); try{ ws.highlightBlock(null); }catch(e){}
+  clearInterval(vt); renderMonitors((st&&st.vars)||(liveSt&&liveSt.vars)||{},(st&&st.answer!==undefined)?st.answer:(liveSt?liveSt.answer:'')); try{ ws.highlightBlock(null); }catch(e){}
   $('#askbox').hidden=true; running=null; setRunning(false,token.stop?'Stopped. 已停止。':'Finished. 執行完畢。');
 }
 let askResolve=null;
@@ -1084,14 +1221,15 @@ function askUser(token){ return new Promise(res=>{ askResolve=v=>{ askResolve=nu
 $('#askbox').addEventListener('submit',e=>{ e.preventDefault(); if(askResolve){ const v=$('#askInput').value; $('#askbox').hidden=true; askResolve(v); } });
 $('#bRun').onclick=runProgram;
 $('#bStop').onclick=()=>{ if(running){ running.stop=true; if(askResolve) askResolve(''); } };
-renderMonitors({});
+renderMonitors({},'');
 
 /* ---------- helper ---------- */
-const STEPS=['Flag','Ask','Save','Total','Average','If','Say','Test'];
+const STEPS=SBT==='bmi'?['Flag','Ask','Save','BMI','If','Cut-offs','Say','Test']:['Flag','Ask','Save','Total','Average','If','Say','Test'];
 const B=s=>`<b>${s}</b>`;
 let helpT=null, lastKey='', helpFocus=null;
 function scheduleHelp(){ clearTimeout(helpT); helpT=setTimeout(updateHelp,150); }
-function computeHelp(){
+function computeHelp(){ return SBT==='bmi'?computeHelpBMI():computeHelpScore(); }
+function computeHelpScore(){
   const j=wsJSON(), done=Array(8).fill(false); let cur=null;
   const say=(i,en,zh,focus,acts)=>{ if(!cur) cur={i,en,zh,focus:focus||null,acts:acts||[]}; };
   const g=gradeScratch({workspace:j}), F=g.facts, r0=g.run0;
@@ -1123,6 +1261,41 @@ function computeHelp(){
   if(!cur) cur={i:8,en:'All done! All 8 tests passed. Press Run to try it yourself, then Check to get your certificate.',zh:'完成了！八組測試全部通過。按 Run 自己試試看，再按 Check 提交批改領取完成圖。',acts:[{act:'run',label:'Run 執行'},{act:'check',label:'Check 提交批改'}]};
   return {cur,done};
 }
+function computeHelpBMI(){
+  const j=wsJSON(), done=Array(8).fill(false); let cur=null;
+  const say=(i,en,zh,focus,acts)=>{ if(!cur) cur={i,en,zh,focus:focus||null,acts:acts||[]}; };
+  const g=gradeScratchBMI({workspace:j}), F=g.facts, r0=g.run0, it=l=>g.items.find(x=>x.label.startsWith(l));
+  if(F.flags.length) done[0]=true; else say(0,`Open ${B('Events 事件')} and drag ${B('when ⚑ clicked')} into the code area. Your program starts here.`,'打開「Events 事件」，把「when ⚑ clicked 當綠旗被點擊」拖到程式區，程式從這裡開始。');
+  const asks=r0.asks.length;
+  if(asks>=2) done[1]=true;
+  else say(1,`Ask for height and weight (${asks} / 2). From ${B('Sensing 偵測')}, snap ${B('ask "Height (m)?" and wait')} and ${B('ask "Weight (kg)?" and wait')} under the flag.`,`要詢問身高和體重（目前 ${asks} / 2）。從「Sensing 偵測」拿兩個「ask 詢問並等待」接在綠旗下面，分別問 Height (m)? 和 Weight (kg)?。`);
+  if(F.stores.length>=2) done[2]=true;
+  else if(asks) say(2,`Save each answer. In ${B('Variables 變數')}, make ${B('height')} and ${B('weight')}, then put ${B('set height to (answer)')} after the first ask and ${B('set weight to (answer)')} after the second. (${F.stores.length} / 2)`,`把答案存起來：在「Variables 變數」建立 height 和 weight，第一個詢問後接「set height to (answer)」，第二個詢問後接「set weight to (answer)」。（${F.stores.length} / 2）`);
+  if(g.bmiVar) done[3]=true;
+  else { const note=(it('算出 BMI')||{}).note||'';
+    if(/平方/.test(note)) say(3,`Square the height: ${B('weight / (height * height)')}.`,'身高要平方：weight / (height * height)。');
+    else if(/公分/.test(note)) say(3,`Your height is in cm, so change it to metres first: ${B('(height / 100)')}.`,'你的身高是公分，要先換成公尺：(height / 100)。');
+    else say(3,`Make a variable ${B('bmi')} and ${B('set bmi to')} weight / (height * height). Use ${B('/')} and ${B('*')} from ${B('Operators 運算')}.`,'建立變數 bmi，用「set bmi to」算出 weight / (height * height)，「/」和「*」在「Operators 運算」裡。'); }
+  if(F.ifs.length) done[4]=true;
+  else say(4,`From ${B('Control 控制')}, add ${B('if <> then else')} to sort the BMI into groups.`,'從「Control 控制」拿「if then else 如果那麼否則」，用來把 BMI 分組。');
+  const miss=['18.5','24','27'].filter(t=>!((it('有 '+t)||{}).got>0));
+  if(!miss.length) done[5]=true;
+  else if(F.ifs.length){ const first=miss[0]==='18.5'&&miss.length===3;
+    say(5,first?`Put ${B('bmi < 18.5')} in the first if. Then add another if-else inside ${B('else')} for ${B('bmi < 24')}, and one more for ${B('bmi < 27')}.`:`Inside ${B('else')}, add another if-else with ${B('bmi < '+miss[0])}.`,
+      first?'第一個「如果」放 bmi < 18.5，在「否則」裡再放一個如果否則判斷 bmi < 24，再一個判斷 bmi < 27。':`在「否則」裡再放一個如果否則，條件是 bmi < ${miss[0]}。`); }
+  const outs=CATS.filter(c=>!F.sayTexts.some(t=>catOf(t)===c.key)).map(c=>c.key);
+  if(!outs.length) done[6]=true;
+  else say(6,`From ${B('Looks 外觀')}, say ${outs.map(o=>B(o)).join(', ')} in the right places.`,`從「Looks 外觀」在對的位置說出 ${outs.join('、')}。`);
+  if(g.passed) done[7]=true;
+  else if(F.loose.length) say(7,'Some blocks are not attached to the flag script, so they never run. Snap them under it, or drag them to the trash.','有積木沒有接在綠旗下面，所以不會執行。把它們接上去，或拖到垃圾桶。',F.loose[0].id);
+  else { const w=g.full.find(t=>!t.ok);
+    if(w&&w.got) say(7,`Test: BMI ${w.bmi} (height 1.5 m, weight ${w.w} kg) should say ${B(w.exp)}, but your program says ${B(w.got)}.`,`測試：BMI ${w.bmi}（身高 1.5 公尺、體重 ${w.w} 公斤）應該說 ${w.exp}，你的程式說 ${w.got}。`);
+    else if(w) say(7,`Test: BMI ${w.bmi} should say ${B(w.exp)}, but your program said nothing.`,`測試：BMI ${w.bmi} 應該說 ${w.exp}，可是程式沒有說出結果。`);
+    else if(g.fixes.length) say(7,'Almost there! Fix this last part.',esc(g.fixes[0])); }
+  if(!cur) cur={i:8,en:'All done! All 8 tests passed. Press Run to try it yourself, then Check to get your certificate.',zh:'完成了！八組測試全部通過。按 Run 自己試試看，再按 Check 提交批改領取完成圖。',acts:[{act:'run',label:'Run 執行'},{act:'check',label:'Check 提交批改'}]};
+  return {cur,done};
+}
+
 function updateHelp(){
   let r; try{ r=computeHelp(); }catch(e){ console.warn(e); return; }
   const {cur,done}=r, key=JSON.stringify([cur.i,cur.en,cur.focus,done]); if(key===lastKey) return; lastKey=key;
@@ -1140,7 +1313,7 @@ const browserSave={save:async({filename,data})=>{ const blob=data instanceof Blo
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); return {status:'saved'}; }};
 const dlPromise=(async()=>{ try{ return (window.claude&&window.claude.use)?await window.claude.use('downloads'):browserSave; }catch(e){ return null; } })();
 const cleanName=s=>String(s).replace(/[\\/:*?"<>|\n\r\t]/g,'').trim();
-function exportData(){ return {format:'blocklab-v1',task:'scratch',student:studentStr(),cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:TITLE,exportedAt:new Date().toISOString(),workspace:wsJSON()}; }
+function exportData(){ return {format:'blocklab-v1',task:TC.unit,student:studentStr(),cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:TITLE,exportedAt:new Date().toISOString(),workspace:wsJSON()}; }
 async function saveFile(name,data,st){
   const dl=await dlPromise; st.classList.remove('err');
   if(!dl){ st.textContent='Downloads are not available here. 這個畫面無法下載檔案。'; st.classList.add('err'); return; }
@@ -1160,13 +1333,13 @@ const GORDER=[['結構','Structure'],['輸入','Input'],['計算','Process'],['�
 const fmtN=v=>Number.isInteger(v)?String(v):(Math.round(v*10)/10).toFixed(1);
 let lastG=null, certBlob=null, certT=null;
 function openCheck(){
-  const w=exportData(), g=gradeScratch(w), f=feedbackScratch(w,g); lastG=g; certBlob=null;
+  const w=exportData(), g=gradeFn(w), f=fbFn(w,g); lastG=g; certBlob=null;
   $('#ckScore').innerHTML=`${g.total}<small> / 100</small>`;
   const b=$('#ckBadge'); b.textContent=g.passed?'Passed 達成':'Not yet 尚未達成'; b.classList.toggle('no',!g.passed);
   const en=$('#ckEn'); en.textContent=g.english>=100?'Bilingual Star 雙語之星':`English 英文 ${g.english}%`; en.classList.toggle('no',g.english<100);
   $('#ckGroups').innerHTML=GORDER.map(([k,e])=>{ const v=g.groups[k]; return v?`<div><span>${e} ${k}</span><b>${fmtN(v.got)} / ${fmtN(v.max)}</b></div>`:''; }).join('');
   $('#ckFbEn').textContent=f.en; $('#ckFbZh').textContent=f.zh;
-  $('#ckTests').innerHTML=g.full.map(t=>`<span class="${t.ok?'ok':'no'}">${t.scores.join(',')} (avg ${t.avg}) → ${esc(t.ok?t.exp:(t.got||'?'))} ${t.ok?'✓':'✗'}</span>`).join('');
+  $('#ckTests').innerHTML=g.full.map(t=>`<span class="${t.ok?'ok':'no'}">${t.scores?`${t.scores.join(',')} (avg ${t.avg})`:`BMI ${t.bmi}`} → ${esc(t.ok?t.exp:(t.got||'?'))} ${t.ok?'✓':'✗'}</span>`).join('');
   $('#ckCert').hidden=!g.passed; $('#bCert').hidden=!g.passed; $('#bCkSubmit').hidden=!canSubmit;
   const st=$('#ckStatus'); st.classList.remove('err'); st.textContent=g.passed?'':'Fix it and check again. 修正後再按一次提交批改。';
   $('#checkModal').hidden=false;
@@ -1183,14 +1356,14 @@ async function makeCert(){
   for(let i=0;i<=W;i+=25){ x.beginPath(); x.moveTo(i+.5,0); x.lineTo(i+.5,H); x.stroke(); } for(let j=0;j<=H;j+=25){ x.beginPath(); x.moveTo(0,j+.5); x.lineTo(W,j+.5); x.stroke(); }
   x.strokeStyle=GREEN; x.lineWidth=8; x.strokeRect(28,28,W-56,H-56); x.lineWidth=1.5; x.strokeRect(46,46,W-92,H-92);
   const L=100,maxW=520; x.textBaseline='alphabetic';
-  x.fillStyle=GREEN; x.font=`500 22px ${M}`; x.fillText('SCRATCH LAB · PASS OR FAIL · COMPLETE',L,140,maxW);
+  x.fillStyle=GREEN; x.font=`500 22px ${M}`; x.fillText(TC.eyebrow,L,140,maxW);
   x.fillStyle=INK; x.font=`700 76px ${F}`; x.fillText('Well done!',L,240,maxW); x.font=`700 56px ${F}`; x.fillText('完成了！',L,312,maxW);
   const field=(label,val,y)=>{ x.fillStyle=MUTED; x.font=`400 22px ${F}`; x.fillText(label,L,y,maxW); x.fillStyle=INK; x.font=`500 38px ${F}`; x.fillText(val,L,y+50,maxW); x.strokeStyle='#cbd9d2'; x.lineWidth=2; x.beginPath(); x.moveTo(L,y+68); x.lineTo(L+maxW,y+68); x.stroke(); };
   field('Student 學生',studentStr()||'—',400); field('Title 作品',TITLE,510);
   x.fillStyle=MUTED; x.font=`400 22px ${F}`; x.fillText('Score 分數',L,630); x.fillStyle=GREEN; x.font=`500 96px ${M}`; x.fillText(String(g.total),L,725);
   const sw=x.measureText(String(g.total)).width; x.fillStyle=MUTED; x.font=`400 32px ${M}`; x.fillText('/ 100',L+sw+14,725);
   let py=790; const pill=(t,fill,fg)=>{ x.font=`500 24px ${F}`; const tw=x.measureText(t).width+36; rr(x,L,py-32,tw,46,23); x.fillStyle=fill; x.fill(); x.fillStyle=fg; x.fillText(t,L+18,py); py+=62; };
-  pill('✓ 8 / 8 tests passed 測試全數通過','#dcefe5',GREEN); if(g.english>=100) pill('★ Bilingual Star 雙語之星',GREEN,'#ffffff');
+  pill(TC.tests,'#dcefe5',GREEN); if(g.english>=100) pill('★ Bilingual Star 雙語之星',GREEN,'#ffffff');
   x.fillStyle=MUTED; x.font=`400 22px ${M}`; x.fillText(new Date().toLocaleDateString('zh-TW'),L,915);
   const BX=700,BY=100,BW=800,BH=800; rr(x,BX,BY,BW,BH,18); x.fillStyle='#ffffff'; x.fill(); x.strokeStyle='#cbd9d2'; x.lineWidth=2; x.stroke();
   const lines=sbOutline(wsJSON()).filter(l=>!l.loose); const lh=Math.min(40,Math.floor((BH-60)/Math.max(1,lines.length))), fs=Math.max(13,Math.min(22,lh-14));
@@ -1206,15 +1379,15 @@ $('#bCheck').onclick=openCheck;
 /* ---------- submit to Google Drive ---------- */
 const CFG=window.FLOW_CONFIG||{}, SUBMIT_URL=String(CFG.submitUrl||'').trim();
 const canSubmit=!window.claude&&/^https:\/\/script\.google(usercontent)?\.com\//.test(SUBMIT_URL);
-function openSubmit(){ const g=gradeScratch(exportData()); fillWho('sb');
+function openSubmit(){ const g=gradeFn(exportData()); fillWho('sb');
   $('#sbSummary').textContent=`Self-check 自我批改：${g.total} / 100 · ${g.passed?'Passed 達成':'Not yet 尚未達成'}`;
   const st=$('#sbStatus'); st.classList.remove('err'); st.textContent=g.passed?'':'You can still submit now, or fix it first. 還沒全對也可以先交，之後再交一次會覆蓋。';
   $('#bDoSubmit').disabled=false; $('#checkModal').hidden=true; $('#submitModal').hidden=false; }
 $('#bDoSubmit').onclick=async()=>{ const st=$('#sbStatus'), btn=$('#bDoSubmit'); st.classList.remove('err');
   const fail=m=>{ st.textContent=m; st.classList.add('err'); btn.disabled=false; };
   if(!String(meta.name||'').trim()){ fail('Enter your name first. 請先填寫姓名。'); $('#sbName').focus(); return; }
-  const w=exportData(), g=gradeScratch(w); btn.disabled=true; st.textContent='Submitting… 繳交中…';
-  try{ const r=await fetch(SUBMIT_URL,{method:'POST',body:JSON.stringify({action:'submit',unit:'scratch',student:w.student,cls:w.cls,seat:w.seat,name:w.name,title:TITLE,work:w,check:{total:g.total,passed:g.passed,english:g.english}})});
+  const w=exportData(), g=gradeFn(w); btn.disabled=true; st.textContent='Submitting… 繳交中…';
+  try{ const r=await fetch(SUBMIT_URL,{method:'POST',body:JSON.stringify({action:'submit',unit:TC.unit,student:w.student,cls:w.cls,seat:w.seat,name:w.name,title:TITLE,work:w,check:{total:g.total,passed:g.passed,english:g.english}})});
     const res=await r.json();
     if(res&&res.ok){ st.textContent=`Submitted! 已繳交 ${new Date(res.time||Date.now()).toLocaleString('zh-TW',{hour12:false})}`; toast('Submitted 已繳交'); btn.disabled=false; return; }
     fail(res&&res.error==='bad_unit'?'Your teacher needs to update the Google script first. 老師的雲端程式還沒更新，請先用「下載作業檔」交。':'The server said no. 雲端拒絕了這次繳交。'+(res&&res.error?`（${res.error}）`:''));

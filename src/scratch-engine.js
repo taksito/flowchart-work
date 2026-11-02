@@ -211,4 +211,109 @@ function feedbackScratch(work,g){
   gradeTask=function(w){ return taskOf(w)==='scratch'?gradeScratch(w):_grade(w); };
   feedbackTask=function(w,g){ return (g.task||taskOf(w))==='scratch'?feedbackScratch(w,g):_fb(w,g); };
 })();
-if(typeof module!=='undefined') Object.assign(module.exports,{sbExec,sbRunSync,sbOutline,sbFacts,gradeScratch,feedbackScratch,gradeTask,feedbackTask,taskOf});
+
+/* ===== Scratch BMI task ===== */
+const SBB_H=1.5, SBB_CASES=[16,18.4,18.5,22,24,25.5,27,32];
+/* run where each ask is answered by a function of (question, index) */
+function sbRunFn(ws,fn){
+  const says=[], asks=[]; let err=null, st=null, send;
+  const it=sbExec(ws);
+  try{ while(true){ const r=it.next(send); send=undefined; if(r.done){ st=r.value; break; }
+    const e=r.value; if(e.type==='ask'){ send=String(fn(e.q,asks.length)); asks.push(e.q); } else if(e.type==='say') says.push(e.msg); } }
+  catch(e){ err=e.message; }
+  return {says,asks,vars:st?st.vars:{},err};
+}
+const SBB_W=/weight|體重|kg|公斤|(^|[^a-z])w([^a-z]|$)/i, SBB_HT=/height|身高|cm|公分|(^|[^a-z])h([^a-z]|$)|(^|[^a-z])m([^a-z]|$)|公尺/i;
+function sbbAnswerer(bmi,unit){
+  const w=+(bmi*SBB_H*SBB_H).toFixed(4); let used={h:false,w:false};
+  return (q)=>{ q=String(q||''); let kind=null;
+    if(SBB_W.test(q)&&!/height|身高/i.test(q)) kind='w'; else if(SBB_HT.test(q)) kind='h';
+    if(!kind) kind=!used.h?'h':'w';
+    used[kind]=true;
+    if(kind==='w') return w;
+    const u=/cm|公分/i.test(q)?'cm':unit; return u==='cm'?SBB_H*100:SBB_H; };
+}
+function gradeScratchBMI(work){
+  const ws=work.workspace||{}, F=sbFacts(ws), items=[], bad=new Set();
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  add('結構','有「當綠旗被點擊」',5,F.flags.length?5:0,F.flags.length?'':'程式要從「when ⚑ clicked 當綠旗被點擊」開始');
+  add('結構','沒有散落的積木',5,5-2.5*F.loose.length,F.loose.length?`有 ${F.loose.length} 組積木沒有接在綠旗下面`:'');
+  F.loose.forEach(b=>bad.add(b.id));
+  add('結構','使用「如果…那麼…否則」',5,F.ifs.length?5:0,F.ifs.length?'':'要用「if then else 如果那麼否則」做判斷');
+  /* choose the height unit that works best */
+  const runAll=unit=>SBB_CASES.map(b=>{ const r=sbRunFn(ws,sbbAnswerer(b,unit)); const cats=r.says.map(catOf).filter(Boolean); const got=cats.length?cats[cats.length-1]:null;
+    return {bmi:b,h:SBB_H,w:+(b*SBB_H*SBB_H).toFixed(4),exp:expectCat(b),got,ok:got===expectCat(b)&&new Set(cats).size===1,why:r.err?'程式停不下來':got?'':(F.flags.length?'沒有說出結果':'沒有綠旗程式'),run:r}; });
+  let unit='m', full=runAll('m'); const cm=runAll('cm');
+  if(cm.filter(t=>t.ok).length>full.filter(t=>t.ok).length){ unit='cm'; full=cm; }
+  const r0=full[3].run, bmi0=22;
+  const near=(x,y)=>String(x).trim()!==''&&Math.abs(sbNum(x)-y)<0.01;
+  const bmiVar=Object.entries(r0.vars).find(([k,v])=>near(v,bmi0));
+  /* input 15 */
+  const askN=Math.min(2,r0.asks.length);
+  add('輸入','詢問身高和體重',8,4*askN,r0.asks.length>=2?'':`目前詢問了 ${r0.asks.length} 次，要詢問身高和體重`);
+  const stored=Math.min(2,F.stores.length);
+  add('輸入','把答案存進變數',7,7*stored/2,stored>=2?'':'每次詢問後，用「set [height] to (answer)」把答案存進變數');
+  /* process 20 */
+  let bNote='';
+  if(!bmiVar){ const vals=Object.values(r0.vars).map(sbNum), w=+(bmi0*SBB_H*SBB_H).toFixed(4);
+    if(vals.some(v=>Math.abs(v-w/SBB_H)<0.01||Math.abs(v-w/(SBB_H*100))<0.001)) bNote='身高要平方：weight / (height * height)';
+    else if(vals.some(v=>Math.abs(v-w/(SBB_H*100*SBB_H*100))<1e-6)) bNote='身高是公分，要先 ÷ 100 換成公尺';
+    else bNote='用變數 bmi 存 weight / (height * height)'; }
+  add('計算','算出 BMI',20,bmiVar?20:(Object.keys(r0.vars).length>2?5:0),bNote);
+  /* decision 20 */
+  const nums=(F.condText.match(/-?\d+(\.\d+)?/g)||[]).map(Number);
+  [[18.5,'thin 與 normal'],[24,'normal 與 overweight'],[27,'overweight 與 obesity']].forEach(([t,d])=>{
+    const ok=nums.some(v=>Math.abs(v-t)<0.011); add('判斷',`有 ${t} 的判斷（${d}）`,20/3,ok?20/3:0,ok?'':`「如果」裡缺少和 ${t} 的比較`); });
+  /* output 10 */
+  CATS.forEach(c=>{ const ok=F.sayTexts.some(t=>catOf(t)===c.key); add('輸出',`說出 ${c.name}`,2.5,ok?2.5:0,ok?'':`要用「say 說」說出 ${c.name}`); });
+  /* tests 20 */
+  const fp=full.filter(t=>t.ok).length;
+  add('執行測試','執行測試（八組身高體重）',20,20*fp/SBB_CASES.length,`${fp} / ${SBB_CASES.length} 題正確`);
+  /* english */
+  const CJK=/[㐀-鿿]/; const units=[...F.texts,...F.varNames]; const zh=units.filter(t=>CJK.test(t));
+  const english=units.length?Math.round(100*(units.length-zh.length)/units.length):0;
+  const words=[...new Set(zh.join(' ').match(/[㐀-鿿]+/g)||[])];
+  const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max-1e-9&&i.note&&!/題正確$/.test(i.note)).forEach(i=>fixes.push(i.note));
+  full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`BMI ${t.bmi} 應該說 ${t.exp}，你的程式說 ${t.got}`));
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
+  full.forEach(t=>delete t.run);
+  return {task:'scratch-bmi',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,facts:F,run0:r0,bmiVar,unit};
+}
+function feedbackScratchBMI(work,g){
+  const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
+  if(g.passed) return {en:'Excellent! Your program asks for height and weight, works out the BMI and says the right result in all 8 tests.'+(enOK?' Everything is in English. Great job!':' Next time, try writing every message in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
+    zh:'程式完整又正確，八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
+  const pos=[],pz=[],fx=[],fz=[]; const add=(e,z)=>{fx.push(e);fz.push(z);};
+  if(full(it('詢問身高'))){ pos.push('you ask for height and weight'); pz.push('身高體重都有詢問'); }
+  if(full(it('算出 BMI'))){ pos.push('your BMI formula is correct'); pz.push('BMI 算對了'); }
+  if(full(it('使用「如果'))){ pos.push('you used if-then-else'); pz.push('有用到如果否則'); }
+  if(!full(it('有「當綠旗'))) add('start with "when ⚑ clicked"','程式要從「當綠旗被點擊」開始');
+  if(!full(it('詢問身高'))) add('ask for height and weight','要詢問身高和體重');
+  if(!full(it('把答案存進變數'))) add('save each answer: set [height] to (answer)','每次詢問後把答案存進變數');
+  if(!full(it('算出 BMI'))) add('set bmi to weight / (height * height)','用 bmi 算出 weight / (height * height)');
+  const miss=['18.5','24','27'].filter(t=>!full(it('有 '+t))); if(miss.length) add(`add if blocks for ${miss.join(', ')}`,`還少了和 ${miss.join('、')} 比較的判斷`);
+  const outs=CATS.filter(c=>!full(it('說出 '+c.name))).map(c=>c.name); if(outs.length) add(`say ${outs.join(', ')}`,`還要說出 ${outs.join('、')}`);
+  if(!full(it('沒有散落'))) add('attach every block under the green flag','把每塊積木都接在綠旗下面');
+  const wrong=g.full.find(t=>!t.ok&&t.got);
+  let en=pos.length?`Good work: ${pos.slice(0,2).join(' and ')}.`:'Thank you for your program!';
+  let zh=pz.length?pz.slice(0,2).join('，')+'，很不錯！':'謝謝你完成這個程式！';
+  if(fx.length){ en+=` To improve: ${fx.slice(0,2).join('; ')}.`; zh+='需要修正：'+fz.slice(0,2).join('；')+'。'; }
+  if(wrong){ en+=` Right now BMI ${wrong.bmi} says ${wrong.got}, but it should say ${wrong.exp}.`; zh+=`目前 BMI ${wrong.bmi} 會說 ${wrong.got}，正確應該是 ${wrong.exp}。`; }
+  if(!enOK&&g.enTips.length){ en+=` Try more English: ${g.enTips.slice(0,3).join(', ')}.`; zh+=`也試著多用英文：${g.enTips.slice(0,3).join('、')}。`; }
+  en+=g.level==='優秀'?' Almost perfect, keep going!':' Fix these step by step and run it again. You can do it!';
+  zh+=g.level==='優秀'?'只差一點點，繼續保持！':'照著修改，再按綠旗試一次，一定會更好！';
+  return {en,zh};
+}
+(function(){
+  const _taskOf=taskOf, _grade=gradeTask, _fb=feedbackTask;
+  taskOf=function(w){ if(w&&w.task==='scratch-bmi') return 'scratch-bmi'; return _taskOf(w); };
+  gradeTask=function(w){ return taskOf(w)==='scratch-bmi'?gradeScratchBMI(w):_grade(w); };
+  feedbackTask=function(w,g){ return (g.task||taskOf(w))==='scratch-bmi'?feedbackScratchBMI(w,g):_fb(w,g); };
+})();
+Object.assign(EN_WORDS,{'答案':'answer','身高':'height','體重':'weight'});
+
+if(typeof module!=='undefined') Object.assign(module.exports,{sbExec,sbRunSync,sbOutline,sbFacts,gradeScratch,feedbackScratch,gradeScratchBMI,feedbackScratchBMI,sbRunFn,gradeTask,feedbackTask,taskOf});

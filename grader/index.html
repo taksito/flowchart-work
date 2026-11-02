@@ -182,7 +182,7 @@ td .why{color:var(--muted);font-size:12px}
 <div class="wrap">
   <header>
     <h1>Grading Desk 批改台 <small id="unitName">BMI Flowchart</small></h1>
-    <div class="units" role="tablist" aria-label="Unit 單元"><button role="tab" data-unit="bmi">BMI <span>BMI 判斷</span><em id="cntBmi"></em></button><button role="tab" data-unit="score">Pass or Fail <span>成績及格判斷</span><em id="cntScore"></em></button><button role="tab" data-unit="scratch">Scratch <span>積木 Pass or Fail</span><em id="cntScratch"></em></button></div>
+    <div class="units" role="tablist" aria-label="Unit 單元"><button role="tab" data-unit="bmi">BMI <span>BMI 判斷</span><em id="cntBmi"></em></button><button role="tab" data-unit="score">Pass or Fail <span>成績及格判斷</span><em id="cntScore"></em></button><button role="tab" data-unit="scratch">Scratch <span>積木 Pass or Fail</span><em id="cntScratch"></em></button><button role="tab" data-unit="scratch-bmi">Scratch BMI <span>積木 BMI</span><em id="cntScratchBmi"></em></button></div>
     <div class="tools">
       <label class="btn primary" for="fileInput" tabindex="0" id="upLabel">上傳作業檔</label>
       <input type="file" id="fileInput" accept=".json,application/json" multiple hidden>
@@ -223,6 +223,19 @@ td .why{color:var(--muted);font-size:12px}
       <tr><td>English 英文</td><td>不計分，只鼓勵：顯示英文使用率，全英文的作品標上 EN；用了中文會列出可以換成的英文，例如 身高 → height、是 → Yes。</td><td>0</td></tr>
     </table></div>
     <p>判斷的寫法不限：「BMI &lt; 18.5」、「BMI ≥ 27」、「18.5 ≤ BMI &lt; 24」、中文「小於」「大於等於」都看得懂；判斷順序由大到小或由小到大都可以。分界值剛好等於 24 算 overweight，等於 27 算 obesity。</p>
+    </div>
+    <div data-rub="scratch-bmi">
+    <h2>Scratch BMI 積木程式評分標準（滿分 100）</h2>
+    <p>題目：當綠旗被點擊時，詢問身高和體重並存進變數，計算 BMI，依 18.5、24、27 說出 thin、normal、overweight、obesity。批改時會真的執行學生的程式，自動回答身高 1.5 公尺和八組體重；身高用公分寫也能自動判斷。</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>項目</th><th>檢查內容</th><th>配分</th></tr>
+      <tr><td>Structure 結構</td><td>有「當綠旗被點擊」、沒有散落的積木、有用「如果…那麼…否則」</td><td>15</td></tr>
+      <tr><td>Input 輸入</td><td>詢問身高和體重（各 4 分），答案存進變數（7 分）</td><td>15</td></tr>
+      <tr><td>Process 計算</td><td>變數裡算出正確的 BMI（weight / (height × height)）</td><td>20</td></tr>
+      <tr><td>Decision 判斷</td><td>條件裡有 18.5、24、27 三個分界值</td><td>20</td></tr>
+      <tr><td>Output 輸出</td><td>說出 thin、normal、overweight、obesity</td><td>10</td></tr>
+      <tr><td>Test run 執行測試</td><td>八組 BMI：16、18.4、18.5、22、24、25.5、27、32</td><td>20</td></tr>
+    </table></div>
     </div>
     <div data-rub="scratch">
     <h2>Scratch Pass or Fail 積木程式評分標準（滿分 100）</h2>
@@ -992,7 +1005,112 @@ function feedbackScratch(work,g){
   gradeTask=function(w){ return taskOf(w)==='scratch'?gradeScratch(w):_grade(w); };
   feedbackTask=function(w,g){ return (g.task||taskOf(w))==='scratch'?feedbackScratch(w,g):_fb(w,g); };
 })();
-if(typeof module!=='undefined') Object.assign(module.exports,{sbExec,sbRunSync,sbOutline,sbFacts,gradeScratch,feedbackScratch,gradeTask,feedbackTask,taskOf});
+
+/* ===== Scratch BMI task ===== */
+const SBB_H=1.5, SBB_CASES=[16,18.4,18.5,22,24,25.5,27,32];
+/* run where each ask is answered by a function of (question, index) */
+function sbRunFn(ws,fn){
+  const says=[], asks=[]; let err=null, st=null, send;
+  const it=sbExec(ws);
+  try{ while(true){ const r=it.next(send); send=undefined; if(r.done){ st=r.value; break; }
+    const e=r.value; if(e.type==='ask'){ send=String(fn(e.q,asks.length)); asks.push(e.q); } else if(e.type==='say') says.push(e.msg); } }
+  catch(e){ err=e.message; }
+  return {says,asks,vars:st?st.vars:{},err};
+}
+const SBB_W=/weight|體重|kg|公斤|(^|[^a-z])w([^a-z]|$)/i, SBB_HT=/height|身高|cm|公分|(^|[^a-z])h([^a-z]|$)|(^|[^a-z])m([^a-z]|$)|公尺/i;
+function sbbAnswerer(bmi,unit){
+  const w=+(bmi*SBB_H*SBB_H).toFixed(4); let used={h:false,w:false};
+  return (q)=>{ q=String(q||''); let kind=null;
+    if(SBB_W.test(q)&&!/height|身高/i.test(q)) kind='w'; else if(SBB_HT.test(q)) kind='h';
+    if(!kind) kind=!used.h?'h':'w';
+    used[kind]=true;
+    if(kind==='w') return w;
+    const u=/cm|公分/i.test(q)?'cm':unit; return u==='cm'?SBB_H*100:SBB_H; };
+}
+function gradeScratchBMI(work){
+  const ws=work.workspace||{}, F=sbFacts(ws), items=[], bad=new Set();
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  add('結構','有「當綠旗被點擊」',5,F.flags.length?5:0,F.flags.length?'':'程式要從「when ⚑ clicked 當綠旗被點擊」開始');
+  add('結構','沒有散落的積木',5,5-2.5*F.loose.length,F.loose.length?`有 ${F.loose.length} 組積木沒有接在綠旗下面`:'');
+  F.loose.forEach(b=>bad.add(b.id));
+  add('結構','使用「如果…那麼…否則」',5,F.ifs.length?5:0,F.ifs.length?'':'要用「if then else 如果那麼否則」做判斷');
+  /* choose the height unit that works best */
+  const runAll=unit=>SBB_CASES.map(b=>{ const r=sbRunFn(ws,sbbAnswerer(b,unit)); const cats=r.says.map(catOf).filter(Boolean); const got=cats.length?cats[cats.length-1]:null;
+    return {bmi:b,h:SBB_H,w:+(b*SBB_H*SBB_H).toFixed(4),exp:expectCat(b),got,ok:got===expectCat(b)&&new Set(cats).size===1,why:r.err?'程式停不下來':got?'':(F.flags.length?'沒有說出結果':'沒有綠旗程式'),run:r}; });
+  let unit='m', full=runAll('m'); const cm=runAll('cm');
+  if(cm.filter(t=>t.ok).length>full.filter(t=>t.ok).length){ unit='cm'; full=cm; }
+  const r0=full[3].run, bmi0=22;
+  const near=(x,y)=>String(x).trim()!==''&&Math.abs(sbNum(x)-y)<0.01;
+  const bmiVar=Object.entries(r0.vars).find(([k,v])=>near(v,bmi0));
+  /* input 15 */
+  const askN=Math.min(2,r0.asks.length);
+  add('輸入','詢問身高和體重',8,4*askN,r0.asks.length>=2?'':`目前詢問了 ${r0.asks.length} 次，要詢問身高和體重`);
+  const stored=Math.min(2,F.stores.length);
+  add('輸入','把答案存進變數',7,7*stored/2,stored>=2?'':'每次詢問後，用「set [height] to (answer)」把答案存進變數');
+  /* process 20 */
+  let bNote='';
+  if(!bmiVar){ const vals=Object.values(r0.vars).map(sbNum), w=+(bmi0*SBB_H*SBB_H).toFixed(4);
+    if(vals.some(v=>Math.abs(v-w/SBB_H)<0.01||Math.abs(v-w/(SBB_H*100))<0.001)) bNote='身高要平方：weight / (height * height)';
+    else if(vals.some(v=>Math.abs(v-w/(SBB_H*100*SBB_H*100))<1e-6)) bNote='身高是公分，要先 ÷ 100 換成公尺';
+    else bNote='用變數 bmi 存 weight / (height * height)'; }
+  add('計算','算出 BMI',20,bmiVar?20:(Object.keys(r0.vars).length>2?5:0),bNote);
+  /* decision 20 */
+  const nums=(F.condText.match(/-?\d+(\.\d+)?/g)||[]).map(Number);
+  [[18.5,'thin 與 normal'],[24,'normal 與 overweight'],[27,'overweight 與 obesity']].forEach(([t,d])=>{
+    const ok=nums.some(v=>Math.abs(v-t)<0.011); add('判斷',`有 ${t} 的判斷（${d}）`,20/3,ok?20/3:0,ok?'':`「如果」裡缺少和 ${t} 的比較`); });
+  /* output 10 */
+  CATS.forEach(c=>{ const ok=F.sayTexts.some(t=>catOf(t)===c.key); add('輸出',`說出 ${c.name}`,2.5,ok?2.5:0,ok?'':`要用「say 說」說出 ${c.name}`); });
+  /* tests 20 */
+  const fp=full.filter(t=>t.ok).length;
+  add('執行測試','執行測試（八組身高體重）',20,20*fp/SBB_CASES.length,`${fp} / ${SBB_CASES.length} 題正確`);
+  /* english */
+  const CJK=/[㐀-鿿]/; const units=[...F.texts,...F.varNames]; const zh=units.filter(t=>CJK.test(t));
+  const english=units.length?Math.round(100*(units.length-zh.length)/units.length):0;
+  const words=[...new Set(zh.join(' ').match(/[㐀-鿿]+/g)||[])];
+  const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max-1e-9&&i.note&&!/題正確$/.test(i.note)).forEach(i=>fixes.push(i.note));
+  full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`BMI ${t.bmi} 應該說 ${t.exp}，你的程式說 ${t.got}`));
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
+  full.forEach(t=>delete t.run);
+  return {task:'scratch-bmi',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,facts:F,run0:r0,bmiVar,unit};
+}
+function feedbackScratchBMI(work,g){
+  const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
+  if(g.passed) return {en:'Excellent! Your program asks for height and weight, works out the BMI and says the right result in all 8 tests.'+(enOK?' Everything is in English. Great job!':' Next time, try writing every message in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
+    zh:'程式完整又正確，八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
+  const pos=[],pz=[],fx=[],fz=[]; const add=(e,z)=>{fx.push(e);fz.push(z);};
+  if(full(it('詢問身高'))){ pos.push('you ask for height and weight'); pz.push('身高體重都有詢問'); }
+  if(full(it('算出 BMI'))){ pos.push('your BMI formula is correct'); pz.push('BMI 算對了'); }
+  if(full(it('使用「如果'))){ pos.push('you used if-then-else'); pz.push('有用到如果否則'); }
+  if(!full(it('有「當綠旗'))) add('start with "when ⚑ clicked"','程式要從「當綠旗被點擊」開始');
+  if(!full(it('詢問身高'))) add('ask for height and weight','要詢問身高和體重');
+  if(!full(it('把答案存進變數'))) add('save each answer: set [height] to (answer)','每次詢問後把答案存進變數');
+  if(!full(it('算出 BMI'))) add('set bmi to weight / (height * height)','用 bmi 算出 weight / (height * height)');
+  const miss=['18.5','24','27'].filter(t=>!full(it('有 '+t))); if(miss.length) add(`add if blocks for ${miss.join(', ')}`,`還少了和 ${miss.join('、')} 比較的判斷`);
+  const outs=CATS.filter(c=>!full(it('說出 '+c.name))).map(c=>c.name); if(outs.length) add(`say ${outs.join(', ')}`,`還要說出 ${outs.join('、')}`);
+  if(!full(it('沒有散落'))) add('attach every block under the green flag','把每塊積木都接在綠旗下面');
+  const wrong=g.full.find(t=>!t.ok&&t.got);
+  let en=pos.length?`Good work: ${pos.slice(0,2).join(' and ')}.`:'Thank you for your program!';
+  let zh=pz.length?pz.slice(0,2).join('，')+'，很不錯！':'謝謝你完成這個程式！';
+  if(fx.length){ en+=` To improve: ${fx.slice(0,2).join('; ')}.`; zh+='需要修正：'+fz.slice(0,2).join('；')+'。'; }
+  if(wrong){ en+=` Right now BMI ${wrong.bmi} says ${wrong.got}, but it should say ${wrong.exp}.`; zh+=`目前 BMI ${wrong.bmi} 會說 ${wrong.got}，正確應該是 ${wrong.exp}。`; }
+  if(!enOK&&g.enTips.length){ en+=` Try more English: ${g.enTips.slice(0,3).join(', ')}.`; zh+=`也試著多用英文：${g.enTips.slice(0,3).join('、')}。`; }
+  en+=g.level==='優秀'?' Almost perfect, keep going!':' Fix these step by step and run it again. You can do it!';
+  zh+=g.level==='優秀'?'只差一點點，繼續保持！':'照著修改，再按綠旗試一次，一定會更好！';
+  return {en,zh};
+}
+(function(){
+  const _taskOf=taskOf, _grade=gradeTask, _fb=feedbackTask;
+  taskOf=function(w){ if(w&&w.task==='scratch-bmi') return 'scratch-bmi'; return _taskOf(w); };
+  gradeTask=function(w){ return taskOf(w)==='scratch-bmi'?gradeScratchBMI(w):_grade(w); };
+  feedbackTask=function(w,g){ return (g.task||taskOf(w))==='scratch-bmi'?feedbackScratchBMI(w,g):_fb(w,g); };
+})();
+Object.assign(EN_WORDS,{'答案':'answer','身高':'height','體重':'weight'});
+
+if(typeof module!=='undefined') Object.assign(module.exports,{sbExec,sbRunSync,sbOutline,sbFacts,gradeScratch,feedbackScratch,gradeScratchBMI,feedbackScratchBMI,sbRunFn,gradeTask,feedbackTask,taskOf});
 
 </script>
 <script>
@@ -1004,6 +1122,8 @@ const KEY='grader-works-v1';
 const TASKS={
   bmi:{name:'BMI Flowchart',title:'BMI 判斷',groups:[['結構',20],['輸入',10],['計算',10],['判斷',20],['輸出',10],['執行測試',30]],csv:'BMI流程圖成績.csv',
     text:'題目要求：輸入身高與體重，計算 BMI = 體重 ÷ 身高²（身高單位公尺），然後依 BMI 輸出：BMI < 18.5 輸出 thin；18.5 ≤ BMI < 24 輸出 normal；24 ≤ BMI < 27 輸出 overweight；BMI ≥ 27 輸出 obesity。'},
+  'scratch-bmi':{name:'Scratch BMI',title:'Scratch 積木程式：BMI 判斷',groups:[['結構',15],['輸入',15],['計算',20],['判斷',20],['輸出',10],['執行測試',20]],csv:'ScratchBMI成績.csv',
+    text:'題目要求：用 Scratch 積木寫程式。當綠旗被點擊時，詢問身高和體重並存進變數，計算 BMI = 體重 ÷ (身高 × 身高)（身高用公尺），再用如果否則判斷：BMI < 18.5 說 thin；< 24 說 normal；< 27 說 overweight；其餘說 obesity。'},
   scratch:{name:'Scratch Pass or Fail',title:'Scratch 積木程式：成績及格判斷',groups:[['結構',15],['輸入',15],['計算',20],['判斷',15],['輸出',10],['執行測試',25]],csv:'Scratch成績及格判斷成績.csv',
     text:'題目要求：用 Scratch 積木寫程式。當綠旗被點擊時，詢問四個成績並存進變數，計算總分和平均（總分 ÷ 4），平均 ≥ 60 說 pass，否則說 fail（剛好 60 算 pass）。'},
   score:{name:'Pass or Fail Flowchart',title:'成績及格判斷',groups:[['結構',20],['輸入',10],['計算',20],['判斷',15],['輸出',10],['執行測試',25]],csv:'成績及格判斷成績.csv',
@@ -1029,7 +1149,7 @@ function renderList(){
   $('#banner').hidden=!usingSamples;
   $('#unitName').textContent=TASKS[unit].name;
   document.querySelectorAll('.units [data-unit]').forEach(b=>b.setAttribute('aria-selected',b.dataset.unit===unit));
-  $('#cntBmi').textContent=ALL.filter(w=>w.g.task==='bmi').length; $('#cntScore').textContent=ALL.filter(w=>w.g.task==='score').length; $('#cntScratch').textContent=ALL.filter(w=>w.g.task==='scratch').length;
+  $('#cntBmi').textContent=ALL.filter(w=>w.g.task==='bmi').length; $('#cntScore').textContent=ALL.filter(w=>w.g.task==='score').length; $('#cntScratch').textContent=ALL.filter(w=>w.g.task==='scratch').length; $('#cntScratchBmi').textContent=ALL.filter(w=>w.g.task==='scratch-bmi').length;
   document.querySelectorAll('[data-rub]').forEach(d=>{ d.hidden=d.dataset.rub!==unit; });
   const rows=$('#rows');
   if(!works.length){ rows.innerHTML=`<div class="empty">${TASKS[unit].title}單元還沒有作業。按「上傳作業檔」或把 .json 檔拖進頁面。</div>`; $('#summary').innerHTML=''; $('#detail').innerHTML=''; return; }
@@ -1065,7 +1185,7 @@ function renderDetail(){
   const ttable=(list,full)=>`<div class="tbl-wrap"><table><tr><th>BMI</th>${full?'<th>輸入</th>':''}<th>應輸出</th><th>流程輸出</th><th></th></tr>${list.map(t=>`<tr><td class="n">${t.bmi}</td>${full?`<td class="n">${t.h} m, ${+t.w.toFixed(2)} kg</td>`:''}<td>${t.exp}</td><td>${t.got?esc(CAT_TXT[t.got]):`<span class="why">${esc(t.why||'沒有輸出')}</span>`}</td><td class="${t.ok?'ok':'no'}">${t.ok?'✓':'✗'}</td></tr>`).join('')}</table></div>`;
   const lp=g.logic.filter(t=>t.ok).length, fp=g.full.filter(t=>t.ok).length;
   const stable=list=>`<div class="tbl-wrap"><table><tr><th>Scores 成績</th><th>Avg 平均</th><th>應輸出</th><th>流程輸出</th><th></th></tr>${list.map(t=>`<tr><td class="n">${t.scores.join(', ')}</td><td class="n">${t.avg}</td><td>${t.exp}</td><td>${t.got?esc(t.got):`<span class="why">${esc(t.why||'沒有輸出')}</span>`}</td><td class="${t.ok?'ok':'no'}">${t.ok?'✓':'✗'}</td></tr>`).join('')}</table></div>`;
-  const testsHTML=g.task==='score'||g.task==='scratch'?`<div><div class="tcap">${g.task==='scratch'?'執行測試 <span>按綠旗，自動回答四個成績':'完整流程測試 <span>從 START 輸入四個成績'} · ${fp}/8</span></div>${stable(g.full)}</div>`:`<div><div class="tcap">判斷邏輯測試 <span>直接給 BMI，從第一個判斷開始跑 · ${lp}/8</span></div>${ttable(g.logic,false)}</div>
+  const testsHTML=g.task==='scratch-bmi'?`<div><div class="tcap">執行測試 <span>按綠旗，自動回答身高 1.5 m 和體重 · ${fp}/8</span></div>${ttable(g.full,true)}</div>`:g.task==='score'||g.task==='scratch'?`<div><div class="tcap">${g.task==='scratch'?'執行測試 <span>按綠旗，自動回答四個成績':'完整流程測試 <span>從 START 輸入四個成績'} · ${fp}/8</span></div>${stable(g.full)}</div>`:`<div><div class="tcap">判斷邏輯測試 <span>直接給 BMI，從第一個判斷開始跑 · ${lp}/8</span></div>${ttable(g.logic,false)}</div>
     <div><div class="tcap">完整流程測試 <span>從開始輸入身高體重 · ${fp}/8</span></div>${ttable(g.full,true)}</div>`;
   d.innerHTML=`
   <div class="card top">
@@ -1074,7 +1194,7 @@ function renderDetail(){
     <div class="gbars">${gb}</div>
   </div>
   <div class="card"><h3>需要修正</h3>${fixes}${g.enTips.length?`<p class="sub" style="margin:10px 0 0;font-size:13px;color:var(--muted)">Try English 英文建議（不扣分）：${esc(g.enTips.join('、'))}</p>`:''}</div>
-  <div class="card"><h3>${g.task==='scratch'?'學生的積木程式':'學生的流程圖'}</h3><div class="preview">${g.task==='scratch'?blocksHTML(w.work):previewSVG(w.work,new Set(g.bad))}</div>
+  <div class="card"><h3>${/^scratch/.test(g.task)?'學生的積木程式':'學生的流程圖'}</h3><div class="preview">${/^scratch/.test(g.task)?blocksHTML(w.work):previewSVG(w.work,new Set(g.bad))}</div>
     ${g.bad.length?'<div class="legend"><span><i></i>紅框：有問題的圖形（沒接好線、判斷缺路線、公式錯誤或流程停住的地方）</span></div>':''}</div>
   <div class="card"><h3>評分明細</h3><div class="rub">${rub}</div></div>
   <div class="card"><h3>執行測試</h3><div class="tests">
@@ -1171,7 +1291,7 @@ function describe(work){
 const STYLE=`這是雙語課程。評語先用簡單英文（國中程度，2 到 3 句），再用繁體中文把同樣的意思寫一次（不超過 100 字）：先具體肯定一個做對的地方，再指出最重要的一到兩個需要修正的地方並說明怎麼改，最後一句鼓勵。如果學生在流程圖裡用了中文字，鼓勵他改用英文並舉例（例如 身高 → height、是 → Yes）；如果全部用英文，特別稱讚。語氣親切，不要列點，不要提到分數，不要提到「自動批改」。`;
 function studentBlock(w){
   const g=w.g;
-  return `${g.task==='scratch'?'積木程式：\n'+sbOutline(w.work.workspace||{}).map(l=>'  '.repeat(l.d)+l.t).join('\n'):describe(w.work)}\n批改結果：總分 ${g.total}/100（${g.level}）；${GR(g.task).map(([k,m])=>`${k} ${fmt(g.groups[k].got)}/${m}`).join('、')}\n需要修正：\n${g.fixes.length?g.fixes.map(f=>'- '+f).join('\n'):'- 無'}`;
+  return `${/^scratch/.test(g.task)?'積木程式：\n'+sbOutline(w.work.workspace||{}).map(l=>'  '.repeat(l.d)+l.t).join('\n'):describe(w.work)}\n批改結果：總分 ${g.total}/100（${g.level}）；${GR(g.task).map(([k,m])=>`${k} ${fmt(g.groups[k].got)}/${m}`).join('、')}\n需要修正：\n${g.fixes.length?g.fixes.map(f=>'- '+f).join('\n'):'- 無'}`;
 }
 const promptFor=w=>`你是國中資訊科技老師，正在批改學生畫的「${TASKS[w.g.task].title}」流程圖。\n${TASKS[w.g.task].text}\n\n學生的流程圖：\n${studentBlock(w)}\n\n請寫一段給這位學生的評語。${STYLE}只輸出評語本身。`;
 
@@ -1240,7 +1360,7 @@ $('#bBatchApply').onclick=()=>{
 /* ---------- upload ---------- */
 function parseWork(text,file){
   let o; try{ o=JSON.parse(text); }catch(e){ throw new Error(file+'：不是 JSON 檔'); }
-  if(o&&o.format==='blocklab-v1'&&o.workspace){ o.task='scratch'; return o; }
+  if(o&&o.format==='blocklab-v1'&&o.workspace){ if(o.task!=='scratch-bmi') o.task='scratch'; return o; }
   if(!o||!Array.isArray(o.nodes)||!Array.isArray(o.edges)) throw new Error(file+'：不是流程圖畫板或積木程式的作業檔');
   o.nodes=o.nodes.filter(n=>n&&n.id!=null&&isFinite(n.x)&&isFinite(n.y)).map(n=>({...n,id:String(n.id),x:+n.x,y:+n.y,w:+n.w||140,h:+n.h||60,text:String(n.text==null?'':n.text)}));
   o.edges=o.edges.filter(e=>e&&e.from&&e.to).map(e=>({...e,from:{node:String(e.from.node),port:e.from.port},to:{node:String(e.to.node),port:e.to.port},label:String(e.label||'')}));
