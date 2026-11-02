@@ -14,8 +14,8 @@ const CONFIG = {
 };
 
 const UNITS = { bmi: 'BMI', score: 'Pass or Fail' };
-const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '座號姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File'];
-const SCORE_HEAD = ['單元 Unit', '座號姓名 Name', '作品 Title', '總分 Total', '等第 Level', 'Structure 結構', 'Input 輸入', 'Process 計算', 'Decision 判斷', 'Output 輸出', 'Test run 執行測試', '英文使用率 English %', '需要修正 Fixes', '評語 Comment', '批改時間 Graded'];
+const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File'];
+const SCORE_HEAD = ['單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '總分 Total', '等第 Level', 'Structure 結構', 'Input 輸入', 'Process 計算', 'Decision 判斷', 'Output 輸出', 'Test run 執行測試', '英文使用率 English %', '需要修正 Fixes', '評語 Comment', '批改時間 Graded'];
 
 /* ---------- one-time setup ---------- */
 function setup() {
@@ -52,13 +52,14 @@ function submit_(req) {
   if (CONFIG.CLASS_CODE && String(req.code || '').trim() !== CONFIG.CLASS_CODE) return { ok: false, error: 'bad_code' };
   const unit = UNITS[req.unit] ? req.unit : null;
   if (!unit) return { ok: false, error: 'bad_unit' };
-  const student = clean_(req.student);
-  if (!student) return { ok: false, error: 'no_name' };
+  const who = who_(req);
+  if (!who.name) return { ok: false, error: 'no_name' };
+  const student = who.student;
   const work = req.work;
   if (!work || !Array.isArray(work.nodes) || !Array.isArray(work.edges)) return { ok: false, error: 'bad_work' };
   if (JSON.stringify(work).length > 500000) return { ok: false, error: 'too_large' };
   work.task = unit;
-  work.student = student;
+  work.student = student; work.cls = who.cls; work.seat = who.seat; work.name = who.name;
   work.submittedAt = new Date().toISOString();
 
   const folder = unitFolder_(unit);
@@ -71,7 +72,7 @@ function submit_(req) {
 
   const ck = req.check || {};
   const sh = tab_('繳交紀錄 Submissions', SUB_HEAD);
-  sh.appendRow([new Date(), UNITS[unit], student, clean_(req.title), num_(ck.total), ck.passed ? 'Yes' : 'No', num_(ck.english), f.getUrl()]);
+  sh.appendRow([new Date(), UNITS[unit], who.cls, who.seat, who.name, clean_(req.title), num_(ck.total), ck.passed ? 'Yes' : 'No', num_(ck.english), f.getUrl()]);
   return { ok: true, time: work.submittedAt, file: name };
 }
 
@@ -100,16 +101,17 @@ function save_(req) {
   const sh = tab_('成績 Scores', SCORE_HEAD);
   const data = sh.getDataRange().getValues();
   const index = {};
-  for (let r = 1; r < data.length; r++) index[data[r][0] + '\u0000' + data[r][1]] = r + 1;
+  for (let r = 1; r < data.length; r++) index[[data[r][0], data[r][1], data[r][2], data[r][3]].join('\u0000')] = r + 1;
   const now = new Date();
   let added = 0, updated = 0;
   rows.forEach(function (x) {
     const g = x.groups || {};
     const unitName = UNITS[x.unit] || x.unit;
-    const row = [unitName, clean_(x.student), clean_(x.title), num_(x.total), x.level || '',
+    const who = who_(x);
+    const row = [unitName, who.cls, who.seat, who.name, clean_(x.title), num_(x.total), x.level || '',
       num_(g['結構']), num_(g['輸入']), num_(g['計算']), num_(g['判斷']), num_(g['輸出']), num_(g['執行測試']),
       num_(x.english), String(x.fixes || ''), String(x.comment || ''), now];
-    const key = unitName + '\u0000' + clean_(x.student);
+    const key = [unitName, who.cls, who.seat, who.name].join('\u0000');
     if (index[key]) { sh.getRange(index[key], 1, 1, row.length).setValues([row]); updated++; }
     else { sh.appendRow(row); index[key] = sh.getLastRow(); added++; }
   });
@@ -119,6 +121,18 @@ function save_(req) {
 /* ---------- helpers ---------- */
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function clean_(s) { return String(s == null ? '' : s).replace(/[\\/:*?"<>|\r\n\t]/g, ' ').trim().slice(0, 80); }
+function who_(x) {
+  let cls = clean_(x.cls), seat = clean_(x.seat), name = clean_(x.name);
+  if (!name && x.student) {
+    const st = clean_(x.student);
+    let m = st.match(/^(\d+)\s*[-\s]\s*(\d+)\s+(.+)$/);
+    if (m) { cls = m[1]; seat = m[2]; name = m[3]; }
+    else if ((m = st.match(/^(\d+)\s+(.+)$/))) { seat = m[1]; name = m[2]; }
+    else name = st;
+  }
+  const student = (cls ? cls + (seat ? '-' : '') : '') + seat + ((cls || seat) ? ' ' : '') + name;
+  return { cls: cls, seat: seat, name: name, student: name ? student : '' };
+}
 function num_(v) { const n = Number(v); return isFinite(n) ? Math.round(n * 10) / 10 : ''; }
 
 function rootFolder_() {
@@ -146,6 +160,10 @@ function sheet_() {
 function tab_(name, head) {
   const ss = sheet_();
   let sh = ss.getSheetByName(name);
+  if (sh && sh.getLastRow() >= 1 && String(sh.getRange(1, 3).getValue()) !== head[2]) {
+    if (sh.getLastRow() <= 1) { sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold'); }
+    else { sh.setName(name + ' (舊 old)'); sh = null; }
+  }
   if (!sh) {
     sh = ss.insertSheet(name);
     sh.appendRow(head);

@@ -162,6 +162,8 @@ button{font:inherit;color:inherit}
 #curTitle{font-size:13px;font-weight:400;color:var(--muted);margin-left:4px}
 .dialog.narrow{width:min(540px,100%);overflow-y:auto}
 .dialog .row{align-items:center}
+.who{display:grid;grid-template-columns:1fr .8fr 1.6fr;gap:10px;grid-column:1/-1}
+@media (max-width:480px){.who{grid-template-columns:1fr 1fr}.who label:last-of-type{grid-column:1/-1}}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
 .field input{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
@@ -299,7 +301,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
     <h2>我的作品</h2>
     <p>作品會存在這台電腦的這個瀏覽器裡。換電腦前，請先用「下載作業檔」把作品帶走。</p>
     <div class="fields">
-      <label class="field"><span>Name 座號與姓名</span><input type="text" id="wStudent" placeholder="例：12 王小明" autocomplete="off"></label>
+      <div class="who"><label class="field"><span>Class 班級</span><input type="text" id="wCls" inputmode="numeric" placeholder="801" autocomplete="off"></label><label class="field"><span>No. 座號</span><input type="text" id="wSeat" inputmode="numeric" placeholder="12" autocomplete="off"></label><label class="field"><span>Name 姓名</span><input type="text" id="wName" placeholder="王小明" autocomplete="off"></label><input type="hidden" id="wStudent"></div>
       <label class="field"><span>Title 作品名稱（已自動填好）</span><input type="text" id="wTitle" placeholder="BMI Flowchart" autocomplete="off"></label>
     </div>
     <div class="row"><span class="status" id="worksStatus"></span><button class="btn primary" id="bSaveWork">儲存目前作品</button></div>
@@ -311,9 +313,9 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
 <div class="modal" id="copyModal" hidden>
   <div class="dialog narrow">
     <h2>下載作業檔</h2>
-    <p>Type your name, then download. 填好座號與姓名後按「下載」，會存成一個 .json 檔。把這個檔案交到老師指定的地方；下次用「開啟檔案」就能接著畫。</p>
+    <p>Type your class, number and name, then download. 填好班級、座號與姓名後按「下載」，會存成一個 .json 檔。把這個檔案交到老師指定的地方；下次用「開啟檔案」就能接著畫。</p>
     <div class="fields" style="grid-template-columns:1fr">
-      <label class="field"><span>Name 座號與姓名</span><input type="text" id="cStudent" placeholder="例：12 王小明" autocomplete="off"></label>
+      <div class="who"><label class="field"><span>Class 班級</span><input type="text" id="cCls" inputmode="numeric" placeholder="801" autocomplete="off"></label><label class="field"><span>No. 座號</span><input type="text" id="cSeat" inputmode="numeric" placeholder="12" autocomplete="off"></label><label class="field"><span>Name 姓名</span><input type="text" id="cName" placeholder="王小明" autocomplete="off"></label><input type="hidden" id="cStudent"></div>
       <label class="field" hidden><span>Title 作品名稱</span><input type="text" id="cTitle" autocomplete="off"></label>
     </div>
     <p class="fname">檔名：<b id="fileName"></b></p>
@@ -343,7 +345,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
     <div><p style="margin:0 0 4px;font-size:12px">BMI tests 測試</p><div class="ck-tests" id="ckTests"></div></div>
     <div class="ck-cert" id="ckCert" hidden>
       <div class="fields">
-        <label class="field"><span>Name 座號與姓名</span><input type="text" id="ckStudent" placeholder="例：12 王小明" autocomplete="off"></label>
+        <div class="who"><label class="field"><span>Class 班級</span><input type="text" id="ckCls" inputmode="numeric" placeholder="801" autocomplete="off"></label><label class="field"><span>No. 座號</span><input type="text" id="ckSeat" inputmode="numeric" placeholder="12" autocomplete="off"></label><label class="field"><span>Name 姓名</span><input type="text" id="ckName" placeholder="王小明" autocomplete="off"></label><input type="hidden" id="ckStudent"></div>
         <label class="field" hidden><span>Title 作品名稱</span><input type="text" id="ckTitle" autocomplete="off"></label>
       </div>
       <p style="margin:8px 0">Certificate 完成圖</p>
@@ -358,7 +360,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
     <h2>Submit to your teacher 繳交作業</h2>
     <p>Your flowchart goes straight to your teacher's Google Drive. You can submit again later; the newest one replaces the old one. 作品會直接送到老師的 Google Drive。之後可以再交一次，新的會取代舊的。</p>
     <div class="fields">
-      <label class="field"><span>Name 座號與姓名</span><input type="text" id="sbStudent" placeholder="例：12 王小明" autocomplete="off"></label>
+      <div class="who"><label class="field"><span>Class 班級</span><input type="text" id="sbCls" inputmode="numeric" placeholder="801" autocomplete="off"></label><label class="field"><span>No. 座號</span><input type="text" id="sbSeat" inputmode="numeric" placeholder="12" autocomplete="off"></label><label class="field"><span>Name 姓名</span><input type="text" id="sbName" placeholder="王小明" autocomplete="off"></label><input type="hidden" id="sbStudent"></div>
       <label class="field" id="sbCodeWrap" hidden><span>Class code 班級代碼</span><input type="text" id="sbCode" autocomplete="off"></label>
     </div>
     <p id="sbSummary" style="color:var(--ink);font-weight:500"></p>
@@ -1276,6 +1278,12 @@ const DEFAULT_TITLE=FREE?'My Flowchart':TASK==='score'?'Pass or Fail Flowchart':
 let meta={student:'',title:DEFAULT_TITLE};
 try{ meta=Object.assign(meta,JSON.parse(localStorage.getItem(META_KEY)||'{}')); }catch(e){}
 if(!String(meta.title||'').trim()) meta.title=DEFAULT_TITLE;
+function splitStudent(st){ st=String(st||'').trim(); let m=st.match(/^(\d+)\s*[-－\s]\s*(\d+)\s+(.+)$/); if(m) return {cls:m[1],seat:m[2],name:m[3]}; m=st.match(/^(\d+)\s+(.+)$/); if(m) return {cls:'',seat:m[1],name:m[2]}; return {cls:'',seat:'',name:st}; }
+function composeStudent(){ const c=String(meta.cls||'').trim(), s=String(meta.seat||'').trim(), n=String(meta.name||'').trim(); if(!n) return ''; return (c?c+(s?'-':''):'')+s+((c||s)?' ':'')+n; }
+function setWho(o){ const w=o.name!==undefined||o.cls!==undefined?o:splitStudent(o.student); meta.cls=w.cls||''; meta.seat=w.seat||''; meta.name=w.name||''; meta.student=composeStudent(); }
+if(meta.name===undefined&&meta.student) setWho({student:meta.student});
+function fillWho(x){ $('#'+x+'Cls').value=meta.cls||''; $('#'+x+'Seat').value=meta.seat||''; $('#'+x+'Name').value=meta.name||''; $('#'+x+'Student').value=meta.student||''; }
+['w','c','ck','sb'].forEach(x=>['Cls','Seat','Name'].forEach(f=>$('#'+x+f).addEventListener('input',e=>{ meta[{Cls:'cls',Seat:'seat',Name:'name'}[f]]=e.target.value; meta.student=composeStudent(); const h=$('#'+x+'Student'); h.value=meta.student; h.dispatchEvent(new Event('input')); saveMeta(); })));
 function showTitle(){ $('#curTitle').textContent=meta.title?'· '+meta.title:''; }
 function saveMeta(){ try{localStorage.setItem(META_KEY,JSON.stringify(meta));}catch(e){} showTitle(); }
 function readWorks(){ try{ return JSON.parse(localStorage.getItem(WORKS_KEY)||'[]'); }catch(e){ return []; } }
@@ -1286,7 +1294,7 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ i
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal').forEach(m=>{m.hidden=true;}); });
 
 function exportData(){
-  return {format:'flowboard-v1',task:TASK,student:meta.student,title:meta.title,exportedAt:new Date().toISOString(),line:state.line,
+  return {format:'flowboard-v1',task:TASK,student:meta.student,cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:meta.title,exportedAt:new Date().toISOString(),line:state.line,
     order:state.order||'',
     nodes:state.nodes.map(n=>({id:n.id,type:n.type,typeName:n.role==='input'?'輸入':n.role==='output'?'輸出':(TYPE_NAME[n.type]||n.type),...(n.role?{role:n.role}:{}),text:n.text,x:n.x,y:n.y,w:n.w,h:n.h})),
     edges:state.edges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label||''}))};
@@ -1319,12 +1327,12 @@ async function setCopyMode(){
   const dl=await dlPromise, fb=!dl||dlBroken;
   $('#copyFallback').hidden=!fb; $('#bDoCopy').textContent=fb?'複製':'下載';
 }
-$('#bCopy').onclick=()=>{ $('#cStudent').value=meta.student; $('#cTitle').value=meta.title||DEFAULT_TITLE; refreshCopy(); $('#copyStatus').textContent=''; setCopyMode(); openModal('copyModal'); };
+$('#bCopy').onclick=()=>{ fillWho('c'); $('#cTitle').value=meta.title||DEFAULT_TITLE; refreshCopy(); $('#copyStatus').textContent=''; setCopyMode(); openModal('copyModal'); };
 [['cStudent','student'],['cTitle','title']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{ meta[k]=e.target.value; saveMeta(); refreshCopy(); }));
 $('#bDoCopy').onclick=async()=>{
   const st=$('#copyStatus'); st.classList.remove('err');
   const fail=m=>{ st.textContent=m; st.classList.add('err'); };
-  if(!meta.student.trim()){ fail('請先填寫座號與姓名。'); $('#cStudent').focus(); return; }
+  if(!meta.student.trim()){ fail('請先填寫姓名。'); $('#cName').focus(); return; }
   if(!state.nodes.length){ fail('畫布是空的，先畫好流程圖再下載。'); return; }
   const dl=await dlPromise;
   if(dl&&!dlBroken){
@@ -1344,7 +1352,7 @@ $('#bDoCopy').onclick=async()=>{
 function importError(m){ $('#importErr').textContent=m; $('#importModal').hidden=false; }
 function loadText(text,name){
   try{ const w=parseWork(text); applyWork(w);
-    if(w.title||w.student){ meta.title=w.title; meta.student=w.student; saveMeta(); }
+    if(w.title||w.student){ meta.title=w.title; setWho(w); saveMeta(); }
     $('#importModal').hidden=true; toast('已開啟「'+(w.title||name)+'」'+(w.student?'：'+w.student:'')); }
   catch(e){ importError(e.message); }
 }
@@ -1374,16 +1382,16 @@ function renderWorks(){
   ul.innerHTML=list.map(w=>`<li><div class="wi"><b>${esc(w.title)}</b><span>${w.student?esc(w.student)+' · ':''}${fmtTime(w.savedAt)} · ${(w.data&&w.data.nodes||[]).length} 個圖形</span></div>`+
     `<div class="wa"><button class="btn" data-load="${esc(w.id)}">讀取</button><button class="btn" data-del="${esc(w.id)}">刪除</button></div></li>`).join('');
 }
-$('#bWorks').onclick=()=>{ $('#wStudent').value=meta.student; $('#wTitle').value=meta.title||DEFAULT_TITLE; $('#worksStatus').textContent=''; renderWorks(); openModal('worksModal'); };
+$('#bWorks').onclick=()=>{ fillWho('w'); $('#wTitle').value=meta.title||DEFAULT_TITLE; $('#worksStatus').textContent=''; renderWorks(); openModal('worksModal'); };
 $('#bSaveWork').onclick=()=>{
   const st=$('#worksStatus'); st.classList.remove('err');
   const title=$('#wTitle').value.trim()||DEFAULT_TITLE;
   if(!title){ st.textContent='請先輸入作品名稱。'; st.classList.add('err'); $('#wTitle').focus(); return; }
   if(!state.nodes.length){ st.textContent='畫布是空的，沒有可以儲存的內容。'; st.classList.add('err'); return; }
-  meta.title=title; meta.student=$('#wStudent').value.trim(); saveMeta();
+  meta.title=title; saveMeta();
   const list=readWorks(), ex=list.find(w=>w.title===title), data={nodes:state.nodes,edges:state.edges,line:state.line,order:state.order};
-  if(ex){ ex.data=data; ex.student=meta.student; ex.savedAt=Date.now(); }
-  else list.push({id:uid('w'),title,student:meta.student,savedAt:Date.now(),data});
+  if(ex){ ex.data=data; ex.student=meta.student; ex.cls=meta.cls; ex.seat=meta.seat; ex.name=meta.name; ex.savedAt=Date.now(); }
+  else list.push({id:uid('w'),title,student:meta.student,cls:meta.cls,seat:meta.seat,name:meta.name,savedAt:Date.now(),data});
   if(writeWorks(list)){ st.textContent=(ex?'已更新「':'已儲存「')+title+'」。'; }
   else { st.textContent='這個瀏覽器不允許儲存，請改用「下載作業檔」保存。'; st.classList.add('err'); }
   renderWorks();
@@ -1391,7 +1399,7 @@ $('#bSaveWork').onclick=()=>{
 $('#worksList').addEventListener('click',e=>{
   const l=e.target.closest('[data-load]'), d=e.target.closest('[data-del]');
   if(l){ const w=readWorks().find(x=>x.id===l.dataset.load); if(!w||!w.data) return;
-    applyWork(w.data); meta.title=w.title; if(w.student) meta.student=w.student; saveMeta();
+    applyWork(w.data); meta.title=w.title; if(w.student) setWho(w); saveMeta();
     $('#worksModal').hidden=true; toast('已讀取「'+w.title+'」'); }
   if(d){ if(d.dataset.confirm){ writeWorks(readWorks().filter(x=>x.id!==d.dataset.del)); renderWorks(); }
     else { d.dataset.confirm='1'; d.textContent='確定刪除？'; d.classList.add('danger'); } }
@@ -1582,7 +1590,7 @@ function openCheck(){
   const st=$('#ckStatus'); st.classList.remove('err');
   st.textContent=g.passed?'':'Fix it and check again. 修正後再按一次提交批改。';
   $('#checkModal').hidden=false;
-  if(g.passed){ $('#ckStudent').value=meta.student; $('#ckTitle').value=meta.title||DEFAULT_TITLE; makeCert(); }
+  if(g.passed){ fillWho('ck'); $('#ckTitle').value=meta.title||DEFAULT_TITLE; makeCert(); }
 }
 [['ckStudent','student'],['ckTitle','title']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{ meta[k]=e.target.value; saveMeta(); clearTimeout(certTimer); certTimer=setTimeout(makeCert,300); }));
 
@@ -1637,7 +1645,7 @@ async function makeCert(){
 }
 $('#bCert').onclick=async()=>{
   const st=$('#ckStatus'); st.classList.remove('err');
-  if(!String(meta.student||'').trim()){ st.textContent='Enter your name first. 請先填寫座號與姓名。'; st.classList.add('err'); $('#ckStudent').focus(); return; }
+  if(!String(meta.student||'').trim()){ st.textContent='Enter your name first. 請先填寫姓名。'; st.classList.add('err'); $('#ckName').focus(); return; }
   await makeCert(); if(!certBlob){ st.textContent='Something went wrong. Try again. 完成圖產生失敗，請再試一次。'; st.classList.add('err'); return; }
   const name=`完成圖_${cleanName(meta.student)||'BMI'}.png`;
   const dl=await dlPromise;
@@ -1746,26 +1754,26 @@ function openSubmit(){
   commitEdit();
   if(!state.nodes.length){ toast('Draw your flowchart first 畫布是空的，先畫流程圖'); return; }
   const g=gradeTask({nodes:state.nodes,edges:state.edges,task:TASK});
-  $('#sbStudent').value=meta.student||'';
+  fillWho('sb');
   $('#sbCodeWrap').hidden=!CFG.needCode;
   $('#sbSummary').textContent=`Self-check 自我批改：${g.total} / 100 · ${g.passed?'Passed 達成':'Not yet 尚未達成'}`;
   const st=$('#sbStatus'); st.textContent=g.passed?'':'You can still submit now, or fix it first. 還沒全對也可以先繳交，之後再改再交一次（會覆蓋前一次）。'; st.classList.remove('err');
   $('#bDoSubmit').disabled=false;
   $('#submitModal').hidden=false;
-  setTimeout(()=>$('#sbStudent').focus(),0);
+  setTimeout(()=>$((meta.name?'#bDoSubmit':'#sbCls')).focus(),0);
 }
-$('#sbStudent').addEventListener('input',e=>{ meta.student=e.target.value; saveMeta(); });
+
 $('#bDoSubmit').onclick=async()=>{
   const st=$('#sbStatus'), btn=$('#bDoSubmit'); st.classList.remove('err');
   const fail=m=>{ st.textContent=m; st.classList.add('err'); btn.disabled=false; };
   const student=String(meta.student||'').trim();
-  if(!student){ fail('Enter your name first. 請先填寫座號與姓名。'); $('#sbStudent').focus(); return; }
+  if(!student){ fail('Enter your name first. 請先填寫姓名。'); $('#sbName').focus(); return; }
   const code=$('#sbCode').value.trim();
   if(CFG.needCode&&!code){ fail('Enter the class code. 請輸入班級代碼。'); $('#sbCode').focus(); return; }
   const g=gradeTask({nodes:state.nodes,edges:state.edges,task:TASK});
   btn.disabled=true; st.textContent='Submitting… 繳交中…';
   try{
-    const res=await callDrive({action:'submit',unit:TASK,code,student,title:meta.title||DEFAULT_TITLE,work:exportData(),check:{total:g.total,passed:g.passed,english:g.english}});
+    const res=await callDrive({action:'submit',unit:TASK,code,student,cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:meta.title||DEFAULT_TITLE,work:exportData(),check:{total:g.total,passed:g.passed,english:g.english}});
     if(res&&res.ok){ const t=new Date(res.time||Date.now()); st.textContent=`Submitted! 已繳交 ${t.toLocaleString('zh-TW',{hour12:false})}`; toast('Submitted 已繳交'); btn.disabled=false; return; }
     const e=res&&res.error;
     fail(e==='bad_code'?'Wrong class code. 班級代碼不對，請再確認。':e==='no_name'?'Enter your name first. 請先填寫座號與姓名。':e==='too_large'?'The file is too large. 作品太大，請刪掉多餘的圖形。':'The server said no. 雲端拒絕了這次繳交，請告訴老師。'+(e?`（${e}）`:''));

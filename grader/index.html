@@ -771,6 +771,8 @@ const TASKS={
     text:'題目要求：輸入四個成績，計算總分（四個相加）和平均（總分 ÷ 4），平均 ≥ 60 輸出 pass，否則輸出 fail（剛好 60 算 pass）。'}};
 let unit='bmi', ALL=[];
 const GR=t=>TASKS[t||unit].groups;
+function whoOf(w){ if(w.name) return {cls:w.cls||'',seat:w.seat||'',name:w.name}; const st=String(w.student||'').trim();
+  let m=st.match(/^(\d+)\s*[-－\s]\s*(\d+)\s+(.+)$/); if(m) return {cls:m[1],seat:m[2],name:m[3]}; m=st.match(/^(\d+)\s+(.+)$/); if(m) return {cls:'',seat:m[1],name:m[2]}; return {cls:'',seat:'',name:st}; }
 const GL={'結構':'Structure 結構','輸入':'Input 輸入','計算':'Process 計算','判斷':'Decision 判斷','輸出':'Output 輸出','執行測試':'Test run 執行測試'};
 
 let works=[], usingSamples=false, cur=null;
@@ -1034,8 +1036,8 @@ const dlPromise=(async()=>{ try{ return (window.claude&&window.claude.use)?await
 function csv(){
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const GROUPS=GR();
-  const head=['座號姓名','作品名稱','總分','等第',...GROUPS.map(([k,m])=>`${k}(${m})`),'English 英文使用率(%)','需要修正','評語'];
-  const rows=works.map(w=>[w.work.student||'',w.work.title||'',w.g.total,w.g.level,...GROUPS.map(([k])=>fmt(w.g.groups[k].got)),w.g.english,w.g.fixes.join('；'),commentOf(w)]);
+  const head=['班級','座號','姓名','作品名稱','總分','等第',...GROUPS.map(([k,m])=>`${k}(${m})`),'English 英文使用率(%)','需要修正','評語'];
+  const rows=works.map(w=>{ const o=whoOf(w.work); return [o.cls,o.seat,o.name,w.work.title||'',w.g.total,w.g.level,...GROUPS.map(([k])=>fmt(w.g.groups[k].got)),w.g.english,w.g.fixes.join('；'),commentOf(w)]; });
   return '﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n');
 }
 $('#bCsv').onclick=async()=>{
@@ -1087,7 +1089,7 @@ $('#bDrSave').onclick=async()=>{
   const list=works.filter(w=>!w.sample);
   if(!list.length){ st.textContent='這個單元沒有可以寫回的作業（範例不會寫回）。'; st.classList.add('err'); return; }
   b.disabled=true; st.textContent='寫回中…';
-  const rows=list.map(w=>({unit:w.g.task,student:w.work.student||'',title:w.work.title||'',total:w.g.total,level:w.g.level,
+  const rows=list.map(w=>({unit:w.g.task,student:w.work.student||'',...whoOf(w.work),title:w.work.title||'',total:w.g.total,level:w.g.level,
     groups:Object.fromEntries(Object.entries(w.g.groups).map(([k,v])=>[k,v.got])),english:w.g.english,fixes:w.g.fixes.join('；'),comment:commentOf(w)}));
   try{ const res=await callDrive({action:'save',key:drive.key,unit,rows});
     if(!res.ok){ st.textContent=driveErr(res.error); st.classList.add('err'); return; }
