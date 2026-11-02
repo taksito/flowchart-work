@@ -1301,6 +1301,7 @@ const CFG=window.FLOW_CONFIG||{};
 const DKEY='grader-drive-v1';
 let drive={url:String(CFG.submitUrl||''),key:''};
 try{ drive=Object.assign(drive,JSON.parse(localStorage.getItem(DKEY)||'{}')); }catch(e){}
+if(CFG.submitUrl&&drive.cfgSeen!==CFG.submitUrl){ drive.url=String(CFG.submitUrl); drive.cfgSeen=CFG.submitUrl; try{ localStorage.setItem(DKEY,JSON.stringify(drive)); }catch(e){} }
 const driveOK=()=>/^https:\/\/script\.google(usercontent)?\.com\//.test(drive.url.trim());
 async function callDrive(payload){
   const r=await fetch(drive.url.trim(),{method:'POST',body:JSON.stringify(payload)});
