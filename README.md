@@ -12,6 +12,7 @@ A bilingual (English / 中文) flowchart assignment for junior-high students: dr
 | Free Draw 自由繪製 | `free/` | Anyone 任何人 |
 | BMI Drawing Tool BMI 繪製工具 | `bmi/` | Students 學生 |
 | Pass or Fail Tool 成績及格判斷工具 | `score/` | Students 學生 |
+| Scratch Lab: Pass or Fail 積木程式 | `scratch/` | Students 學生 |
 | Grading Desk 批改台 | `grader/` | Teachers 教師 |
 
 Live site 網址：https://taksito.github.io/flowchart-work/
@@ -53,9 +54,20 @@ Input four scores, compute the total and the average (total ÷ 4), then output `
 - The helper checks the inputs, the total, the average (÷ 4, not ÷ 3), the `>= 60` boundary and the Yes/No lines. 小幫手會檢查輸入、總分、平均、>= 60 的邊界和 Yes/No 接線。
 - Rubric (100): Structure 20, Input 10, Process 20, Decision 15, Output 10, Test run 25 (8 sets of scores, including averages of exactly 60 and 59.75).
 
+## Scratch Lab 積木程式
+
+A Scratch-style block editor built with [Blockly](https://developers.google.com/blockly) (loaded from unpkg). 用 Blockly 做的 Scratch 風格積木編輯器。
+
+- Blocks 積木：when ⚑ clicked, ask and wait / answer, say, variables (set, change), + − × ÷, > < =, and / or / not, join, round, if then (else), repeat, wait.
+- Stage 舞台：press **Run 執行** to run the program; the robot asks questions and says the result, and variable monitors show their values.
+- First task 第一題：**Pass or Fail** — ask four scores, store them in variables, compute total and average, then say `pass` (average ≥ 60) or `fail`.
+- Helper 小幫手 walks through Flag → Ask → Save → Total → Average → If → Say → Test. Check runs the program with 8 sets of scores and unlocks the certificate.
+- Rubric (100): Structure 15, Input 15, Process 20, Decision 15, Output 10, Test run 25.
+- Submit 繳交 uses unit `scratch` in the Apps Script (see GOOGLE-DRIVE.md; update the script if it was deployed before this unit existed).
+
 ## Grading Desk 批改台
 
-- Units 單元：switch between **BMI** and **Pass or Fail** at the top. Uploaded files go to the right unit automatically. 上方切換單元，上傳的檔案會自動分到對應單元。
+- Units 單元：switch between **BMI**, **Pass or Fail** and **Scratch** at the top. Uploaded files go to the right unit automatically. 上方切換單元，上傳的檔案會自動分到對應單元。
 
 - Upload many `.json` files at once (or drag them in). 一次上傳多份作業檔。
 - Rubric (100 points): Structure 20, Input 10, Process 10, Decision 20, Output 10, Test run 30.

@@ -13,7 +13,7 @@ const CONFIG = {
   SHEET_NAME: 'Flowchart Work 成績',    // 試算表名稱
 };
 
-const UNITS = { bmi: 'BMI', score: 'Pass or Fail' };
+const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail' };
 const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File'];
 const SCORE_HEAD = ['單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '總分 Total', '等第 Level', 'Structure 結構', 'Input 輸入', 'Process 計算', 'Decision 判斷', 'Output 輸出', 'Test run 執行測試', '英文使用率 English %', '需要修正 Fixes', '評語 Comment', '批改時間 Graded'];
 

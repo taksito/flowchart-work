@@ -63,10 +63,13 @@ window.FLOW_CONFIG = {
 |---|---|
 | `Flowchart Work 作業/BMI/` | 每位學生一個 `班級-座號 姓名.json`（例如 `801-12 王小明.json`），重交會覆蓋成最新版本 |
 | `Flowchart Work 作業/Pass or Fail/` | 同上 |
+| `Flowchart Work 作業/Scratch Pass or Fail/` | Scratch Lab 的作業 |
 | 試算表「繳交紀錄 Submissions」 | 每次繳交一列：時間、單元、班級、座號、姓名、自我批改分數、是否達成、英文使用率、檔案連結 |
 | 試算表「成績 Scores」 | 批改台寫回的成績：班級、座號、姓名、總分、等第、各項分數、需要修正、評語、批改時間 |
 
 ## Updating the script 之後修改程式
+
+> 新增 Scratch 單元後，`Code.gs` 多了 `scratch` 單元。之前部署過的人要貼上新版 `Code.gs`（記得改回自己的 `TEACHER_KEY`），再部署新版本，學生才能從 Scratch Lab 繳交。
 
 改了 `Code.gs`（例如換教師密碼或班級代碼）之後，要到 **部署 → 管理部署作業 → ✏️ 編輯 → 版本選「新版本」→ 部署**，網址不會變。
 
