@@ -177,7 +177,7 @@ button{font:inherit;color:inherit}
           <div class="bubble" id="bubble" hidden></div>
           <form class="askbox" id="askbox" hidden><input id="askInput" autocomplete="off" aria-label="Your answer 你的回答"><button type="submit" aria-label="OK 確定">✓</button></form>
         </div>
-        <div class="stagebar" id="stagebar"><span class="dot"></span><span id="stageMsg">Press Run to try your program. Click a variable or answer block to watch its value. 按 Run 執行；點變數或 answer 積木，可以在舞台上看到它的值。</span></div>
+        <div class="stagebar" id="stagebar"><span class="dot"></span><span id="stageMsg">Press Run to try your program. Tick ☐ next to a variable to watch it. 按 Run 執行；在變數旁點 ☐ 可以在舞台上看到它的值。</span></div>
       </div>
       <section class="buddy" id="buddy" aria-live="polite">
         <div class="b-head">
@@ -1061,7 +1061,7 @@ const TC={
   bmi:{key:'blocklab-bmi-v1',title:'Scratch BMI',unit:'scratch-bmi',h1:'Scratch Lab: BMI',zh:'積木程式：BMI 判斷',eyebrow:'SCRATCH LAB · BMI · COMPLETE',ask:'Height (m)?',says:['thin','normal','overweight','obesity'],tests:'✓ 8 / 8 BMI tests passed 測試全數通過'}}[SBT];
 const KEY=TC.key, META_KEY='blocklab-meta', TITLE=TC.title;
 const gradeFn=w=>SBT==='bmi'?gradeScratchBMI(w):gradeScratch(w), fbFn=(w,g)=>SBT==='bmi'?feedbackScratchBMI(w,g):feedbackScratch(w,g);
-document.title=TC.h1.replace('Scratch Lab: ','Scratch ')+' '+TC.zh.replace('積木程式：','');
+document.title=TC.title+' 積木程式';
 $('#h1Name').textContent=TC.h1; $('#h1Zh').textContent=TC.zh;
 let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},2600); }
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m||e.target.closest('[data-close]')) m.hidden=true; }));
@@ -1121,7 +1121,7 @@ const sh=(type,f)=>({shadow:{type,fields:f}});
 const T=(s)=>sh('sc_text',{TEXT:s}), N=(n)=>sh('sc_num',{NUM:n});
 const toolbox={kind:'categoryToolbox',contents:[
   {kind:'category',name:'Events 事件',categorystyle:'events',contents:[{kind:'block',type:'sc_flag'}]},
-  {kind:'category',name:'Sensing 偵測',categorystyle:'sensing',contents:[{kind:'block',type:'sc_ask',inputs:{Q:T(TC.ask)}},{kind:'block',type:'sc_answer'}]},
+  {kind:'category',name:'Sensing 偵測',categorystyle:'sensing',custom:'SC_SENSE'},
   {kind:'category',name:'Variables 變數',categorystyle:'variables',custom:'SC_VARS'},
   {kind:'category',name:'Operators 運算',categorystyle:'operators',contents:[
     {kind:'block',type:'sc_add',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_sub',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_mul',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_div',inputs:{A:N(''),B:N(4)}},
@@ -1151,13 +1151,18 @@ const ws=Blockly.inject('blocks',{toolbox,theme,renderer:'zelos',trashcan:true,s
 ws.registerToolboxCategoryCallback('SC_VARS',w=>{
   const vars=w.getVariablesOfType('').sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
   const out=[{kind:'button',text:'Make a Variable 建立變數',callbackkey:'MAKE_VAR'}];
-  vars.forEach(v=>out.push({kind:'block',type:'sc_var',fields:{VAR:{id:v.getId()}}}));
+  if(vars.length) out.push({kind:'label',text:'☐ = show on stage 在舞台顯示'});
+  vars.forEach(v=>{ const k='W_'+v.getId(), nm=v.name; w.registerButtonCallback(k,()=>toggleName(nm));
+    out.push({kind:'button',text:(watched.includes(nm)?'☑ ':'☐ ')+nm,callbackkey:k}); out.push({kind:'block',type:'sc_var',fields:{VAR:{id:v.getId()}}}); });
   if(vars.length){ const v=vars[0];
     out.push({kind:'sep',gap:24});
     out.push({kind:'block',type:'sc_set',fields:{VAR:{id:v.getId()}},inputs:{VALUE:{shadow:{type:'sc_text',fields:{TEXT:'0'}}}}});
     out.push({kind:'block',type:'sc_set',fields:{VAR:{id:v.getId()}},inputs:{VALUE:{block:{type:'sc_answer'}}}});
     out.push({kind:'block',type:'sc_change',fields:{VAR:{id:v.getId()}},inputs:{BY:{shadow:{type:'sc_num',fields:{NUM:1}}}}}); }
   return out; });
+ws.registerToolboxCategoryCallback('SC_SENSE',w=>{ w.registerButtonCallback('W_ANSWER',()=>toggleName('answer'));
+  return [{kind:'block',type:'sc_ask',inputs:{Q:{shadow:{type:'sc_text',fields:{TEXT:TC.ask}}}}},{kind:'block',type:'sc_answer'},
+    {kind:'button',text:(watched.includes('answer')?'☑ ':'☐ ')+'show answer 顯示答案',callbackkey:'W_ANSWER'}]; });
 try{
   const reg=Blockly.ContextMenuRegistry.registry; if(reg.getItem('blockDuplicate')) reg.unregister('blockDuplicate');
   reg.register({id:'blockDuplicate',scopeType:Blockly.ContextMenuRegistry.ScopeType.BLOCK,weight:1,
@@ -1186,12 +1191,13 @@ const fmtV=v=>v===undefined?0:(typeof v==='number'?Math.round(v*1000)/1000:v);
 function renderMonitors(vars,answer){ if(vars) lastVals=vars; if(answer!==undefined) lastAnswer=answer;
   const m=$('#monitors'), names=ws.getVariablesOfType('').map(v=>v.name);
   const list=watched.filter(n=>n==='answer'||names.includes(n));
-  if(!list.length){ m.innerHTML='<div class="mon hint">Click a variable block to watch it here. 點變數積木，就能在這裡看到它的值。</div>'; return; }
+  if(!list.length){ m.innerHTML='<div class="mon hint">Tick ☐ next to a variable (or answer) to watch it here. 在「變數」或「偵測」點 ☐，就能在這裡看到它的值。</div>'; return; }
   m.innerHTML=list.map(n=>n==='answer'?`<div class="mon ans">answer 答案<b>${esc(lastAnswer===''?'':lastAnswer)}</b></div>`:`<div class="mon">${esc(n)}<b>${esc(fmtV(lastVals[n]))}</b></div>`).join(''); }
 function toggleWatch(b){ if(!b) return; let n=null;
-  if(b.type==='sc_var') n=b.getField('VAR').getText(); else if(b.type==='sc_answer') n='answer'; if(!n) return;
+  if(b.type==='sc_var') n=b.getField('VAR').getText(); else if(b.type==='sc_answer') n='answer'; if(n) toggleName(n); }
+function toggleName(n){
   const i=watched.indexOf(n); if(i>=0){ watched.splice(i,1); toast(`Stopped watching ${n} 不再顯示 ${n}`); } else { watched.push(n); toast(`Watching ${n} 舞台上顯示 ${n}`); }
-  try{ localStorage.setItem(WKEY,JSON.stringify(watched)); }catch(e){} renderMonitors(); }
+  try{ localStorage.setItem(WKEY,JSON.stringify(watched)); }catch(e){} renderMonitors(); try{ ws.getToolbox().refreshSelection(); }catch(e){} }
 const clickWatch=w=>e=>{ if(e.type===Blockly.Events.CLICK&&e.blockId) toggleWatch(w.getBlockById(e.blockId)); };
 ws.addChangeListener(clickWatch(ws));
 try{ const fw=ws.getFlyout()&&ws.getFlyout().getWorkspace(); if(fw) fw.addChangeListener(clickWatch(fw)); }catch(e){}
