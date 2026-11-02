@@ -1169,7 +1169,7 @@ try{
     displayText:()=>'Duplicate 複製（含下方積木）',
     preconditionFn:sc=>{ const b=sc.block; return b&&!b.isInFlyout&&!b.isShadow()&&b.isDeletable()&&b.isMovable()?'enabled':'hidden'; },
     callback:sc=>{ const b=sc.block; const j=Blockly.serialization.blocks.save(b,{addCoordinates:true,addNextBlocks:true}); const xy=b.getRelativeToSurfaceXY(); j.x=xy.x+32; j.y=xy.y+32; delete j.id;
-      Blockly.Events.setGroup(true); try{ const nb=Blockly.serialization.blocks.append(j,b.workspace); if(nb&&nb.select) nb.select(); }finally{ Blockly.Events.setGroup(false); } } });
+      Blockly.Events.setGroup(true); try{ const nb=Blockly.serialization.blocks.append(j,b.workspace,{recordUndo:true}); if(nb&&nb.select) nb.select(); }finally{ Blockly.Events.setGroup(false); } } });
 }catch(e){ console.warn('duplicate menu',e); }
 ws.registerButtonCallback('MAKE_VAR',b=>Blockly.Variables.createVariableButtonHandler(b.getTargetWorkspace(),null,''));
 const wsJSON=()=>Blockly.serialization.workspaces.save(ws);
