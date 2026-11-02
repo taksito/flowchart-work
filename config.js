@@ -5,6 +5,6 @@
  * 設定步驟請看 GOOGLE-DRIVE.md。
  */
 window.FLOW_CONFIG = {
-  submitUrl: 'https://script.google.com/macros/s/AKfycbwQ0sp7OUiFdFds7vQfZtqsgws68TvPNXExqvgbqQvDbpE9zNUP2LCDrDbc1XaTz1L8/exec',
+  submitUrl: 'https://script.google.com/macros/s/AKfycbzRhD6xi_3IFqtgaNGWSShTMPJf9YjcWHlEMNeyZjhIRygH1kKoqMd_LaEnZbRegKMS/exec',
   needCode: false
 };
