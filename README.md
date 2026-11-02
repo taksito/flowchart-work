@@ -66,7 +66,14 @@ Input four scores, compute the total and the average (total ÷ 4), then output `
 
 > Note 注意：this repository is public, so the answer key inside the grading desk is visible to anyone who looks at the source. 本專案公開，批改台裡的標準答案任何人都看得到。
 
+## Google Drive 雲端繳交與成績登記
+
+Optional. Students press **Submit 繳交** to send their work to the teacher's Google Drive, and the Grading Desk can load the whole class from Drive and write scores back to a Google Sheet. It runs on a free Google Apps Script that the teacher deploys once.
+選用功能：學生按「Submit 繳交」，作業直接存進老師的 Google Drive；批改台可以從雲端一次載入全班作業，再把成績寫回 Google 試算表。
+
+Setup 設定步驟：[GOOGLE-DRIVE.md](GOOGLE-DRIVE.md) · Script：[`apps-script/Code.gs`](apps-script/Code.gs) · Settings：[`config.js`](config.js)
+
 ## Privacy 隱私
 
-Everything runs in the browser. Drawings and uploaded work stay in that browser's local storage; nothing is sent to a server.
-所有功能都在瀏覽器裡執行，作品與上傳的作業只存在該瀏覽器，不會傳到任何伺服器。
+Everything runs in the browser. Unless the teacher sets up Google Drive, drawings and uploaded work stay in that browser's local storage. With Google Drive, submitted work goes only to the teacher's own Drive.
+所有功能都在瀏覽器裡執行。沒有設定 Google Drive 時，作品只存在該瀏覽器；設定後，繳交的作業只會送到老師自己的 Google Drive。

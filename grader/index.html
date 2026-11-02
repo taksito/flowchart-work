@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="../config.js"></script>
 </head>
 <body>
 <title>Grading Desk 批改台</title>
@@ -153,6 +154,8 @@ td .why{color:var(--muted);font-size:12px}
 .dialog p,.dialog li{font-size:14px}
 .dialog table td:last-child{text-align:right;font-family:var(--font-mono)}
 .dialog textarea{font-family:var(--font-mono);font-size:12px;width:100%;box-sizing:border-box;min-height:160px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+.dialog #drStatus.err{color:var(--bad)}
+.dialog #drLinks a{color:var(--accent)}
 .dialog .end{display:flex;justify-content:flex-end;gap:8px}
 .dropmask{position:fixed;inset:0;z-index:30;background:rgba(23,121,90,.18);border:3px dashed var(--accent);display:grid;place-items:center;font-size:20px;font-weight:700;color:var(--accent);pointer-events:none}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);font-size:13px;padding:8px 14px;border-radius:8px;z-index:40;max-width:calc(100% - 32px)}
@@ -175,6 +178,7 @@ td .why{color:var(--muted);font-size:12px}
     <div class="tools">
       <label class="btn primary" for="fileInput" tabindex="0" id="upLabel">上傳作業檔</label>
       <input type="file" id="fileInput" accept=".json,application/json" multiple hidden>
+      <button class="btn" id="bDrive" hidden>Google Drive</button>
       <button class="btn" id="bBatch">整班評語</button>
       <button class="btn" id="bCsv">下載成績表</button>
       <button class="btn" id="bRubric">評分標準</button>
@@ -256,6 +260,17 @@ td .why{color:var(--muted);font-size:12px}
   </div>
 </div>
 
+<div class="modal" id="driveModal" hidden>
+  <div class="dialog">
+    <h2>Google Drive 雲端作業與成績</h2>
+    <p>學生在畫板按「Submit 繳交」後，作業會存進你的 Google Drive。這裡可以一次載入目前單元（<b id="drUnit"></b>）的全班作業，批改後再把成績寫回 Google 試算表。設定方式請看 GitHub 上的「GOOGLE-DRIVE.md」。</p>
+    <label class="field" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)"><span>Web app URL 部署網址</span><input id="drUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" style="font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)"></label>
+    <label class="field" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)"><span>Teacher key 教師密碼（只存在這台電腦）</span><input id="drKey" type="password" autocomplete="off" style="font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)"></label>
+    <p id="drLinks" style="font-size:13px"></p>
+    <p id="drStatus" style="font-size:13px;color:var(--accent);min-height:1.2em"></p>
+    <div class="end"><button class="btn" data-close>關閉</button><button class="btn" id="bDrSave">Save scores 寫回成績</button><button class="btn primary" id="bDrLoad">Load from Drive 從雲端載入</button></div>
+  </div>
+</div>
 <div class="dropmask" id="dropmask" hidden>放開就上傳作業檔</div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -985,7 +1000,9 @@ function parseWork(text,file){
 function readFiles(files){
   files=[...files].filter(Boolean); if(!files.length) return;
   Promise.all(files.map(f=>new Promise(res=>{ const r=new FileReader(); r.onload=()=>{ try{ res({ok:parseWork(String(r.result),f.name),file:f.name}); }catch(e){ res({err:e.message}); } }; r.onerror=()=>res({err:f.name+'：讀取失敗'}); r.readAsText(f); })))
-  .then(list=>{
+  .then(list=>ingest(list));
+}
+function ingest(list){
     const ok=list.filter(x=>x.ok), bad=list.filter(x=>x.err);
     if(ok.length&&usingSamples){ ALL=[]; usingSamples=false; }
     let added=0,replaced=0,last=null;
@@ -1001,7 +1018,6 @@ function readFiles(files){
     renderList(); renderDetail();
     let msg=[]; if(added) msg.push(`新增 ${added} 份`); if(replaced) msg.push(`更新 ${replaced} 份`); if(bad.length) msg.push(`${bad.length} 個檔案無法讀取（${bad.map(b=>b.err).join('；')}）`);
     toast(msg.join('，')||'沒有讀到作業');
-  });
 }
 $('#fileInput').addEventListener('change',e=>{ readFiles(e.target.files); e.target.value=''; });
 $('#upLabel').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('#fileInput').click(); } });
@@ -1030,6 +1046,56 @@ $('#bCsv').onclick=async()=>{
   $('#csvText').value=text.replace(/^﻿/,''); $('#csvModal').hidden=false;
 };
 $('#bCsvCopy').onclick=async()=>{ const ta=$('#csvText'); try{ await navigator.clipboard.writeText(ta.value); toast('已複製，可以貼到試算表'); }catch(e){ ta.focus(); ta.select(); toast('已全選，請按 Ctrl+C'); } };
+
+/* ---------- Google Drive ---------- */
+const CFG=window.FLOW_CONFIG||{};
+const DKEY='grader-drive-v1';
+let drive={url:String(CFG.submitUrl||''),key:''};
+try{ drive=Object.assign(drive,JSON.parse(localStorage.getItem(DKEY)||'{}')); }catch(e){}
+const driveOK=()=>/^https:\/\/script\.google(usercontent)?\.com\//.test(drive.url.trim());
+async function callDrive(payload){
+  const r=await fetch(drive.url.trim(),{method:'POST',body:JSON.stringify(payload)});
+  if(!r.ok) throw new Error('http_'+r.status);
+  return await r.json();
+}
+function driveErr(e){ return e==='bad_key'?'教師密碼不對，請確認和 Apps Script 裡的 TEACHER_KEY 一樣。':e?`雲端回覆錯誤（${e}）。`:'連不上雲端。請確認部署網址正確、部署存取權是「任何人」。'; }
+function setLinks(res){ const l=[]; if(res.folderUrl) l.push(`<a href="${esc(res.folderUrl)}" target="_blank" rel="noopener">作業資料夾 Folder</a>`); if(res.sheetUrl) l.push(`<a href="${esc(res.sheetUrl)}" target="_blank" rel="noopener">成績試算表 Sheet</a>`); if(l.length) $('#drLinks').innerHTML=l.join(' · '); }
+function openDrive(){
+  $('#drUrl').value=drive.url; $('#drKey').value=drive.key; $('#drUnit').textContent=TASKS[unit].name;
+  $('#drStatus').textContent=''; $('#drStatus').classList.remove('err'); $('#driveModal').hidden=false;
+}
+function saveDriveCfg(){ drive.url=$('#drUrl').value.trim(); drive.key=$('#drKey').value.trim(); try{ localStorage.setItem(DKEY,JSON.stringify(drive)); }catch(e){} }
+['drUrl','drKey'].forEach(id=>$('#'+id).addEventListener('change',saveDriveCfg));
+$('#bDrive').onclick=openDrive;
+$('#bDrLoad').onclick=async()=>{
+  saveDriveCfg(); const st=$('#drStatus'), b=$('#bDrLoad'); st.classList.remove('err');
+  if(!driveOK()){ st.textContent='請貼上 Apps Script 的部署網址（https://script.google.com/macros/s/…/exec）。'; st.classList.add('err'); return; }
+  if(!drive.key){ st.textContent='請輸入教師密碼。'; st.classList.add('err'); return; }
+  b.disabled=true; st.textContent='載入中…';
+  try{ const res=await callDrive({action:'list',key:drive.key,unit});
+    if(!res.ok){ st.textContent=driveErr(res.error); st.classList.add('err'); return; }
+    setLinks(res);
+    if(!res.works.length){ st.textContent=`雲端還沒有「${TASKS[unit].name}」的作業。`; return; }
+    ingest(res.works.map(x=>({ok:parseWork(JSON.stringify(x.work),x.file),file:'Drive · '+x.file})));
+    st.textContent=`已從雲端載入 ${res.works.length} 份作業。`;
+  }catch(e){ st.textContent=driveErr(); st.classList.add('err'); }
+  finally{ b.disabled=false; }
+};
+$('#bDrSave').onclick=async()=>{
+  saveDriveCfg(); const st=$('#drStatus'), b=$('#bDrSave'); st.classList.remove('err');
+  if(!driveOK()||!drive.key){ st.textContent='請先填好部署網址和教師密碼。'; st.classList.add('err'); return; }
+  const list=works.filter(w=>!w.sample);
+  if(!list.length){ st.textContent='這個單元沒有可以寫回的作業（範例不會寫回）。'; st.classList.add('err'); return; }
+  b.disabled=true; st.textContent='寫回中…';
+  const rows=list.map(w=>({unit:w.g.task,student:w.work.student||'',title:w.work.title||'',total:w.g.total,level:w.g.level,
+    groups:Object.fromEntries(Object.entries(w.g.groups).map(([k,v])=>[k,v.got])),english:w.g.english,fixes:w.g.fixes.join('；'),comment:commentOf(w)}));
+  try{ const res=await callDrive({action:'save',key:drive.key,unit,rows});
+    if(!res.ok){ st.textContent=driveErr(res.error); st.classList.add('err'); return; }
+    setLinks(res); st.textContent=`已寫回試算表：新增 ${res.added} 筆、更新 ${res.updated} 筆。`; toast('成績已寫回 Google 試算表');
+  }catch(e){ st.textContent=driveErr(); st.classList.add('err'); }
+  finally{ b.disabled=false; }
+};
+if(!window.claude) $('#bDrive').hidden=false;
 
 /* ---------- misc ---------- */
 $('#bRubric').onclick=()=>{ $('#rubricModal').hidden=false; };

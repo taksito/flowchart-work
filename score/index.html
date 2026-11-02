@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="../config.js"></script>
 <script>window.FLOW_TASK='score';</script>
 </head>
 <body>
@@ -244,6 +245,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
       <button class="btn" id="bCopy">下載作業檔</button>
       <button class="btn" id="bExport">匯出圖片</button>
       <button class="btn primary" id="bCheck">Check 提交批改</button>
+      <button class="btn primary" id="bSubmit" hidden>Submit 繳交</button>
     </div>
   </header>
 
@@ -348,7 +350,20 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
       <p style="margin:8px 0">Certificate 完成圖</p>
       <img id="ckImg" alt="BMI 流程圖完成圖">
     </div>
-    <div class="row"><span class="status" id="ckStatus"></span><button class="btn" data-close>Keep editing 繼續修改</button><button class="btn primary" id="bCert" hidden>Download PNG 下載完成圖</button></div>
+    <div class="row"><span class="status" id="ckStatus"></span><button class="btn" data-close>Keep editing 繼續修改</button><button class="btn" id="bCkSubmit" hidden>Submit 繳交</button><button class="btn primary" id="bCert" hidden>Download PNG 下載完成圖</button></div>
+  </div>
+</div>
+
+<div class="modal" id="submitModal" hidden>
+  <div class="dialog narrow">
+    <h2>Submit to your teacher 繳交作業</h2>
+    <p>Your flowchart goes straight to your teacher's Google Drive. You can submit again later; the newest one replaces the old one. 作品會直接送到老師的 Google Drive。之後可以再交一次，新的會取代舊的。</p>
+    <div class="fields">
+      <label class="field"><span>Name 座號與姓名</span><input type="text" id="sbStudent" placeholder="例：12 王小明" autocomplete="off"></label>
+      <label class="field" id="sbCodeWrap" hidden><span>Class code 班級代碼</span><input type="text" id="sbCode" autocomplete="off"></label>
+    </div>
+    <p id="sbSummary" style="color:var(--ink);font-weight:500"></p>
+    <div class="row"><span class="status" id="sbStatus"></span><button class="btn" data-close>Cancel 取消</button><button class="btn primary" id="bDoSubmit">Submit 繳交</button></div>
   </div>
 </div>
 
@@ -1528,7 +1543,7 @@ function updateHelp(){
   if(key===lastHelpKey) return; lastHelpKey=key;
   $('#bSteps').innerHTML=(TASK==='score'?STEP_NAMES_SCORE:STEP_NAMES).map((s,i)=>`<li class="${done[i]?'ok':''}${i===cur.i?' now':''}">${s}</li>`).join('');
   $('#bZh').innerHTML=cur.zh; $('#bEn').textContent=cur.en;
-  $('#bActs').innerHTML=(cur.acts||[]).map(a=>`<button class="btn${a.act==='check'||a.act==='asc'||a.act==='desc'?' primary':''}" data-act="${a.act}">${a.label}</button>`).join('');
+  $('#bActs').innerHTML=(cur.acts||[]).map(a=>a.act==='download'&&canSubmit?{act:'submit',label:'Submit 繳交'}:a).map(a=>`<button class="btn${a.act==='check'||a.act==='asc'||a.act==='desc'?' primary':''}" data-act="${a.act}">${a.label}</button>`).join('');
   $('#buddy').classList.toggle('done',cur.i===8);
   if(helperFocus!==cur.focus){
     const old=helperFocus&&document.querySelector(`.node[data-id="${helperFocus}"]`); if(old) old.classList.remove('focus');
@@ -1542,6 +1557,7 @@ $('#bActs').addEventListener('click',e=>{
   else if(a==='switch'){ const bf=snap(); state.order=state.order==='asc'?'desc':'asc'; commit(bf); render(); }
   else if(a==='download') $('#bCopy').click();
   else if(a==='check') openCheck();
+  else if(a==='submit') openSubmit();
 });
 const HELP_MIN='flowboard-helper-min';
 function setMin(m){ $('#buddy').classList.toggle('min',m); $('#bMin').textContent=m?'+':'–'; $('#bMin').setAttribute('aria-label',m?'展開小幫手':'收合小幫手'); try{ localStorage.setItem(HELP_MIN,m?'1':''); }catch(e){} }
@@ -1717,6 +1733,50 @@ function computeHelpScore(){
   if(!cur) cur={i:8,zh:`完成了！八組成績的測試全部通過。按 ${B('Check 提交批改')} 看分數、領取完成圖，再按 ${B('下載作業檔')} 繳交。`,en:'All done! Every test passed. Press Check to get your certificate, then download your file to hand it in.',focus:null,acts:[{act:'check',label:'Check 提交批改'},{act:'download',label:'Download file 下載作業檔'}]};
   return {cur,done};
 }
+
+/* ---------- submit to Google Drive ---------- */
+const CFG=window.FLOW_CONFIG||{};
+const SUBMIT_URL=String(CFG.submitUrl||'').trim();
+const canSubmit=!FREE&&!window.claude&&/^https:\/\/script\.google(usercontent)?\.com\//.test(SUBMIT_URL);
+async function callDrive(payload){
+  const r=await fetch(SUBMIT_URL,{method:'POST',body:JSON.stringify(payload)});
+  if(!r.ok) throw new Error('http_'+r.status);
+  return await r.json();
+}
+function openSubmit(){
+  commitEdit();
+  if(!state.nodes.length){ toast('Draw your flowchart first 畫布是空的，先畫流程圖'); return; }
+  const g=gradeTask({nodes:state.nodes,edges:state.edges,task:TASK});
+  $('#sbStudent').value=meta.student||'';
+  $('#sbCodeWrap').hidden=!CFG.needCode;
+  $('#sbSummary').textContent=`Self-check 自我批改：${g.total} / 100 · ${g.passed?'Passed 達成':'Not yet 尚未達成'}`;
+  const st=$('#sbStatus'); st.textContent=g.passed?'':'You can still submit now, or fix it first. 還沒全對也可以先繳交，之後再改再交一次（會覆蓋前一次）。'; st.classList.remove('err');
+  $('#bDoSubmit').disabled=false;
+  $('#submitModal').hidden=false;
+  setTimeout(()=>$('#sbStudent').focus(),0);
+}
+$('#sbStudent').addEventListener('input',e=>{ meta.student=e.target.value; saveMeta(); });
+$('#bDoSubmit').onclick=async()=>{
+  const st=$('#sbStatus'), btn=$('#bDoSubmit'); st.classList.remove('err');
+  const fail=m=>{ st.textContent=m; st.classList.add('err'); btn.disabled=false; };
+  const student=String(meta.student||'').trim();
+  if(!student){ fail('Enter your name first. 請先填寫座號與姓名。'); $('#sbStudent').focus(); return; }
+  const code=$('#sbCode').value.trim();
+  if(CFG.needCode&&!code){ fail('Enter the class code. 請輸入班級代碼。'); $('#sbCode').focus(); return; }
+  const g=gradeTask({nodes:state.nodes,edges:state.edges,task:TASK});
+  btn.disabled=true; st.textContent='Submitting… 繳交中…';
+  try{
+    const res=await callDrive({action:'submit',unit:TASK,code,student,title:meta.title||DEFAULT_TITLE,work:exportData(),check:{total:g.total,passed:g.passed,english:g.english}});
+    if(res&&res.ok){ const t=new Date(res.time||Date.now()); st.textContent=`Submitted! 已繳交 ${t.toLocaleString('zh-TW',{hour12:false})}`; toast('Submitted 已繳交'); btn.disabled=false; return; }
+    const e=res&&res.error;
+    fail(e==='bad_code'?'Wrong class code. 班級代碼不對，請再確認。':e==='no_name'?'Enter your name first. 請先填寫座號與姓名。':e==='too_large'?'The file is too large. 作品太大，請刪掉多餘的圖形。':'The server said no. 雲端拒絕了這次繳交，請告訴老師。'+(e?`（${e}）`:''));
+  }catch(err){
+    fail('Cannot reach Google Drive. Use “下載作業檔” instead. 連不上雲端，請改用「下載作業檔」交給老師。');
+  }
+};
+if(canSubmit){ $('#bSubmit').hidden=false; $('#bCkSubmit').hidden=false; }
+$('#bSubmit').onclick=openSubmit;
+$('#bCkSubmit').onclick=()=>{ $('#checkModal').hidden=true; openSubmit(); };
 
 /* ---------- start ---------- */
 let loaded=false;
