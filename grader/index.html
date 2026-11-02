@@ -75,6 +75,7 @@ button{font:inherit;color:inherit}
 .adjform{display:flex;flex-direction:column;gap:8px;margin-top:6px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--soft);width:100%;max-width:340px}
 .adjform label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
 .adjform input{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.whorow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .adjrow{display:flex;gap:6px;flex-wrap:wrap}
 .adjrow .btn{font-size:12px;padding:5px 10px}
 .score-cell sup{color:var(--warn);font-size:12px}
@@ -126,6 +127,10 @@ button{font:inherit;color:inherit}
 .pv .bad .shape{stroke:var(--bad);stroke-width:2.6;fill:var(--bad-soft)}
 .pv text{fill:var(--ink);font-family:var(--font-body);font-size:14px;text-anchor:middle;dominant-baseline:central}
 .pv .line{fill:none;stroke:var(--ink);stroke-width:1.5}
+.pv .badline{stroke:var(--bad);stroke-width:3;stroke-dasharray:8 4}
+.pv .arrowbad{fill:var(--bad)}
+.legend .rl{display:inline-block;width:22px;height:0;border-top:3px dashed var(--bad);vertical-align:middle;margin-right:4px}
+.badlist{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--bad)}
 .pv .arrow{fill:var(--ink)}
 .pv .elabel rect{fill:var(--bg);stroke:var(--line)}
 .pv .elabel text{font-size:13px;font-weight:500}
@@ -328,6 +333,30 @@ const CATS=[
   {key:'obesity',name:'obesity',re:/obes|肥胖/i},
 ];
 const EN_WORDS={'身高':'height','體重':'weight','輸入':'input','輸出':'output','過輕':'thin','偏瘦':'thin','太瘦':'thin','正常':'normal','適中':'normal','過重':'overweight','肥胖':'obesity','開始':'START','結束':'END','計算':'bmi =','公尺':'m','公分':'cm','公斤':'kg','小於':'<','大於':'>','等於':'=','是':'Yes','否':'No'};
+/* lines that point the wrong way or to the wrong block */
+function flowEdgeIssues(A,start,wrongRuns){
+  const bad={}, mark=(e,why)=>{ if(e&&e.id!=null&&!bad[e.id]) bad[e.id]=why; };
+  const isStart=n=>n&&n.type==='terminator'&&RE_START.test(n.text||''), isEnd=n=>n&&n.type==='terminator'&&RE_END.test(n.text||'')&&!RE_START.test(n.text||'');
+  A.edges.forEach(e=>{ const f=A.byId[e.from.node], t=A.byId[e.to.node]; if(!f||!t) return;
+    if(e.from.node===e.to.node) mark(e,'線接回自己');
+    else if(isStart(t)) mark(e,'線指向 START，方向拉反了');
+    else if(isEnd(f)) mark(e,'線從 END 出去，方向拉反了'); });
+  if(start){
+    const reach=new Set([start.id]), q=[start.id];
+    while(q.length){ const id=q.shift(); (A.out[id]||[]).forEach(e=>{ if(!reach.has(e.to.node)){ reach.add(e.to.node); q.push(e.to.node); } }); }
+    A.edges.forEach(e=>{ if(!reach.has(e.from.node)&&reach.has(e.to.node)) mark(e,'這條線的方向可能拉反了（起點從 START 走不到）'); });
+    const color={}; const dfs=id=>{ color[id]=1; for(const e of (A.out[id]||[])){ if(bad[e.id]) continue; const c=color[e.to.node]; if(c===1) mark(e,'形成迴圈，方向可能拉反了'); else if(!c) dfs(e.to.node); } color[id]=2; };
+    try{ dfs(start.id); }catch(err){}
+  }
+  (wrongRuns||[]).forEach(w=>{ for(let i=w.pe.length-1;i>=0;i--){ const e=w.pe[i], t=A.byId[e.to.node]; if(t&&w.cat(t.text)===w.got){ mark(e,`接到 ${w.got}，這裡應該是 ${w.exp}`); break; } } });
+  return bad;
+}
+/* direction mistakes cost structure points (wrong targets are already caught by the tests) */
+function applyEdgePenalty(items,badEdges){
+  const n=Object.values(badEdges).filter(w=>!/^接到/.test(w)).length; if(!n) return;
+  const it=items.find(i=>i.label.startsWith('每個圖形都有接上線')); if(!it) return;
+  it.got=Math.max(0,it.got-2*n); it.note=(it.note?it.note+'；':'')+`有 ${n} 條線方向拉反或形成迴圈（紅線）`;
+}
 const expectCat=b=>b<18.5?'thin':b<24?'normal':b<27?'overweight':'obesity';
 const CASES=[16,18.4,18.5,22,24,25.5,27,32];
 const TEST_H=1.6;
@@ -433,7 +462,7 @@ function inputUnit(A){
 }
 
 function run(A,startNode,vars,unit){
-  const outputs=[], path=[]; let n=startNode, steps=0, reachedEnd=false, stop=null;
+  const outputs=[], path=[], pe=[]; let n=startNode, steps=0, reachedEnd=false, stop=null;
   while(n&&steps++<200){
     path.push(n.id);
     const r=n._role;
@@ -447,18 +476,18 @@ function run(A,startNode,vars,unit){
       if(vars.B===undefined||!isFinite(vars.B)){ stop={node:n.id,why:'判斷前還沒有算出 BMI'}; break; }
       const ex=A.exits(n), ans=cond(vars.B), e=ans?ex.yes:ex.no;
       if(!e){ stop={node:n.id,why:`缺少「${ans?'是':'否'}」的路線`}; break; }
-      n=A.byId[e.to.node]; continue;
+      pe.push(e); n=A.byId[e.to.node]; continue;
     }
     const es=A.out[n.id];
     if(!es.length){ stop={node:n.id,why:'這裡沒有接下一步'}; break; }
-    n=A.byId[es[0].to.node];
+    pe.push(es[0]); n=A.byId[es[0].to.node];
   }
   if(steps>=200) stop={node:n&&n.id,why:'流程繞圈出不來'};
-  return {outputs,path,reachedEnd,stop};
+  return {outputs,path,reachedEnd,stop,pe};
 }
 
 function grade(work){
-  const A=analyze(work), items=[], issues=[], bad=new Set();
+  const A=analyze(work), items=[], issues=[], bad=new Set(), fixes0=[];
   const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
   const nodes=A.nodes;
   /* --- A structure (20) --- */
@@ -519,9 +548,10 @@ function grade(work){
   /* --- F tests (20) --- */
   const firstDec=(()=>{ const fromDec=new Set(); decs.forEach(d=>A.out[d.id].forEach(e=>fromDec.add(e.to.node)));
     const roots=decs.filter(d=>!fromDec.has(d.id)); return (roots.length?roots:decs).sort((a,b)=>a.y-b.y)[0]||null; })();
+  const wrongRuns=[];
   const logic=CASES.map(b=>{ const exp=expectCat(b); if(!firstDec) return {bmi:b,exp,got:null,ok:false,why:'沒有判斷符號'};
     const r=run(A,firstDec,{B:b},unit); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
-    const ok=got===exp&&new Set(r.outputs).size===1; return {bmi:b,exp,got,ok,why:got?'':(r.stop?r.stop.why:'沒有輸出結果')}; });
+    const ok=got===exp&&new Set(r.outputs).size===1; if(!ok&&got) wrongRuns.push({pe:r.pe,got,exp,cat:catOf}); return {bmi:b,exp,got,ok,why:got?'':(r.stop?r.stop.why:'沒有輸出結果')}; });
   const lp=logic.filter(t=>t.ok).length;
   add('執行測試','判斷邏輯測試（直接給 BMI）',15,15*lp/CASES.length,`${lp} / ${CASES.length} 題正確`);
   const full=CASES.map(b=>{ const exp=expectCat(b), w=+(b*TEST_H*TEST_H).toFixed(4); if(!start) return {bmi:b,exp,got:null,ok:false,why:'沒有開始'};
@@ -531,6 +561,8 @@ function grade(work){
   add('執行測試','完整流程測試（輸入身高體重）',15,15*fp/CASES.length,`${fp} / ${CASES.length} 題正確`);
   const firstStop=full.find(t=>t.stop);
   if(firstStop&&firstStop.stop.node) bad.add(firstStop.stop.node);
+  const badEdges=flowEdgeIssues(A,start,wrongRuns); applyEdgePenalty(items,badEdges);
+  if(Object.keys(badEdges).length) fixes0.push(`有 ${Object.keys(badEdges).length} 條紅色的線：方向拉反、形成迴圈或接到錯的方塊`);
   /* --- G English (10) --- */
   const CJK=/[\u3400-\u9fff]/;
   const textNodes=nodes.filter(n=>String(n.text||'').trim()&&['terminator','io','process','decision'].includes(n.type));
@@ -544,12 +576,12 @@ function grade(work){
   /* totals */
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
-  const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  const fixes=[...fixes0]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
   logic.filter(t=>!t.ok&&t.got).slice(0,3).forEach(t=>fixes.push(`BMI ${t.bmi} 應該輸出 ${t.exp}，你的流程輸出 ${t.got}`));
   if(firstStop&&fp===0) fixes.push(`完整流程執行到「${(A.byId[firstStop.stop.node]||{}).text||''}」就停住：${firstStop.stop.why}`);
   const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
   const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
-  return {total,level,items,groups,logic,full,fixes:[...new Set(fixes)],bad:[...bad],unit,passed:gotAll>=maxAll-1e-6,english,enNote,zhWords:words,enTips:[...new Set(sug)]};
+  return {total,level,items,groups,logic,full,fixes:[...new Set(fixes)],bad:[...bad],badEdges,unit,passed:gotAll>=maxAll-1e-6,english,enNote,zhWords:words,enTips:[...new Set(sug)]};
 }
 function compileSrc(rhs){ return norm(rhs).toLowerCase().replace(/\((kg|cm|m|公斤|公分|公尺)\)/g,'').replace(/體重|weight|重量|kg/g,'W').replace(/身高|height|高度/g,'H').replace(/(^|[^a-z])w(?![a-z])/g,'$1W').replace(/(^|[^a-z])h(?![a-z])/g,'$1H').replace(/(^|[^a-z])m(?![a-z])/g,'$1H'); }
 
@@ -667,7 +699,7 @@ function sOrderedInputs(A,start){
   return order;
 }
 function sRun(A,start,scores){
-  const e={}, q=[...scores], outputs=[]; let n=start, steps=0, stop=null;
+  const e={}, q=[...scores], outputs=[], pe=[]; let n=start, steps=0, stop=null;
   while(n&&steps++<200){
     const r=n._r;
     if(r==='end') break;
@@ -680,13 +712,13 @@ function sRun(A,start,scores){
       if([...c.vars].some(v=>e[v]===undefined)){ stop={node:n.id,why:'判斷用到還沒算出來的變數'}; break; }
       const ex=A.exits(n), ed=ans?ex.yes:ex.no;
       if(!ed){ stop={node:n.id,why:`缺少「${ans?'Yes':'No'}」的路線`}; break; }
-      n=A.byId[ed.to.node]; continue;
+      pe.push(ed); n=A.byId[ed.to.node]; continue;
     }
     const es=A.out[n.id]; if(!es.length){ stop={node:n.id,why:'這裡沒有接下一步'}; break; }
-    n=A.byId[es[0].to.node];
+    pe.push(es[0]); n=A.byId[es[0].to.node];
   }
   if(steps>=200) stop={node:n&&n.id,why:'流程繞圈出不來'};
-  return {outputs,env:e,stop};
+  return {outputs,env:e,stop,pe};
 }
 /* simulate process steps (by flow order, then by y) to find total / average vars */
 function sCalcCheck(A,inVars){
@@ -738,12 +770,15 @@ function gradeScore(work){
   [['pass','pass'],['fail','fail']].forEach(([k,name])=>{ const io=nodes.find(n=>n.type==='io'&&n._r==='output'&&sCat(n.text)===k), other=nodes.find(n=>sCat(n.text)===k);
     add('輸出',`輸出 ${name}`,5,io?5:other?2:0,io?'':other?`「${name}」要用 OUTPUT 符號`:`缺少 ${name} 的輸出`); });
   /* tests 25 */
+  const wrongRuns=[];
   const full=SCORE_CASES.map(sc=>{ const exp=sExpect(sc); if(!start) return {scores:sc,avg:sAvg(sc),exp,got:null,ok:false,why:'沒有 START'};
     const r=sRun(A,start,sc); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
+    if(got&&!(got===exp&&new Set(r.outputs).size===1)) wrongRuns.push({pe:r.pe,got,exp,cat:sCat});
     return {scores:sc,avg:sAvg(sc),exp,got,ok:got===exp&&new Set(r.outputs).size===1,why:got?'':(r.stop?r.stop.why:'沒有輸出結果'),stop:r.stop}; });
   const fp=full.filter(t=>t.ok).length;
   add('執行測試','完整流程測試（輸入四個成績）',25,25*fp/SCORE_CASES.length,`${fp} / ${SCORE_CASES.length} 題正確`);
   const st=full.find(t=>t.stop); if(st&&st.stop.node) bad.add(st.stop.node);
+  const badEdges=flowEdgeIssues(A,start,wrongRuns); applyEdgePenalty(items,badEdges);
   const b60=full.find(t=>t.avg===PASS_LINE&&!t.ok&&t.got==='fail');
   /* english (not scored) */
   const CJK=/[㐀-鿿]/;
@@ -758,13 +793,14 @@ function gradeScore(work){
   if(fp===SCORE_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='判斷'||/^(把答案存進變數|輸入四個成績|詢問四個成績)/.test(i.label))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); C.calcs.forEach(({n})=>bad.delete(n.id)); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
-  const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  const fixes=[]; if(Object.keys(badEdges).length) fixes.push(`有 ${Object.keys(badEdges).length} 條紅色的線：方向拉反、形成迴圈或接到錯的方塊`);
+  items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
   if(b60) fixes.push('平均剛好 60 也算 pass，判斷要用 >= 60');
   full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`成績 ${t.scores.join('、')}（平均 ${t.avg}）應該是 ${t.exp}，你的流程輸出 ${t.got}`));
   if(st&&fp===0) fixes.push(`流程執行到「${(A.byId[st.stop.node]||{}).text||''}」就停住：${st.stop.why}`);
   const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
   const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
-  return {task:'score',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,inVars,calc:C};
+  return {task:'score',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],badEdges,passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,inVars,calc:C};
 }
 function feedbackScore(work,g){
   const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
@@ -1155,6 +1191,14 @@ function load(){ try{ ALL=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e)
   if(!ALL.length&&SAMPLES.length){ ALL=SAMPLES.map(w=>({...w})); usingSamples=true; } }
 function persist(){ if(usingSamples) return; try{ localStorage.setItem(KEY,JSON.stringify(ALL.map(w=>({id:w.id,file:w.file,work:w.work,ai:w.ai||'',aiSrc:w.aiSrc||'',override:w.override||null})))); }catch(e){} }
 function gradeAll(){ ALL.forEach(w=>{ if(!w.g) w.g=gradeTask(w.work); }); refilter(); }
+const RKEY='grader-renames-v1'; let renames={}; try{ renames=JSON.parse(localStorage.getItem(RKEY)||'{}'); }catch(e){}
+const whoStr=o=>{ const c=String(o.cls||'').trim(), s=String(o.seat||'').trim(), n=String(o.name||'').trim(); return (c?c+(s?'-':''):'')+s+((c||s)&&n?' ':'')+n; };
+function applyRename(work){ const k=(work.task||'')+'|'+(work.student||''); const r=renames[k]; if(!r) return;
+  if(!work.origStudent) work.origStudent=work.student; work.prevWho=whoOf({student:work.origStudent,cls:work.cls,seat:work.seat,name:work.name}); Object.assign(work,r); work.student=whoStr(r); }
+function renameWork(w,o){ const orig=w.work.origStudent||w.work.student||''; if(!w.work.origStudent){ w.work.origStudent=orig; w.work.prevWho=whoOf(w.work); }
+  Object.assign(w.work,{cls:o.cls,seat:o.seat,name:o.name}); w.work.student=whoStr(o);
+  renames[(w.work.task||'')+'|'+orig]=o; try{ localStorage.setItem(RKEY,JSON.stringify(renames)); }catch(e){}
+  sortWorks(); persist(); renderList(); renderDetail(); toast(`已改成「${w.work.student}」`); }
 const sortWorks=()=>ALL.sort((a,b)=>String(a.work.student||'').localeCompare(String(b.work.student||''),'zh-Hant',{numeric:true})||String(a.work.title||'').localeCompare(String(b.work.title||'')));
 let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},2800); }
 
@@ -1211,7 +1255,14 @@ function renderDetail(){
       <div class="adjbox">
         <button class="btn" id="bRecheckOne">Re-check 重新審核</button>
         <button class="btn" id="bAdjOpen">${w.override?'修改調整':'Adjust 調整分數'}</button>
+        <button class="btn" id="bWhoOpen">Edit name 修改班級座號姓名</button>
       </div>
+      <form class="adjform" id="whoForm" hidden>
+        <div class="whorow"><label>班級 Class<input id="whoCls" value="${esc(whoOf(w.work).cls)}" inputmode="numeric"></label><label>座號 No.<input id="whoSeat" value="${esc(whoOf(w.work).seat)}" inputmode="numeric"></label></div>
+        <label>姓名 Name<input id="whoName" value="${esc(whoOf(w.work).name)}"></label>
+        ${w.work.origStudent?`<span class="sub">學生原本填的是「${esc(w.work.origStudent)}」</span>`:''}
+        <div class="adjrow"><button class="btn primary" type="submit">儲存</button><button class="btn" type="button" id="whoCancel">關閉</button></div>
+      </form>
       <form class="adjform" id="adjForm" hidden>
         <label>分數 Score<input type="number" id="adjScore" min="0" max="100" step="1" value="${effTotal(w)}"></label>
         <label>原因 Note<input type="text" id="adjNote" placeholder="例：用不同寫法，答案正確" value="${esc(w.override&&w.override.note||'')}"></label>
@@ -1220,8 +1271,8 @@ function renderDetail(){
     <div class="gbars">${gb}</div>
   </div>
   <div class="card"><h3>需要修正</h3>${fixes}${g.enTips.length?`<p class="sub" style="margin:10px 0 0;font-size:13px;color:var(--muted)">Try English 英文建議（不扣分）：${esc(g.enTips.join('、'))}</p>`:''}</div>
-  <div class="card"><h3>${/^scratch/.test(g.task)?'學生的積木程式':'學生的流程圖'}</h3><div class="preview">${/^scratch/.test(g.task)?blocksHTML(w.work):previewSVG(w.work,new Set(g.bad))}</div>
-    ${g.bad.length?'<div class="legend"><span><i></i>紅框：有問題的圖形（沒接好線、判斷缺路線、公式錯誤或流程停住的地方）</span></div>':''}</div>
+  <div class="card"><h3>${/^scratch/.test(g.task)?'學生的積木程式':'學生的流程圖'}</h3><div class="preview">${/^scratch/.test(g.task)?blocksHTML(w.work):previewSVG(w.work,new Set(g.bad),g.badEdges)}</div>
+    ${(g.bad.length||Object.keys(g.badEdges||{}).length)?`<div class="legend">${g.bad.length?'<span><i></i>紅框：有問題的圖形（沒接好線、判斷缺路線、公式錯誤或流程停住的地方）</span>':''}${Object.keys(g.badEdges||{}).length?'<span><b class="rl"></b>紅色虛線：方向拉反、形成迴圈或接到錯的方塊</span>':''}</div>${edgeList(w.work,g.badEdges)}`:''}</div>
   <div class="card"><h3>評分明細</h3><div class="rub">${rub}</div></div>
   <div class="card"><h3>執行測試</h3><div class="tests">
     ${testsHTML}
@@ -1243,6 +1294,10 @@ function renderDetail(){
   </div>`;
   setupComment(w);
   $('#bRecheckOne').onclick=()=>{ const old=w.g.total; w.g=gradeTask(w.work); renderList(); renderDetail(); toast(w.g.total===old?`已重新審核：分數不變（${old}）`:`已重新審核：${old} → ${w.g.total}`); };
+  $('#bWhoOpen').onclick=()=>{ $('#whoForm').hidden=!$('#whoForm').hidden; if(!$('#whoForm').hidden) $('#whoName').focus(); };
+  $('#whoCancel').onclick=()=>{ $('#whoForm').hidden=true; };
+  $('#whoForm').onsubmit=e=>{ e.preventDefault(); const c=$('#whoCls').value.trim(), se=$('#whoSeat').value.trim(), n=$('#whoName').value.trim();
+    if(!n){ toast('請輸入姓名'); return; } renameWork(w,{cls:c,seat:se,name:n}); };
   $('#bAdjOpen').onclick=()=>{ $('#adjForm').hidden=!$('#adjForm').hidden; if(!$('#adjForm').hidden) $('#adjScore').focus(); };
   $('#adjCancel').onclick=()=>{ $('#adjForm').hidden=true; };
   $('#adjForm').onsubmit=e=>{ e.preventDefault(); const v=Number($('#adjScore').value);
@@ -1286,7 +1341,10 @@ function route(a,da,b,db,A,B,line){
   return [a,a1,...mid,b1,b];
 }
 const textW=s=>[...s].reduce((w,c)=>w+(c.charCodeAt(0)<256?7.6:14),0);
-function previewSVG(work,bad){
+function edgeList(work,be){ be=be||{}; const ids=Object.keys(be); if(!ids.length) return '';
+  const byId=Object.fromEntries((work.nodes||[]).map(n=>[n.id,n])), nm=id=>`「${esc(String((byId[id]||{}).text||'?').replace(/\n/g,' '))}」`;
+  return '<ul class="badlist">'+ids.map(id=>{ const e=(work.edges||[]).find(x=>String(x.id)===String(id)); return e?`<li>${nm(e.from.node)} → ${nm(e.to.node)}${e.label?`（${esc(e.label)}）`:''}：${esc(be[id])}</li>`:''; }).join('')+'</ul>'; }
+function previewSVG(work,bad,badEdges){ badEdges=badEdges||{};
   const nodes=work.nodes||[], byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
   if(!nodes.length) return '<div class="empty">這份作業沒有任何圖形。</div>';
   let l=1e9,t=1e9,r=-1e9,b=-1e9; nodes.forEach(n=>{const q=box(n);l=Math.min(l,q.l);t=Math.min(t,q.t);r=Math.max(r,q.r);b=Math.max(b,q.b);});
@@ -1295,14 +1353,14 @@ function previewSVG(work,bad){
   (work.edges||[]).forEach(e=>{ const A=byId[e.from.node],B=byId[e.to.node]; if(!A||!B||!DIR[e.from.port]||!DIR[e.to.port]) return;
     const pts=route(portW(A,e.from.port),DIR[e.from.port],portW(B,e.to.port),DIR[e.to.port],A,B,work.line);
     pts.forEach(p=>{l=Math.min(l,p.x-10);r=Math.max(r,p.x+10);b=Math.max(b,p.y+10);});
-    E+=`<path class="line" d="M${pts.map(p=>p.x+','+p.y).join('L')}" marker-end="url(#pvArrow)"/>`;
+    const be=badEdges[e.id]; E+=be?`<path class="line badline" d="M${pts.map(p=>p.x+','+p.y).join('L')}" marker-end="url(#pvArrowBad)"><title>${esc(be)}</title></path>`:`<path class="line" d="M${pts.map(p=>p.x+','+p.y).join('L')}" marker-end="url(#pvArrow)"/>`;
     if(e.label){ let T=0; for(let i=1;i<pts.length;i++) T+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
       let d=Math.min(T/2,40),p=pts[0]; for(let i=1;i<pts.length;i++){const s=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); if(d<=s){const k=s?d/s:0;p={x:pts[i-1].x+(pts[i].x-pts[i-1].x)*k,y:pts[i-1].y+(pts[i].y-pts[i-1].y)*k};break;} d-=s;}
       const w=textW(e.label)+12; L+=`<g class="elabel" transform="translate(${p.x},${p.y})"><rect x="${-w/2}" y="-11" width="${w}" height="22" rx="4"/><text>${esc(e.label)}</text></g>`; } });
   const N=nodes.map(n=>{ const lines=String(n.text||'').split('\n'), off=n.type==='document'?-n.h*0.06:0;
     return `<g class="${bad.has(n.id)?'bad':''}" transform="translate(${n.x},${n.y})">${shapeSVG(n.type,n.w,n.h)}${lines.map((s,i)=>`<text y="${(i-(lines.length-1)/2)*18+off}">${esc(s)}</text>`).join('')}</g>`; }).join('');
   const W=r-l,H=b-t;
-  return `<svg class="pv" viewBox="${l} ${t} ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto" role="img" aria-label="學生的流程圖"><defs><marker id="pvArrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="arrow" d="M0 0L10 5L0 10z"/></marker></defs>${E}${N}${L}</svg>`;
+  return `<svg class="pv" viewBox="${l} ${t} ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto" role="img" aria-label="學生的流程圖"><defs><marker id="pvArrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="arrow" d="M0 0L10 5L0 10z"/></marker><marker id="pvArrowBad" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto"><path class="arrowbad" d="M0 0L10 5L0 10z"/></marker></defs>${E}${N}${L}</svg>`;
 }
 
 function blocksHTML(work){
@@ -1409,8 +1467,9 @@ function ingest(list){
     if(ok.length&&usingSamples){ ALL=[]; usingSamples=false; }
     let added=0,replaced=0,last=null;
     ok.forEach(({ok:work,file})=>{
-      const key=(work.student||'')+'\u0000'+(work.title||'')+'\u0000'+(work.student||work.title?'':file);
       if(!work.task) work.task=taskOf(work);
+      applyRename(work);
+      const key=(work.student||'')+'\u0000'+(work.title||'')+'\u0000'+(work.student||work.title?'':file);
       const i=ALL.findIndex(w=>w.work.task===work.task&&(w.work.student||'')+'\u0000'+(w.work.title||'')+'\u0000'+(w.work.student||w.work.title?'':w.file)===key);
       const rec={id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),file,work,ai:'',g:gradeTask(work)};
       if(i>=0){ ALL[i]=rec; replaced++; } else { ALL.push(rec); added++; } last=rec.id; unit=rec.g.task;
@@ -1490,7 +1549,7 @@ $('#bDrSave').onclick=async()=>{
   const list=works.filter(w=>!w.sample);
   if(!list.length){ st.textContent='這個單元沒有可以寫回的作業（範例不會寫回）。'; st.classList.add('err'); return; }
   b.disabled=true; st.textContent='寫回中…';
-  const rows=list.map(w=>({unit:w.g.task,student:w.work.student||'',...whoOf(w.work),title:w.work.title||'',total:effTotal(w),level:effLevel(w),
+  const rows=list.map(w=>({unit:w.g.task,student:w.work.student||'',...whoOf(w.work),prev:w.work.prevWho||null,title:w.work.title||'',total:effTotal(w),level:effLevel(w),
     groups:Object.fromEntries(Object.entries(w.g.groups).map(([k,v])=>[k,v.got])),english:w.g.english,fixes:w.g.fixes.join('；')+(w.override?`（老師調整：自動 ${w.g.total} 分${w.override.note?'，'+w.override.note:''}）`:''),comment:commentOf(w)}));
   try{ const res=await callDrive({action:'save',key:drive.key,unit,rows});
     if(!res.ok){ st.textContent=driveErr(res.error); st.classList.add('err'); return; }

@@ -380,6 +380,30 @@ const CATS=[
   {key:'obesity',name:'obesity',re:/obes|肥胖/i},
 ];
 const EN_WORDS={'身高':'height','體重':'weight','輸入':'input','輸出':'output','過輕':'thin','偏瘦':'thin','太瘦':'thin','正常':'normal','適中':'normal','過重':'overweight','肥胖':'obesity','開始':'START','結束':'END','計算':'bmi =','公尺':'m','公分':'cm','公斤':'kg','小於':'<','大於':'>','等於':'=','是':'Yes','否':'No'};
+/* lines that point the wrong way or to the wrong block */
+function flowEdgeIssues(A,start,wrongRuns){
+  const bad={}, mark=(e,why)=>{ if(e&&e.id!=null&&!bad[e.id]) bad[e.id]=why; };
+  const isStart=n=>n&&n.type==='terminator'&&RE_START.test(n.text||''), isEnd=n=>n&&n.type==='terminator'&&RE_END.test(n.text||'')&&!RE_START.test(n.text||'');
+  A.edges.forEach(e=>{ const f=A.byId[e.from.node], t=A.byId[e.to.node]; if(!f||!t) return;
+    if(e.from.node===e.to.node) mark(e,'線接回自己');
+    else if(isStart(t)) mark(e,'線指向 START，方向拉反了');
+    else if(isEnd(f)) mark(e,'線從 END 出去，方向拉反了'); });
+  if(start){
+    const reach=new Set([start.id]), q=[start.id];
+    while(q.length){ const id=q.shift(); (A.out[id]||[]).forEach(e=>{ if(!reach.has(e.to.node)){ reach.add(e.to.node); q.push(e.to.node); } }); }
+    A.edges.forEach(e=>{ if(!reach.has(e.from.node)&&reach.has(e.to.node)) mark(e,'這條線的方向可能拉反了（起點從 START 走不到）'); });
+    const color={}; const dfs=id=>{ color[id]=1; for(const e of (A.out[id]||[])){ if(bad[e.id]) continue; const c=color[e.to.node]; if(c===1) mark(e,'形成迴圈，方向可能拉反了'); else if(!c) dfs(e.to.node); } color[id]=2; };
+    try{ dfs(start.id); }catch(err){}
+  }
+  (wrongRuns||[]).forEach(w=>{ for(let i=w.pe.length-1;i>=0;i--){ const e=w.pe[i], t=A.byId[e.to.node]; if(t&&w.cat(t.text)===w.got){ mark(e,`接到 ${w.got}，這裡應該是 ${w.exp}`); break; } } });
+  return bad;
+}
+/* direction mistakes cost structure points (wrong targets are already caught by the tests) */
+function applyEdgePenalty(items,badEdges){
+  const n=Object.values(badEdges).filter(w=>!/^接到/.test(w)).length; if(!n) return;
+  const it=items.find(i=>i.label.startsWith('每個圖形都有接上線')); if(!it) return;
+  it.got=Math.max(0,it.got-2*n); it.note=(it.note?it.note+'；':'')+`有 ${n} 條線方向拉反或形成迴圈（紅線）`;
+}
 const expectCat=b=>b<18.5?'thin':b<24?'normal':b<27?'overweight':'obesity';
 const CASES=[16,18.4,18.5,22,24,25.5,27,32];
 const TEST_H=1.6;
@@ -485,7 +509,7 @@ function inputUnit(A){
 }
 
 function run(A,startNode,vars,unit){
-  const outputs=[], path=[]; let n=startNode, steps=0, reachedEnd=false, stop=null;
+  const outputs=[], path=[], pe=[]; let n=startNode, steps=0, reachedEnd=false, stop=null;
   while(n&&steps++<200){
     path.push(n.id);
     const r=n._role;
@@ -499,18 +523,18 @@ function run(A,startNode,vars,unit){
       if(vars.B===undefined||!isFinite(vars.B)){ stop={node:n.id,why:'判斷前還沒有算出 BMI'}; break; }
       const ex=A.exits(n), ans=cond(vars.B), e=ans?ex.yes:ex.no;
       if(!e){ stop={node:n.id,why:`缺少「${ans?'是':'否'}」的路線`}; break; }
-      n=A.byId[e.to.node]; continue;
+      pe.push(e); n=A.byId[e.to.node]; continue;
     }
     const es=A.out[n.id];
     if(!es.length){ stop={node:n.id,why:'這裡沒有接下一步'}; break; }
-    n=A.byId[es[0].to.node];
+    pe.push(es[0]); n=A.byId[es[0].to.node];
   }
   if(steps>=200) stop={node:n&&n.id,why:'流程繞圈出不來'};
-  return {outputs,path,reachedEnd,stop};
+  return {outputs,path,reachedEnd,stop,pe};
 }
 
 function grade(work){
-  const A=analyze(work), items=[], issues=[], bad=new Set();
+  const A=analyze(work), items=[], issues=[], bad=new Set(), fixes0=[];
   const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
   const nodes=A.nodes;
   /* --- A structure (20) --- */
@@ -571,9 +595,10 @@ function grade(work){
   /* --- F tests (20) --- */
   const firstDec=(()=>{ const fromDec=new Set(); decs.forEach(d=>A.out[d.id].forEach(e=>fromDec.add(e.to.node)));
     const roots=decs.filter(d=>!fromDec.has(d.id)); return (roots.length?roots:decs).sort((a,b)=>a.y-b.y)[0]||null; })();
+  const wrongRuns=[];
   const logic=CASES.map(b=>{ const exp=expectCat(b); if(!firstDec) return {bmi:b,exp,got:null,ok:false,why:'沒有判斷符號'};
     const r=run(A,firstDec,{B:b},unit); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
-    const ok=got===exp&&new Set(r.outputs).size===1; return {bmi:b,exp,got,ok,why:got?'':(r.stop?r.stop.why:'沒有輸出結果')}; });
+    const ok=got===exp&&new Set(r.outputs).size===1; if(!ok&&got) wrongRuns.push({pe:r.pe,got,exp,cat:catOf}); return {bmi:b,exp,got,ok,why:got?'':(r.stop?r.stop.why:'沒有輸出結果')}; });
   const lp=logic.filter(t=>t.ok).length;
   add('執行測試','判斷邏輯測試（直接給 BMI）',15,15*lp/CASES.length,`${lp} / ${CASES.length} 題正確`);
   const full=CASES.map(b=>{ const exp=expectCat(b), w=+(b*TEST_H*TEST_H).toFixed(4); if(!start) return {bmi:b,exp,got:null,ok:false,why:'沒有開始'};
@@ -583,6 +608,8 @@ function grade(work){
   add('執行測試','完整流程測試（輸入身高體重）',15,15*fp/CASES.length,`${fp} / ${CASES.length} 題正確`);
   const firstStop=full.find(t=>t.stop);
   if(firstStop&&firstStop.stop.node) bad.add(firstStop.stop.node);
+  const badEdges=flowEdgeIssues(A,start,wrongRuns); applyEdgePenalty(items,badEdges);
+  if(Object.keys(badEdges).length) fixes0.push(`有 ${Object.keys(badEdges).length} 條紅色的線：方向拉反、形成迴圈或接到錯的方塊`);
   /* --- G English (10) --- */
   const CJK=/[\u3400-\u9fff]/;
   const textNodes=nodes.filter(n=>String(n.text||'').trim()&&['terminator','io','process','decision'].includes(n.type));
@@ -596,12 +623,12 @@ function grade(work){
   /* totals */
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
-  const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  const fixes=[...fixes0]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
   logic.filter(t=>!t.ok&&t.got).slice(0,3).forEach(t=>fixes.push(`BMI ${t.bmi} 應該輸出 ${t.exp}，你的流程輸出 ${t.got}`));
   if(firstStop&&fp===0) fixes.push(`完整流程執行到「${(A.byId[firstStop.stop.node]||{}).text||''}」就停住：${firstStop.stop.why}`);
   const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
   const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
-  return {total,level,items,groups,logic,full,fixes:[...new Set(fixes)],bad:[...bad],unit,passed:gotAll>=maxAll-1e-6,english,enNote,zhWords:words,enTips:[...new Set(sug)]};
+  return {total,level,items,groups,logic,full,fixes:[...new Set(fixes)],bad:[...bad],badEdges,unit,passed:gotAll>=maxAll-1e-6,english,enNote,zhWords:words,enTips:[...new Set(sug)]};
 }
 function compileSrc(rhs){ return norm(rhs).toLowerCase().replace(/\((kg|cm|m|公斤|公分|公尺)\)/g,'').replace(/體重|weight|重量|kg/g,'W').replace(/身高|height|高度/g,'H').replace(/(^|[^a-z])w(?![a-z])/g,'$1W').replace(/(^|[^a-z])h(?![a-z])/g,'$1H').replace(/(^|[^a-z])m(?![a-z])/g,'$1H'); }
 
@@ -719,7 +746,7 @@ function sOrderedInputs(A,start){
   return order;
 }
 function sRun(A,start,scores){
-  const e={}, q=[...scores], outputs=[]; let n=start, steps=0, stop=null;
+  const e={}, q=[...scores], outputs=[], pe=[]; let n=start, steps=0, stop=null;
   while(n&&steps++<200){
     const r=n._r;
     if(r==='end') break;
@@ -732,13 +759,13 @@ function sRun(A,start,scores){
       if([...c.vars].some(v=>e[v]===undefined)){ stop={node:n.id,why:'判斷用到還沒算出來的變數'}; break; }
       const ex=A.exits(n), ed=ans?ex.yes:ex.no;
       if(!ed){ stop={node:n.id,why:`缺少「${ans?'Yes':'No'}」的路線`}; break; }
-      n=A.byId[ed.to.node]; continue;
+      pe.push(ed); n=A.byId[ed.to.node]; continue;
     }
     const es=A.out[n.id]; if(!es.length){ stop={node:n.id,why:'這裡沒有接下一步'}; break; }
-    n=A.byId[es[0].to.node];
+    pe.push(es[0]); n=A.byId[es[0].to.node];
   }
   if(steps>=200) stop={node:n&&n.id,why:'流程繞圈出不來'};
-  return {outputs,env:e,stop};
+  return {outputs,env:e,stop,pe};
 }
 /* simulate process steps (by flow order, then by y) to find total / average vars */
 function sCalcCheck(A,inVars){
@@ -790,12 +817,15 @@ function gradeScore(work){
   [['pass','pass'],['fail','fail']].forEach(([k,name])=>{ const io=nodes.find(n=>n.type==='io'&&n._r==='output'&&sCat(n.text)===k), other=nodes.find(n=>sCat(n.text)===k);
     add('輸出',`輸出 ${name}`,5,io?5:other?2:0,io?'':other?`「${name}」要用 OUTPUT 符號`:`缺少 ${name} 的輸出`); });
   /* tests 25 */
+  const wrongRuns=[];
   const full=SCORE_CASES.map(sc=>{ const exp=sExpect(sc); if(!start) return {scores:sc,avg:sAvg(sc),exp,got:null,ok:false,why:'沒有 START'};
     const r=sRun(A,start,sc); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
+    if(got&&!(got===exp&&new Set(r.outputs).size===1)) wrongRuns.push({pe:r.pe,got,exp,cat:sCat});
     return {scores:sc,avg:sAvg(sc),exp,got,ok:got===exp&&new Set(r.outputs).size===1,why:got?'':(r.stop?r.stop.why:'沒有輸出結果'),stop:r.stop}; });
   const fp=full.filter(t=>t.ok).length;
   add('執行測試','完整流程測試（輸入四個成績）',25,25*fp/SCORE_CASES.length,`${fp} / ${SCORE_CASES.length} 題正確`);
   const st=full.find(t=>t.stop); if(st&&st.stop.node) bad.add(st.stop.node);
+  const badEdges=flowEdgeIssues(A,start,wrongRuns); applyEdgePenalty(items,badEdges);
   const b60=full.find(t=>t.avg===PASS_LINE&&!t.ok&&t.got==='fail');
   /* english (not scored) */
   const CJK=/[㐀-鿿]/;
@@ -810,13 +840,14 @@ function gradeScore(work){
   if(fp===SCORE_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='判斷'||/^(把答案存進變數|輸入四個成績|詢問四個成績)/.test(i.label))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); C.calcs.forEach(({n})=>bad.delete(n.id)); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
-  const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  const fixes=[]; if(Object.keys(badEdges).length) fixes.push(`有 ${Object.keys(badEdges).length} 條紅色的線：方向拉反、形成迴圈或接到錯的方塊`);
+  items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
   if(b60) fixes.push('平均剛好 60 也算 pass，判斷要用 >= 60');
   full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`成績 ${t.scores.join('、')}（平均 ${t.avg}）應該是 ${t.exp}，你的流程輸出 ${t.got}`));
   if(st&&fp===0) fixes.push(`流程執行到「${(A.byId[st.stop.node]||{}).text||''}」就停住：${st.stop.why}`);
   const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
   const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
-  return {task:'score',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,inVars,calc:C};
+  return {task:'score',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],badEdges,passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,inVars,calc:C};
 }
 function feedbackScore(work,g){
   const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;

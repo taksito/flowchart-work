@@ -69,7 +69,7 @@ function sOrderedInputs(A,start){
   return order;
 }
 function sRun(A,start,scores){
-  const e={}, q=[...scores], outputs=[]; let n=start, steps=0, stop=null;
+  const e={}, q=[...scores], outputs=[], pe=[]; let n=start, steps=0, stop=null;
   while(n&&steps++<200){
     const r=n._r;
     if(r==='end') break;
@@ -82,13 +82,13 @@ function sRun(A,start,scores){
       if([...c.vars].some(v=>e[v]===undefined)){ stop={node:n.id,why:'判斷用到還沒算出來的變數'}; break; }
       const ex=A.exits(n), ed=ans?ex.yes:ex.no;
       if(!ed){ stop={node:n.id,why:`缺少「${ans?'Yes':'No'}」的路線`}; break; }
-      n=A.byId[ed.to.node]; continue;
+      pe.push(ed); n=A.byId[ed.to.node]; continue;
     }
     const es=A.out[n.id]; if(!es.length){ stop={node:n.id,why:'這裡沒有接下一步'}; break; }
-    n=A.byId[es[0].to.node];
+    pe.push(es[0]); n=A.byId[es[0].to.node];
   }
   if(steps>=200) stop={node:n&&n.id,why:'流程繞圈出不來'};
-  return {outputs,env:e,stop};
+  return {outputs,env:e,stop,pe};
 }
 /* simulate process steps (by flow order, then by y) to find total / average vars */
 function sCalcCheck(A,inVars){
@@ -140,12 +140,15 @@ function gradeScore(work){
   [['pass','pass'],['fail','fail']].forEach(([k,name])=>{ const io=nodes.find(n=>n.type==='io'&&n._r==='output'&&sCat(n.text)===k), other=nodes.find(n=>sCat(n.text)===k);
     add('輸出',`輸出 ${name}`,5,io?5:other?2:0,io?'':other?`「${name}」要用 OUTPUT 符號`:`缺少 ${name} 的輸出`); });
   /* tests 25 */
+  const wrongRuns=[];
   const full=SCORE_CASES.map(sc=>{ const exp=sExpect(sc); if(!start) return {scores:sc,avg:sAvg(sc),exp,got:null,ok:false,why:'沒有 START'};
     const r=sRun(A,start,sc); const got=r.outputs.length?r.outputs[r.outputs.length-1]:null;
+    if(got&&!(got===exp&&new Set(r.outputs).size===1)) wrongRuns.push({pe:r.pe,got,exp,cat:sCat});
     return {scores:sc,avg:sAvg(sc),exp,got,ok:got===exp&&new Set(r.outputs).size===1,why:got?'':(r.stop?r.stop.why:'沒有輸出結果'),stop:r.stop}; });
   const fp=full.filter(t=>t.ok).length;
   add('執行測試','完整流程測試（輸入四個成績）',25,25*fp/SCORE_CASES.length,`${fp} / ${SCORE_CASES.length} 題正確`);
   const st=full.find(t=>t.stop); if(st&&st.stop.node) bad.add(st.stop.node);
+  const badEdges=flowEdgeIssues(A,start,wrongRuns); applyEdgePenalty(items,badEdges);
   const b60=full.find(t=>t.avg===PASS_LINE&&!t.ok&&t.got==='fail');
   /* english (not scored) */
   const CJK=/[㐀-鿿]/;
@@ -160,13 +163,14 @@ function gradeScore(work){
   if(fp===SCORE_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='判斷'||/^(把答案存進變數|輸入四個成績|詢問四個成績)/.test(i.label))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); C.calcs.forEach(({n})=>bad.delete(n.id)); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
-  const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  const fixes=[]; if(Object.keys(badEdges).length) fixes.push(`有 ${Object.keys(badEdges).length} 條紅色的線：方向拉反、形成迴圈或接到錯的方塊`);
+  items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
   if(b60) fixes.push('平均剛好 60 也算 pass，判斷要用 >= 60');
   full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`成績 ${t.scores.join('、')}（平均 ${t.avg}）應該是 ${t.exp}，你的流程輸出 ${t.got}`));
   if(st&&fp===0) fixes.push(`流程執行到「${(A.byId[st.stop.node]||{}).text||''}」就停住：${st.stop.why}`);
   const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
   const gotAll=items.reduce((s,i)=>s+i.got,0), maxAll=items.reduce((s,i)=>s+i.max,0);
-  return {task:'score',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,inVars,calc:C};
+  return {task:'score',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],badEdges,passed:gotAll>=maxAll-1e-6,english,zhWords:words,enTips:sug,inVars,calc:C};
 }
 function feedbackScore(work,g){
   const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;

@@ -116,6 +116,10 @@ function save_(req) {
       num_(g['結構']), num_(g['輸入']), num_(g['計算']), num_(g['判斷']), num_(g['輸出']), num_(g['執行測試']),
       num_(x.english), String(x.fixes || ''), String(x.comment || ''), now];
     const key = [unitName, who.cls, who.seat, who.name].join('\u0000');
+    if (!index[key] && x.prev) {
+      const pw = who_(x.prev), pk = [unitName, pw.cls, pw.seat, pw.name].join('\u0000');
+      if (index[pk]) { index[key] = index[pk]; delete index[pk]; }
+    }
     if (index[key]) { sh.getRange(index[key], 1, 1, row.length).setValues([row]); updated++; }
     else { sh.appendRow(row); index[key] = sh.getLastRow(); added++; }
   });
