@@ -682,6 +682,7 @@ function gradeScore(work){
   const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
   const enUnits=textNodes.length+decLabels.length, english=enUnits?Math.round(100*(enUnits-zhNodes.length-zhLabels.length)/enUnits):0;
   /* totals */
+  if(fp===SCORE_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='判斷'||/^(把答案存進變數|輸入四個成績|詢問四個成績)/.test(i.label))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); C.calcs.forEach(({n})=>bad.delete(n.id)); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
@@ -899,6 +900,7 @@ function gradeScratch(work){
   const words=[...new Set(zh.join(' ').match(/[㐀-鿿]+/g)||[])];
   const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
   /* totals */
+  if(fp===SB_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='判斷'||/^(把答案存進變數|輸入四個成績|詢問四個成績)/.test(i.label))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$/.test(i.note)).forEach(i=>fixes.push(i.note));
@@ -1239,6 +1241,7 @@ function computeHelpScore(){
   const j=wsJSON(), done=Array(8).fill(false); let cur=null;
   const say=(i,en,zh,focus,acts)=>{ if(!cur) cur={i,en,zh,focus:focus||null,acts:acts||[]}; };
   const g=gradeScratch({workspace:j}), F=g.facts, r0=g.run0;
+  if(g.passed) return {done:Array(8).fill(true),cur:{i:8,en:'All done! All 8 tests passed. Press Run to try it yourself, then Check to get your certificate.',zh:'完成了！八組測試全部通過。按 Run 自己試試看，再按 Check 提交批改領取完成圖。',acts:[{act:'run',label:'Run 執行'},{act:'check',label:'Check 提交批改'}]}};
   if(F.flags.length) done[0]=true; else say(0,`Open ${B('Events 事件')} and drag ${B('when ⚑ clicked')} into the code area. Your program starts here.`,`打開「Events 事件」，把「when ⚑ clicked 當綠旗被點擊」拖到程式區，程式從這裡開始。`);
   const asks=r0.asks.length;
   if(asks>=4) done[1]=true;

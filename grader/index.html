@@ -69,6 +69,15 @@ button{font:inherit;color:inherit}
 .sbl{padding:5px 12px;border-radius:8px;max-width:100%;overflow-wrap:anywhere}
 .sbl.loose{outline:2px dashed var(--bad);outline-offset:2px}
 .sbgap{color:var(--bad);font-size:12px;margin-top:8px}
+.adjbox{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.adjbox .btn{font-size:12px;padding:4px 10px}
+.adj{color:var(--warn)!important;font-weight:500}
+.adjform{display:flex;flex-direction:column;gap:8px;margin-top:6px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--soft);width:100%;max-width:340px}
+.adjform label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.adjform input{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.adjrow{display:flex;gap:6px;flex-wrap:wrap}
+.adjrow .btn{font-size:12px;padding:5px 10px}
+.score-cell sup{color:var(--warn);font-size:12px}
 .emptycard p{margin:0 0 8px;font-size:15px}
 .emptycard ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
 .emptycard b{color:var(--ink);font-weight:500}
@@ -187,6 +196,7 @@ td .why{color:var(--muted);font-size:12px}
       <label class="btn primary" for="fileInput" tabindex="0" id="upLabel">上傳作業檔</label>
       <input type="file" id="fileInput" accept=".json,application/json" multiple hidden>
       <button class="btn" id="bDrive" hidden>Google Drive</button>
+      <button class="btn" id="bRecheck">Re-check 重新審核</button>
       <button class="btn" id="bBatch">整班評語</button>
       <button class="btn" id="bCsv">下載成績表</button>
       <button class="btn" id="bRubric">評分標準</button>
@@ -745,6 +755,7 @@ function gradeScore(work){
   const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
   const enUnits=textNodes.length+decLabels.length, english=enUnits?Math.round(100*(enUnits-zhNodes.length-zhLabels.length)/enUnits):0;
   /* totals */
+  if(fp===SCORE_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='判斷'||/^(把答案存進變數|輸入四個成績|詢問四個成績)/.test(i.label))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); C.calcs.forEach(({n})=>bad.delete(n.id)); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
@@ -962,6 +973,7 @@ function gradeScratch(work){
   const words=[...new Set(zh.join(' ').match(/[㐀-鿿]+/g)||[])];
   const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
   /* totals */
+  if(fp===SB_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='判斷'||/^(把答案存進變數|輸入四個成績|詢問四個成績)/.test(i.label))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$/.test(i.note)).forEach(i=>fixes.push(i.note));
@@ -1130,6 +1142,9 @@ const TASKS={
     text:'題目要求：輸入四個成績，計算總分（四個相加）和平均（總分 ÷ 4），平均 ≥ 60 輸出 pass，否則輸出 fail（剛好 60 算 pass）。'}};
 let unit='bmi', ALL=[];
 const GR=t=>TASKS[t||unit].groups;
+const levelOf=v=>v>=90?'優秀':v>=75?'良好':v>=60?'及格':'需加強';
+const effTotal=w=>(w.override&&w.override.total!=null&&w.override.total!=='')?Number(w.override.total):w.g.total;
+const effLevel=w=>levelOf(effTotal(w));
 function whoOf(w){ if(w.name) return {cls:w.cls||'',seat:w.seat||'',name:w.name}; const st=String(w.student||'').trim();
   let m=st.match(/^(\d+)\s*[-－\s]\s*(\d+)\s+(.+)$/); if(m) return {cls:m[1],seat:m[2],name:m[3]}; m=st.match(/^(\d+)\s+(.+)$/); if(m) return {cls:'',seat:m[1],name:m[2]}; return {cls:'',seat:'',name:st}; }
 const GL={'結構':'Structure 結構','輸入':'Input 輸入','計算':'Process 計算','判斷':'Decision 判斷','輸出':'Output 輸出','執行測試':'Test run 執行測試'};
@@ -1138,7 +1153,7 @@ let works=[], usingSamples=false, cur=null;
 function refilter(){ works=ALL.filter(w=>w.g.task===unit); }
 function load(){ try{ ALL=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ ALL=[]; }
   if(!ALL.length&&SAMPLES.length){ ALL=SAMPLES.map(w=>({...w})); usingSamples=true; } }
-function persist(){ if(usingSamples) return; try{ localStorage.setItem(KEY,JSON.stringify(ALL.map(w=>({id:w.id,file:w.file,work:w.work,ai:w.ai||'',aiSrc:w.aiSrc||''})))); }catch(e){} }
+function persist(){ if(usingSamples) return; try{ localStorage.setItem(KEY,JSON.stringify(ALL.map(w=>({id:w.id,file:w.file,work:w.work,ai:w.ai||'',aiSrc:w.aiSrc||'',override:w.override||null})))); }catch(e){} }
 function gradeAll(){ ALL.forEach(w=>{ if(!w.g) w.g=gradeTask(w.work); }); refilter(); }
 const sortWorks=()=>ALL.sort((a,b)=>String(a.work.student||'').localeCompare(String(b.work.student||''),'zh-Hant',{numeric:true})||String(a.work.title||'').localeCompare(String(b.work.title||'')));
 let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},2800); }
@@ -1155,9 +1170,9 @@ function renderList(){
   if(!works.length){ rows.innerHTML=`<div class="empty">${TASKS[unit].title}單元還沒有作業。按「上傳作業檔」或把 .json 檔拖進頁面。</div>`; $('#summary').innerHTML=''; $('#detail').innerHTML=''; return; }
   rows.innerHTML=works.map(w=>`<button class="row${cur===w.id?' on':''}" data-id="${esc(w.id)}">
     <span class="who"><b>${esc(w.work.student||'（未填姓名）')}</b><span>${w.sample?'<span class="chip">範例</span> ':''}${w.g.english>=100?'<span class="chip en">EN</span> ':''}${esc(w.work.title||w.file||'')}</span></span>
-    <span class="score-cell"><b>${w.g.total}</b><span class="mini"><i style="width:${w.g.total}%;background:${barColor(w.g.total)}"></i></span></span></button>`).join('');
-  const ts=works.map(w=>w.g.total), avg=ts.reduce((a,b)=>a+b,0)/ts.length;
-  const cnt=lv=>works.filter(w=>w.g.level===lv).length;
+    <span class="score-cell"><b>${effTotal(w)}${w.override?'<sup title="老師調整過">*</sup>':''}</b><span class="mini"><i style="width:${effTotal(w)}%;background:${barColor(effTotal(w))}"></i></span></span></button>`).join('');
+  const ts=works.map(w=>effTotal(w)), avg=ts.reduce((a,b)=>a+b,0)/ts.length;
+  const cnt=lv=>works.filter(w=>effLevel(w)===lv).length;
   $('#summary').innerHTML=`<div class="stat"><span>份數</span><b>${ts.length}</b></div><div class="stat"><span>平均</span><b>${avg.toFixed(1)}</b></div>
     <div class="stat"><span>最高</span><b>${Math.max(...ts)}</b></div><div class="stat"><span>最低</span><b>${Math.min(...ts)}</b></div><div class="stat"><span>All English 全英文</span><b>${works.filter(w=>w.g.english>=100).length}</b></div><div class="stat"><span>English 英文使用率</span><b>${Math.round(works.reduce((a,w)=>a+w.g.english,0)/works.length)}%</b></div>
     <div class="dist">${['優秀','良好','及格','需加強'].map(l=>`<span class="pill lv-${l}">${l} ${cnt(l)}</span>`).join('')}</div>`;
@@ -1190,7 +1205,18 @@ function renderDetail(){
   d.innerHTML=`
   <div class="card top">
     <div class="big"><h2>${esc(w.work.student||'（未填姓名）')}</h2><span class="sub">${esc(w.work.title||'')}${w.file?' · '+esc(w.file):''}</span>
-      <span class="num">${g.total}<small> / 100</small></span><span class="pill lv-${g.level}">${g.level}</span><span class="sub">English 英文使用率 ${g.english}%${g.english>=100?' · EN':''}</span></div>
+      <span class="num">${effTotal(w)}<small> / 100</small></span><span class="pill lv-${effLevel(w)}">${effLevel(w)}</span>
+      ${w.override?`<span class="sub adj">自動批改 ${g.total} 分 → 老師調整為 ${effTotal(w)} 分${w.override.note?'：'+esc(w.override.note):''}</span>`:''}
+      <span class="sub">English 英文使用率 ${g.english}%${g.english>=100?' · EN':''}</span>
+      <div class="adjbox">
+        <button class="btn" id="bRecheckOne">Re-check 重新審核</button>
+        <button class="btn" id="bAdjOpen">${w.override?'修改調整':'Adjust 調整分數'}</button>
+      </div>
+      <form class="adjform" id="adjForm" hidden>
+        <label>分數 Score<input type="number" id="adjScore" min="0" max="100" step="1" value="${effTotal(w)}"></label>
+        <label>原因 Note<input type="text" id="adjNote" placeholder="例：用不同寫法，答案正確" value="${esc(w.override&&w.override.note||'')}"></label>
+        <div class="adjrow"><button class="btn primary" type="submit">儲存調整</button>${w.override?'<button class="btn" type="button" id="adjClear">取消調整，用自動分數</button>':''}<button class="btn" type="button" id="adjCancel">關閉</button></div>
+      </form></div>
     <div class="gbars">${gb}</div>
   </div>
   <div class="card"><h3>需要修正</h3>${fixes}${g.enTips.length?`<p class="sub" style="margin:10px 0 0;font-size:13px;color:var(--muted)">Try English 英文建議（不扣分）：${esc(g.enTips.join('、'))}</p>`:''}</div>
@@ -1216,6 +1242,13 @@ function renderDetail(){
     </div>
   </div>`;
   setupComment(w);
+  $('#bRecheckOne').onclick=()=>{ const old=w.g.total; w.g=gradeTask(w.work); renderList(); renderDetail(); toast(w.g.total===old?`已重新審核：分數不變（${old}）`:`已重新審核：${old} → ${w.g.total}`); };
+  $('#bAdjOpen').onclick=()=>{ $('#adjForm').hidden=!$('#adjForm').hidden; if(!$('#adjForm').hidden) $('#adjScore').focus(); };
+  $('#adjCancel').onclick=()=>{ $('#adjForm').hidden=true; };
+  $('#adjForm').onsubmit=e=>{ e.preventDefault(); const v=Number($('#adjScore').value);
+    if(!isFinite(v)||v<0||v>100){ toast('分數要在 0 到 100 之間'); return; }
+    w.override={total:Math.round(v),note:$('#adjNote').value.trim()}; persist(); renderList(); renderDetail(); toast('已儲存老師調整'); };
+  const ac=$('#adjClear'); if(ac) ac.onclick=()=>{ w.override=null; persist(); renderList(); renderDetail(); toast('已取消調整'); };
 }
 const fmt=v=>Number.isInteger(v)?String(v):(Math.round(v*10)/10).toFixed(1);
 
@@ -1404,7 +1437,7 @@ function csv(){
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const GROUPS=GR();
   const head=['班級','座號','姓名','作品名稱','總分','等第',...GROUPS.map(([k,m])=>`${k}(${m})`),'English 英文使用率(%)','需要修正','評語'];
-  const rows=works.map(w=>{ const o=whoOf(w.work); return [o.cls,o.seat,o.name,w.work.title||'',w.g.total,w.g.level,...GROUPS.map(([k])=>fmt(w.g.groups[k].got)),w.g.english,w.g.fixes.join('；'),commentOf(w)]; });
+  const rows=works.map(w=>{ const o=whoOf(w.work); return [o.cls,o.seat,o.name,w.work.title||'',effTotal(w),effLevel(w),...GROUPS.map(([k])=>fmt(w.g.groups[k].got)),w.g.english,w.g.fixes.join('；')+(w.override?`（老師調整：自動 ${w.g.total} 分${w.override.note?'，'+w.override.note:''}）`:''),commentOf(w)]; });
   return '﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n');
 }
 $('#bCsv').onclick=async()=>{
@@ -1457,8 +1490,8 @@ $('#bDrSave').onclick=async()=>{
   const list=works.filter(w=>!w.sample);
   if(!list.length){ st.textContent='這個單元沒有可以寫回的作業（範例不會寫回）。'; st.classList.add('err'); return; }
   b.disabled=true; st.textContent='寫回中…';
-  const rows=list.map(w=>({unit:w.g.task,student:w.work.student||'',...whoOf(w.work),title:w.work.title||'',total:w.g.total,level:w.g.level,
-    groups:Object.fromEntries(Object.entries(w.g.groups).map(([k,v])=>[k,v.got])),english:w.g.english,fixes:w.g.fixes.join('；'),comment:commentOf(w)}));
+  const rows=list.map(w=>({unit:w.g.task,student:w.work.student||'',...whoOf(w.work),title:w.work.title||'',total:effTotal(w),level:effLevel(w),
+    groups:Object.fromEntries(Object.entries(w.g.groups).map(([k,v])=>[k,v.got])),english:w.g.english,fixes:w.g.fixes.join('；')+(w.override?`（老師調整：自動 ${w.g.total} 分${w.override.note?'，'+w.override.note:''}）`:''),comment:commentOf(w)}));
   try{ const res=await callDrive({action:'save',key:drive.key,unit,rows});
     if(!res.ok){ st.textContent=driveErr(res.error); st.classList.add('err'); return; }
     setLinks(res); st.textContent=`已寫回試算表：新增 ${res.added} 筆、更新 ${res.updated} 筆。`; toast('成績已寫回 Google 試算表');
@@ -1467,6 +1500,14 @@ $('#bDrSave').onclick=async()=>{
 };
 if(!window.claude) $('#bDrive').hidden=false;
 
+/* ---------- re-check ---------- */
+$('#bRecheck').onclick=()=>{
+  if(!works.length){ toast('這個單元還沒有作業'); return; }
+  let changed=0; const notes=[];
+  works.forEach(w=>{ const old=w.g.total; w.g=gradeTask(w.work); if(w.g.total!==old){ changed++; notes.push(`${w.work.student||'?'} ${old}→${w.g.total}`); } });
+  renderList(); renderDetail();
+  toast(changed?`已重新審核 ${works.length} 份，${changed} 份分數有變：${notes.slice(0,4).join('、')}${notes.length>4?'…':''}`:`已重新審核 ${works.length} 份，分數都沒有變。`);
+};
 /* ---------- misc ---------- */
 $('#bRubric').onclick=()=>{ $('#rubricModal').hidden=false; };
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m||e.target.closest('[data-close]')) m.hidden=true; }));

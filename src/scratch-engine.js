@@ -168,6 +168,7 @@ function gradeScratch(work){
   const words=[...new Set(zh.join(' ').match(/[㐀-鿿]+/g)||[])];
   const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
   /* totals */
+  if(fp===SB_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='判斷'||/^(把答案存進變數|輸入四個成績|詢問四個成績)/.test(i.label))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   const fixes=[]; items.filter(i=>i.got<i.max&&i.note&&!/題正確$/.test(i.note)).forEach(i=>fixes.push(i.note));
