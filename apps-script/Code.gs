@@ -56,7 +56,9 @@ function submit_(req) {
   if (!who.name) return { ok: false, error: 'no_name' };
   const student = who.student;
   const work = req.work;
-  if (!work || !Array.isArray(work.nodes) || !Array.isArray(work.edges)) return { ok: false, error: 'bad_work' };
+  const isFlow = work && Array.isArray(work.nodes) && Array.isArray(work.edges);
+  const isBlocks = work && work.workspace && typeof work.workspace === 'object';
+  if (!isFlow && !isBlocks) return { ok: false, error: 'bad_work' };
   if (JSON.stringify(work).length > 500000) return { ok: false, error: 'too_large' };
   work.task = unit;
   work.student = student; work.cls = who.cls; work.seat = who.seat; work.name = who.name;
