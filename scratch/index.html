@@ -122,7 +122,9 @@ button{font:inherit;color:inherit}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);font-size:13px;padding:8px 14px;border-radius:8px;z-index:300;max-width:calc(100% - 32px)}
 .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;text-align:center;padding:20px}
 .blocklyToolboxDiv{font-family:var(--font-body)!important}
-.blocklyTreeLabel{font-size:12px!important}
+.blocklyTreeLabel{font-size:12px!important;color:#1e2a2c!important}
+.blocklyToolboxDiv{background:#f3f6f5!important;border-right:1px solid #d3ddd8}
+#blocks{background:#ffffff}
 
 @media (max-width:900px){
   body{overflow:auto}
@@ -997,6 +999,7 @@ const theme=Blockly.Theme.defineTheme('scratchlab',{base:Blockly.Themes.Classic,
     operator_blocks:{colourPrimary:'#59C059',colourSecondary:'#46B946',colourTertiary:'#389438'},control_blocks:{colourPrimary:'#FFAB19',colourSecondary:'#EC9C13',colourTertiary:'#CF8B17'},
     shadow_blocks:{colourPrimary:'#FFFFFF',colourSecondary:'#FFFFFF',colourTertiary:'#CCCCCC'}},
   categoryStyles:{events:{colour:'#FFBF00'},sensing:{colour:'#5CB1D6'},looks:{colour:'#9966FF'},variables:{colour:'#FF8C1A'},operators:{colour:'#59C059'},control:{colour:'#FFAB19'}},
+  componentStyles:{workspaceBackgroundColour:'#ffffff',toolboxBackgroundColour:'#f3f6f5',toolboxForegroundColour:'#1e2a2c',flyoutBackgroundColour:'#e8eeeb',flyoutForegroundColour:'#1e2a2c',flyoutOpacity:1,scrollbarColour:'#b9c6c1',insertionMarkerColour:'#1e2a2c',insertionMarkerOpacity:.3,cursorColour:'#17795a'},
   fontStyle:{family:'"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif',weight:'500',size:11},
   startHats:true});
 const sh=(type,f)=>({shadow:{type,fields:f}});
