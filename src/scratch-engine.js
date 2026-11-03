@@ -1,7 +1,7 @@
 /* ===== Scratch-style block programs: interpreter, outline, grading (Pass or Fail) ===== */
 const SB_CAT={sc_flag:'events',sc_ask:'sensing',sc_answer:'sensing',sc_say:'looks',sc_saysecs:'looks',sc_set:'variables',sc_change:'variables',sc_var:'variables',
   sc_add:'operators',sc_sub:'operators',sc_mul:'operators',sc_div:'operators',sc_gt:'operators',sc_lt:'operators',sc_eq:'operators',sc_and:'operators',sc_or:'operators',sc_not:'operators',sc_join:'operators',sc_round:'operators',
-  sc_if:'control',sc_ifelse:'control',sc_repeat:'control',sc_wait:'control',sc_num:'operators',sc_text:'operators'};
+  sc_if:'control',sc_ifelse:'control',sc_repeat:'control',sc_until:'control',sc_wait:'control',sc_num:'operators',sc_text:'operators'};
 const SB_COLORS={events:'#FFBF00',sensing:'#5CB1D6',looks:'#9966FF',variables:'#FF8C1A',operators:'#59C059',control:'#FFAB19'};
 const SB_CASES=(typeof SCORE_CASES!=='undefined'?SCORE_CASES:[[70,80,90,60],[60,60,60,60],[59,60,60,60],[100,100,100,0],[40,50,60,80],[0,0,0,0],[61,59,60,60],[100,90,80,70]]);
 
@@ -63,6 +63,7 @@ function* sbExec(ws,opts={}){
         case 'sc_if': if(ev(sbIn(b,'COND'))) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); break;
         case 'sc_ifelse': if(ev(sbIn(b,'COND'))) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); else yield* run(b.inputs&&b.inputs.ELSE&&b.inputs.ELSE.block); break;
         case 'sc_repeat': { const n=Math.min(1000,Math.round(sbNum(ev(sbIn(b,'TIMES'))))); for(let i=0;i<n;i++) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); break; }
+        case 'sc_until': { while(!ev(sbIn(b,'COND'))){ tick(); yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); } break; }
       }
       b=b.next&&b.next.block;
     }
@@ -103,6 +104,7 @@ function sbOutline(ws){
       case 'sc_change': L(`change ${sbVarOf(b,names)} by ${r(sbIn(b,'BY'))}`); break;
       case 'sc_wait': L(`wait ${r(sbIn(b,'SECS'))} seconds`); break;
       case 'sc_repeat': L(`repeat ${r(sbIn(b,'TIMES'))}`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
+      case 'sc_until': L(`repeat until ${r(sbIn(b,'COND'))}`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
       case 'sc_if': L(`if ${r(sbIn(b,'COND'))} then`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
       case 'sc_ifelse': L(`if ${r(sbIn(b,'COND'))} then`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'else',c,loose}); s(b.inputs&&b.inputs.ELSE&&b.inputs.ELSE.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
       default: L(r(b)); }

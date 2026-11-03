@@ -13,7 +13,7 @@ const CONFIG = {
   SHEET_NAME: 'Flowchart Work 成績',    // 試算表名稱
 };
 
-const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI' };
+const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', sum: 'Summation', 'scratch-sum': 'Scratch Summation' };
 /* Units added later work without changing this file: any short lowercase name is accepted. */
 function unitName_(u) { return UNITS[u] || (/^[a-z][a-z0-9-]{1,30}$/.test(String(u || '')) ? String(u) : null); }
 const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File'];
@@ -154,7 +154,11 @@ function rootFolder_() {
 function unitFolder_(unit) {
   const root = rootFolder_(), name = unitName_(unit);
   const it = root.getFoldersByName(name);
-  return it.hasNext() ? it.next() : root.createFolder(name);
+  if (it.hasNext()) return it.next();
+  /* works submitted before this unit had a display name were saved in a folder named after its key */
+  const old = root.getFoldersByName(String(unit));
+  if (old.hasNext()) { const f = old.next(); f.setName(name); return f; }
+  return root.createFolder(name);
 }
 function sheet_() {
   const p = PropertiesService.getScriptProperties();

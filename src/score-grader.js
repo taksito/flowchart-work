@@ -6,7 +6,7 @@ const sExpect=a=>sAvg(a)>=PASS_LINE?'pass':'fail';
 const STOP=new Set(['input','output','print','read','enter','scan','set','let','if','then','and','or','is','the','輸入','輸出','印出','顯示','計算','令','是否','嗎','和','與','及','請']);
 function sCat(text){ const t=String(text||''); if(/fail|不及格|不通過|沒過/i.test(t)) return 'fail'; if(/pass|及格|通過/i.test(t)) return 'pass'; return null; }
 function sNorm(s){
-  return norm(s).replace(/大於或等於|大於等於|不小於|至少/g,'>=').replace(/小於或等於|小於等於|不大於|至多/g,'<=')
+  return norm(s).replace(/([A-Za-z_][A-Za-z0-9_]*)\s*\+\+/g,'$1 = $1 + 1').replace(/([A-Za-z_][A-Za-z0-9_]*)\s*([+\-*/])=(?!=)/g,'$1 = $1 $2 ').replace(/大於或等於|大於等於|不小於|至少/g,'>=').replace(/小於或等於|小於等於|不大於|至多/g,'<=')
     .replace(/大於|超過|高於/g,'>').replace(/小於|低於|未滿/g,'<').replace(/不等於/g,'!=').replace(/等於/g,'==')
     .replace(/[÷]/g,'/').replace(/[×]/g,'*').replace(/[＋]/g,'+').replace(/[－−]/g,'-');
 }
@@ -164,7 +164,7 @@ function gradeScore(work){
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   const fixes=[]; if(Object.keys(badEdges).length) fixes.push(`有 ${Object.keys(badEdges).length} 條紅色的線：方向拉反、形成迴圈或接到錯的方塊`);
-  items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>fixes.push(x)));
+  items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>{ if(!/（紅線）/.test(x)) fixes.push(x); }));
   if(b60) fixes.push('平均剛好 60 也算 pass，判斷要用 >= 60');
   full.filter(t=>!t.ok&&t.got).slice(0,2).forEach(t=>fixes.push(`成績 ${t.scores.join('、')}（平均 ${t.avg}）應該是 ${t.exp}，你的流程輸出 ${t.got}`));
   if(st&&fp===0) fixes.push(`流程執行到「${(A.byId[st.stop.node]||{}).text||''}」就停住：${st.stop.why}`);
