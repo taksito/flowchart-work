@@ -83,6 +83,7 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 
 - Units 單元：switch between **BMI**, **Pass or Fail**, **Scratch**, **Scratch BMI**, **Summation** and **Scratch Sum** at the top. Uploaded files go to the right unit automatically. 上方切換單元，上傳的檔案會自動分到對應單元。
 
+- **Class 班級**: Google Drive → choose a class (701, 702, …) to load just that class, which is much faster. The Class menu at the top filters the list; with the 名單 Roster tab in the score sheet, the desk lists who has **not submitted 未繳交** yet (matched by class and seat number). 可以一次只載入一個班；選了班級會列出還沒繳交的學生（依名單的班級座號比對）。
 - Upload many `.json` files at once (or drag them in). 一次上傳多份作業檔。
 - Rubric (100 points): Structure 20, Input 10, Process 10, Decision 20, Output 10, Test run 30.
 - The test run actually executes each chart with BMI 16, 18.4, 18.5, 22, 24, 25.5, 27, 32, so different correct layouts (small → large, large → small, ranges, cm or m) all score full marks. 實際執行學生的流程圖，各種正確寫法都能拿滿分。

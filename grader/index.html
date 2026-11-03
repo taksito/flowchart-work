@@ -56,6 +56,7 @@ button{font:inherit;color:inherit}
 .stat span{font-size:12px;color:var(--muted)}
 .stat b{font-family:var(--font-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums}
 .dist{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.missing{flex-basis:100%;border-top:1px dashed var(--line);padding-top:10px;font-size:13px}.missing b{color:var(--bad);font-weight:600;margin-right:8px}.missing.ok b{color:var(--good)}.missing span.m{display:inline-block;background:var(--soft);border-radius:999px;padding:1px 9px;margin:3px 4px 0 0;font-size:12px}
 
 .pill{display:inline-block;font-size:12px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap}
 .lv-優秀{background:var(--good-soft);color:var(--good)}
@@ -197,6 +198,7 @@ td .why{color:var(--muted);font-size:12px}
       <optgroup label="Flowchart 流程圖"><option value="bmi">BMI 判斷</option><option value="score">Pass or Fail 成績及格判斷</option><option value="sum">Summation 1 加到 n</option></optgroup>
       <optgroup label="Scratch 積木"><option value="scratch">Scratch Pass or Fail</option><option value="scratch-bmi">Scratch BMI</option><option value="scratch-sum">Scratch 1 加到 n</option></optgroup>
     </select></label>
+    <label class="unitpick"><span>Class 班級</span><select id="clsSel" aria-label="Class 班級"><option value="">All 全部</option></select></label>
     <div class="tools">
       <label class="btn primary" for="fileInput" tabindex="0" id="upLabel">上傳作業檔</label>
       <input type="file" id="fileInput" accept=".json,application/json" multiple hidden>
@@ -344,6 +346,7 @@ td .why{color:var(--muted);font-size:12px}
     <p>學生在畫板按「Submit 繳交」後，作業會存進你的 Google Drive。這裡可以一次載入目前單元（<b id="drUnit"></b>）的全班作業，批改後再把成績寫回 Google 試算表。設定方式請看 GitHub 上的「GOOGLE-DRIVE.md」。</p>
     <label class="field" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)"><span>Web app URL 部署網址</span><input id="drUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" style="font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)"></label>
     <label class="field" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)"><span>Teacher key 教師密碼（只存在這台電腦）</span><input id="drKey" type="password" autocomplete="off" style="font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)"></label>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin:6px 0"><label class="field" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)"><span>Class 班級（一次載入一班比較快）</span><select id="drCls" style="font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);min-width:160px"><option value="">All classes 全部班級</option></select></label><button class="btn" id="bDrCls" type="button">↻ 更新班級清單</button></div>
     <p id="drLinks" style="font-size:13px"></p>
     <p id="drStatus" style="font-size:13px;color:var(--accent);min-height:1.2em"></p>
     <div class="end"><button class="btn" data-close>關閉</button><button class="btn" id="bDrSave">Save scores 寫回成績</button><button class="btn primary" id="bDrLoad">Load from Drive 從雲端載入</button></div>
@@ -1522,8 +1525,23 @@ function whoOf(w){ if(w.name) return {cls:w.cls||'',seat:w.seat||'',name:w.name}
 const GL={'結構':'Structure 結構','輸入':'Input 輸入','計算':'Process 計算','判斷':'Decision 判斷','輸出':'Output 輸出','執行測試':'Test run 執行測試'};
 const glOf=(k,t)=>k==='判斷'&&/sum$/.test(t||unit)?'Loop 迴圈':(GL[k]||k);
 
-let works=[], usingSamples=false, cur=null;
-function refilter(){ works=ALL.filter(w=>w.g.task===unit); }
+let works=[], usingSamples=false, cur=null, clsFilter='';
+const RSKEY='grader-roster-v1'; let roster={}; try{ roster=JSON.parse(localStorage.getItem(RSKEY)||'{}'); }catch(e){}
+const seatKey=x=>{ const t=String(x==null?'':x).trim(); return /^\d+$/.test(t)?String(+t):t; };
+function refilter(){ works=ALL.filter(w=>w.g.task===unit&&(!clsFilter||whoOf(w.work).cls===clsFilter)); }
+function missingHTML(){
+  if(!clsFilter) return Object.keys(roster).length?'<div class="missing">Choose a class above to see who has not submitted. 在上方選一個班級，就能看到還沒繳交的學生。</div>':'';
+  const list=roster[clsFilter]; if(!list||!list.length) return '<div class="missing">No class list for this class yet. Load it from Google Drive to see who has not submitted. 還沒有這個班的名單，從 Google Drive 載入一次就會帶進名單。</div>';
+  const got=new Set(works.map(w=>seatKey(whoOf(w.work).seat)));
+  const miss=list.filter(x=>!got.has(seatKey(x.seat)));
+  if(!miss.length) return `<div class="missing ok"><b>All submitted 全部繳交 ${list.length} / ${list.length}</b></div>`;
+  return `<div class="missing"><b>Not submitted 未繳交 ${miss.length} / ${list.length}</b>${miss.map(x=>`<span class="m">${esc(x.seat)} ${esc(x.name)}</span>`).join('')}</div>`;
+}
+function fillClasses(){ const sel=$('#clsSel'), set=new Set(Object.keys(roster));
+  ALL.filter(w=>w.g.task===unit).forEach(w=>{ const c=whoOf(w.work).cls; if(c) set.add(c); }); if(clsFilter) set.add(clsFilter);
+  const cs=[...set].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  sel.innerHTML='<option value="">All 全部</option>'+cs.map(c=>{ const n=ALL.filter(w=>w.g.task===unit&&whoOf(w.work).cls===c).length, t=(roster[c]||[]).length; return `<option value="${esc(c)}">${esc(c)}${t?`（${n} / ${t}）`:n?`（${n}）`:''}</option>`; }).join('');
+  sel.value=clsFilter; }
 function load(){ try{ ALL=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ ALL=[]; }
   if(!ALL.length&&SAMPLES.length){ ALL=SAMPLES.map(w=>({...w})); usingSamples=true; } }
 function persist(){ if(usingSamples) return; try{ localStorage.setItem(KEY,JSON.stringify(ALL.map(w=>({id:w.id,file:w.file,work:w.work,ai:w.ai||'',aiSrc:w.aiSrc||'',override:w.override||null})))); }catch(e){} }
@@ -1546,8 +1564,10 @@ function renderList(){
   $('#unitName').textContent=TASKS[unit].name;
   const sel=$('#unitSel'); [...sel.options].forEach(o=>{ if(!o.dataset.base) o.dataset.base=o.textContent; const n=ALL.filter(w=>w.g.task===o.value).length; o.textContent=o.dataset.base+(n?`（${n} 份）`:''); }); sel.value=unit;
   document.querySelectorAll('[data-rub]').forEach(d=>{ d.hidden=d.dataset.rub!==unit; });
+  fillClasses();
   const rows=$('#rows');
-  if(!works.length){ rows.innerHTML=`<div class="empty">${TASKS[unit].title}單元還沒有作業。按「上傳作業檔」或把 .json 檔拖進頁面。</div>`; $('#summary').innerHTML=''; $('#detail').innerHTML=''; return; }
+  if(!works.length){ rows.innerHTML=`<div class="empty">${TASKS[unit].title}單元${clsFilter?' '+esc(clsFilter)+' 班':''}還沒有作業。按「上傳作業檔」或把 .json 檔拖進頁面。</div>`; const mh=missingHTML(); $('#summary').innerHTML=mh; $('#summary').hidden=!mh; $('#detail').innerHTML=''; return; }
+  $('#summary').hidden=false;
   rows.innerHTML=works.map(w=>`<button class="row${cur===w.id?' on':''}" data-id="${esc(w.id)}">
     <span class="who"><b>${esc(w.work.student||'（未填姓名）')}</b><span>${w.sample?'<span class="chip">範例</span> ':''}${w.g.english>=100?'<span class="chip en">EN</span> ':''}${esc(w.work.title||w.file||'')}</span></span>
     <span class="score-cell"><b>${effTotal(w)}${w.override?'<sup title="老師調整過">*</sup>':''}</b><span class="mini"><i style="width:${effTotal(w)}%;background:${barColor(effTotal(w))}"></i></span></span></button>`).join('');
@@ -1555,9 +1575,10 @@ function renderList(){
   const cnt=lv=>works.filter(w=>effLevel(w)===lv).length;
   $('#summary').innerHTML=`<div class="stat"><span>份數</span><b>${ts.length}</b></div><div class="stat"><span>平均</span><b>${avg.toFixed(1)}</b></div>
     <div class="stat"><span>最高</span><b>${Math.max(...ts)}</b></div><div class="stat"><span>最低</span><b>${Math.min(...ts)}</b></div><div class="stat"><span>All English 全英文</span><b>${works.filter(w=>w.g.english>=100).length}</b></div><div class="stat"><span>English 英文使用率</span><b>${Math.round(works.reduce((a,w)=>a+w.g.english,0)/works.length)}%</b></div>
-    <div class="dist">${['優秀','良好','及格','需加強'].map(l=>`<span class="pill lv-${l}">${l} ${cnt(l)}</span>`).join('')}</div>`;
+    <div class="dist">${['優秀','良好','及格','需加強'].map(l=>`<span class="pill lv-${l}">${l} ${cnt(l)}</span>`).join('')}</div>${missingHTML()}`;
 }
 const barColor=v=>v>=75?'var(--good)':v>=60?'var(--warn)':'var(--bad)';
+$('#clsSel').onchange=e=>{ clsFilter=e.target.value; refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); };
 $('#unitSel').onchange=e=>{ unit=e.target.value; refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); };
 $('#rows').addEventListener('click',e=>{ const r=e.target.closest('.row'); if(!r) return; cur=r.dataset.id; renderList(); renderDetail(); if(innerWidth<=820) $('#detail').scrollIntoView({behavior:'smooth',block:'start'}); });
 
@@ -1811,6 +1832,7 @@ function ingest(list){
       const rec={id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),file,work,ai:'',g:gradeTask(work)};
       if(i>=0){ ALL[i]=rec; replaced++; } else { ALL.push(rec); added++; } last=rec.id; unit=rec.g.task;
     });
+    if(clsFilter&&last){ const r=ALL.find(w=>w.id===last); if(r&&whoOf(r.work).cls!==clsFilter) clsFilter=''; }
     sortWorks(); persist(); refilter();
     if(last) cur=last;
     renderList(); renderDetail();
@@ -1859,8 +1881,18 @@ async function callDrive(payload){
 }
 function driveErr(e){ return e==='bad_key'?'教師密碼不對，請確認和 Apps Script 裡的 TEACHER_KEY 一樣。':e?`雲端回覆錯誤（${e}）。`:'連不上雲端。請確認部署網址正確、部署存取權是「任何人」。'; }
 function setLinks(res){ const l=[]; if(res.folderUrl) l.push(`<a href="${esc(res.folderUrl)}" target="_blank" rel="noopener">作業資料夾 Folder</a>`); if(res.sheetUrl) l.push(`<a href="${esc(res.sheetUrl)}" target="_blank" rel="noopener">成績試算表 Sheet</a>`); if(l.length) $('#drLinks').innerHTML=l.join(' · '); }
+function fillDrCls(){ const sel=$('#drCls'), cs=(drive.classes||[]).slice(); if(drive.cls&&!cs.includes(drive.cls)) cs.push(drive.cls);
+  sel.innerHTML='<option value="">All classes 全部班級</option>'+cs.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join(''); sel.value=drive.cls||''; }
+async function loadClasses(quiet){ saveDriveCfg(); const st=$('#drStatus'); if(!driveOK()||!drive.key){ if(!quiet){ st.textContent='請先填好部署網址和教師密碼。'; st.classList.add('err'); } return; }
+  if(!quiet) st.textContent='讀取班級清單…';
+  try{ const res=await callDrive({action:'classes',key:drive.key,unit});
+    if(res.ok){ drive.classes=res.classes; try{ localStorage.setItem(DKEY,JSON.stringify(drive)); }catch(e){} fillDrCls(); if(!quiet) st.textContent=res.classes.length?`找到 ${res.classes.length} 個班級。`:'名單裡還沒有班級。'; }
+    else if(!quiet){ st.textContent=res.error==='unknown_action'?'Apps Script 是舊版，請貼上新版 Code.gs 並部署新版本，才能分班載入。':driveErr(res.error); st.classList.add('err'); }
+  }catch(e){ if(!quiet){ st.textContent=driveErr(); st.classList.add('err'); } } }
+$('#bDrCls').onclick=()=>loadClasses(false);
+$('#drCls').onchange=e=>{ drive.cls=e.target.value; try{ localStorage.setItem(DKEY,JSON.stringify(drive)); }catch(err){} };
 function openDrive(){
-  $('#drUrl').value=drive.url; $('#drKey').value=drive.key; $('#drUnit').textContent=TASKS[unit].name;
+  $('#drUrl').value=drive.url; $('#drKey').value=drive.key; $('#drUnit').textContent=TASKS[unit].name; fillDrCls(); if(!(drive.classes||[]).length&&drive.key) loadClasses(true);
   $('#drStatus').textContent=''; $('#drStatus').classList.remove('err'); $('#driveModal').hidden=false;
 }
 function saveDriveCfg(){ drive.url=$('#drUrl').value.trim(); drive.key=$('#drKey').value.trim(); try{ localStorage.setItem(DKEY,JSON.stringify(drive)); }catch(e){} }
@@ -1871,12 +1903,17 @@ $('#bDrLoad').onclick=async()=>{
   if(!driveOK()){ st.textContent='請貼上 Apps Script 的部署網址（https://script.google.com/macros/s/…/exec）。'; st.classList.add('err'); return; }
   if(!drive.key){ st.textContent='請輸入教師密碼。'; st.classList.add('err'); return; }
   b.disabled=true; st.textContent='載入中…';
-  try{ const res=await callDrive({action:'list',key:drive.key,unit});
+  const want=$('#drCls').value; drive.cls=want; try{ localStorage.setItem(DKEY,JSON.stringify(drive)); }catch(e){}
+  try{ const res=await callDrive({action:'list',key:drive.key,unit,cls:want});
     if(!res.ok){ st.textContent=driveErr(res.error); st.classList.add('err'); return; }
     setLinks(res);
-    if(!res.works.length){ st.textContent=`雲端還沒有「${TASKS[unit].name}」的作業。`; return; }
+    const old=want&&res.roster===undefined;
+    if(Array.isArray(res.roster)){ const by={}; res.roster.forEach(x=>{ (by[x.cls]=by[x.cls]||[]).push({seat:x.seat,name:x.name}); }); Object.assign(roster,by); try{ localStorage.setItem(RSKEY,JSON.stringify(roster)); }catch(e){} }
+    clsFilter=old?'':want;
+    const label=`「${TASKS[unit].name}」${want&&!old?want+' 班':''}`;
+    if(!res.works.length){ refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); st.textContent=`雲端還沒有${label}的作業。`; return; }
     ingest(res.works.map(x=>({ok:parseWork(JSON.stringify(x.work),x.file),file:'Drive · '+x.file})));
-    st.textContent=`已從雲端載入 ${res.works.length} 份作業。`;
+    st.textContent=`已從雲端載入${label} ${res.works.length} 份作業。`+(old?'（Apps Script 是舊版，所以載入了全部班級；更新 Code.gs 後就能分班載入。）':'');
   }catch(e){ st.textContent=driveErr(); st.classList.add('err'); }
   finally{ b.disabled=false; }
 };

@@ -57,6 +57,7 @@ function doPost(e) {
     lock.waitLock(20000);
     if (req.action === 'submit') return json_(submit_(req));
     if (req.action === 'list') return json_(list_(req));
+    if (req.action === 'classes') return json_(classes_(req));
     if (req.action === 'save') return json_(save_(req));
     return json_({ ok: false, error: 'unknown_action' });
   } catch (err) {
@@ -107,12 +108,14 @@ function submit_(req) {
 function list_(req) {
   if (String(req.key || '') !== CONFIG.TEACHER_KEY) return { ok: false, error: 'bad_key' };
   const units = req.unit && unitName_(req.unit) ? [req.unit] : Object.keys(UNITS);
+  const cls = clean_(req.cls);
   const works = [];
   units.forEach(function (u) {
     const files = unitFolder_(u).getFiles();
     while (files.hasNext()) {
       const f = files.next();
       if (!/\.json$/i.test(f.getName())) continue;
+      if (cls && f.getName().indexOf(cls + '-') !== 0) continue;   // files are named "701-12 王小明.json"
       try {
         const w = JSON.parse(f.getBlob().getDataAsString('UTF-8'));
         w.task = u;
@@ -120,7 +123,32 @@ function list_(req) {
       } catch (err) {}
     }
   });
-  return { ok: true, works: works, sheetUrl: sheet_().getUrl(), folderUrl: rootFolder_().getUrl() };
+  const roster = (rosterRows_() || []).filter(function (x) { return !cls || x.cls === cls; });
+  return { ok: true, works: works, cls: cls, roster: roster, sheetUrl: sheet_().getUrl(), folderUrl: rootFolder_().getUrl() };
+}
+
+/* classes from the roster, plus any class found in the submitted file names */
+function classes_(req) {
+  if (String(req.key || '') !== CONFIG.TEACHER_KEY) return { ok: false, error: 'bad_key' };
+  const set = {};
+  (rosterRows_() || []).forEach(function (x) { set[x.cls] = 1; });
+  if (req.unit && unitName_(req.unit)) {
+    const files = unitFolder_(req.unit).getFiles();
+    while (files.hasNext()) { const m = files.next().getName().match(/^(\d+)-/); if (m) set[m[1]] = 1; }
+  }
+  const classes = Object.keys(set).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
+  return { ok: true, classes: classes };
+}
+/* roster tab rows: class, seat, name */
+function rosterRows_() {
+  const sh = sheet_().getSheetByName(CONFIG.ROSTER_TAB);
+  if (!sh) return null;
+  const v = sh.getDataRange().getDisplayValues(), out = [];
+  for (let r = 1; r < v.length; r++) {
+    const c = String(v[r][0] || '').trim(), seat = String(v[r][1] || '').trim(), name = String(v[r][2] || '').trim();
+    if (c && name) out.push({ cls: c, seat: seat, name: name });
+  }
+  return out;
 }
 
 function save_(req) {
