@@ -36,12 +36,9 @@ h1{font-size:20px;font-weight:700;margin:0;letter-spacing:.03em;display:flex;ali
 h1 small{font-size:13px;font-weight:400;color:var(--muted);letter-spacing:0}
 .tools{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
 button{font:inherit;color:inherit}
-.units{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
-.units button{border:0;background:transparent;padding:7px 14px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
-.units button span{font-size:12px;color:var(--muted);font-weight:400}
-.units button em{font-style:normal;font-family:var(--font-mono);font-size:11px;background:var(--soft);border-radius:999px;padding:0 7px;color:var(--muted)}
-.units button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
-.units button[aria-selected="true"] em{background:var(--accent);color:var(--panel)}
+.unitpick{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.unitpick select{font:inherit;font-size:15px;font-weight:500;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 34px 7px 12px;max-width:100%;cursor:pointer}
+.unitpick select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .btn{font-size:13px;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);cursor:pointer;white-space:nowrap}
 .btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .btn:disabled{opacity:.45;cursor:default}
@@ -195,8 +192,11 @@ td .why{color:var(--muted);font-size:12px}
 
 <div class="wrap">
   <header>
-    <h1>Grading Desk 批改台 <small id="unitName">BMI Flowchart</small></h1>
-    <div class="units" role="tablist" aria-label="Unit 單元"><button role="tab" data-unit="bmi">BMI <span>BMI 判斷</span><em id="cntBmi"></em></button><button role="tab" data-unit="score">Pass or Fail <span>成績及格判斷</span><em id="cntScore"></em></button><button role="tab" data-unit="scratch">Scratch <span>積木 Pass or Fail</span><em id="cntScratch"></em></button><button role="tab" data-unit="scratch-bmi">Scratch BMI <span>積木 BMI</span><em id="cntScratchBmi"></em></button><button role="tab" data-unit="sum">Summation <span>1 加到 n</span><em id="cntSum"></em></button><button role="tab" data-unit="scratch-sum">Scratch Sum <span>積木 1 加到 n</span><em id="cntScratchSum"></em></button></div>
+    <h1>Grading Desk 批改台 <small id="unitName" hidden>BMI Flowchart</small></h1>
+    <label class="unitpick"><span>Unit 單元</span><select id="unitSel" aria-label="Unit 單元">
+      <optgroup label="Flowchart 流程圖"><option value="bmi">BMI 判斷</option><option value="score">Pass or Fail 成績及格判斷</option><option value="sum">Summation 1 加到 n</option></optgroup>
+      <optgroup label="Scratch 積木"><option value="scratch">Scratch Pass or Fail</option><option value="scratch-bmi">Scratch BMI</option><option value="scratch-sum">Scratch 1 加到 n</option></optgroup>
+    </select></label>
     <div class="tools">
       <label class="btn primary" for="fileInput" tabindex="0" id="upLabel">上傳作業檔</label>
       <input type="file" id="fileInput" accept=".json,application/json" multiple hidden>
@@ -1544,8 +1544,7 @@ function renderList(){
   refilter();
   $('#banner').hidden=!usingSamples;
   $('#unitName').textContent=TASKS[unit].name;
-  document.querySelectorAll('.units [data-unit]').forEach(b=>b.setAttribute('aria-selected',b.dataset.unit===unit));
-  $('#cntBmi').textContent=ALL.filter(w=>w.g.task==='bmi').length; $('#cntScore').textContent=ALL.filter(w=>w.g.task==='score').length; $('#cntScratch').textContent=ALL.filter(w=>w.g.task==='scratch').length; $('#cntScratchBmi').textContent=ALL.filter(w=>w.g.task==='scratch-bmi').length; $('#cntSum').textContent=ALL.filter(w=>w.g.task==='sum').length; $('#cntScratchSum').textContent=ALL.filter(w=>w.g.task==='scratch-sum').length;
+  const sel=$('#unitSel'); [...sel.options].forEach(o=>{ if(!o.dataset.base) o.dataset.base=o.textContent; const n=ALL.filter(w=>w.g.task===o.value).length; o.textContent=o.dataset.base+(n?`（${n} 份）`:''); }); sel.value=unit;
   document.querySelectorAll('[data-rub]').forEach(d=>{ d.hidden=d.dataset.rub!==unit; });
   const rows=$('#rows');
   if(!works.length){ rows.innerHTML=`<div class="empty">${TASKS[unit].title}單元還沒有作業。按「上傳作業檔」或把 .json 檔拖進頁面。</div>`; $('#summary').innerHTML=''; $('#detail').innerHTML=''; return; }
@@ -1559,7 +1558,7 @@ function renderList(){
     <div class="dist">${['優秀','良好','及格','需加強'].map(l=>`<span class="pill lv-${l}">${l} ${cnt(l)}</span>`).join('')}</div>`;
 }
 const barColor=v=>v>=75?'var(--good)':v>=60?'var(--warn)':'var(--bad)';
-document.querySelectorAll('.units [data-unit]').forEach(b=>b.onclick=()=>{ unit=b.dataset.unit; refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); });
+$('#unitSel').onchange=e=>{ unit=e.target.value; refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); };
 $('#rows').addEventListener('click',e=>{ const r=e.target.closest('.row'); if(!r) return; cur=r.dataset.id; renderList(); renderDetail(); if(innerWidth<=820) $('#detail').scrollIntoView({behavior:'smooth',block:'start'}); });
 
 /* ---------- detail ---------- */
