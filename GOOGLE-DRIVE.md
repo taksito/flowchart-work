@@ -67,6 +67,26 @@ window.FLOW_CONFIG = {
 | 試算表「繳交紀錄 Submissions」 | 每次繳交一列：時間、單元、班級、座號、姓名、自我批改分數、是否達成、英文使用率、檔案連結 |
 | 試算表「成績 Scores」 | 批改台寫回的成績：班級、座號、姓名、總分、等第、各項分數、需要修正、評語、批改時間 |
 
+## Student sign-in 學生用學校帳號登入（選用）
+
+開啟後，學生繳交前要先用學校 Google 帳號（…@apps.ntpc.edu.tw）登入，班級、座號、姓名會從名單自動帶入，學生不能自己改。
+
+1. **名單**：在「Flowchart Work 成績」試算表新增工作表「名單 Roster」，欄位是 `班級 Class｜座號 No.｜姓名 Name｜Email`（可用「檔案 → 匯入 → 插入新的工作表」匯入 Excel）。
+2. **建立 OAuth 用戶端**（Google Cloud Console，免費）：
+   1. 到 <https://console.cloud.google.com/>，左上角建立新專案，例如「Flowchart Work」。
+   2. 左側選單 **「API 和服務 → OAuth 同意畫面」**（或「Google Auth Platform」）→ 開始：應用程式名稱 `Flowchart Work`、使用者支援電子郵件選自己；目標對象選 **「外部」**；聯絡資訊填自己的 Email → 建立。
+   3. **「目標對象」→「發布應用程式」**，狀態改成「實際運作中」（只用到基本的登入資訊，不需要 Google 審查）。
+   4. **「用戶端」→「建立用戶端」**：應用程式類型選 **「網頁應用程式」**，「已授權的 JavaScript 來源」新增 `https://taksito.github.io` → 建立。
+   5. 複製 **用戶端 ID**（結尾是 `.apps.googleusercontent.com`）。用戶端 ID 不是密碼，可以公開；不需要「用戶端密鑰」。
+3. **Apps Script**：貼上新版 `Code.gs`，改回自己的 `TEACHER_KEY`，把 `GOOGLE_CLIENT_ID` 填上用戶端 ID → 選 `setup` 按「執行」，允許「連線到外部服務」→ 部署 → 管理部署作業 → 編輯 → 新版本。
+4. **config.js**：`googleClientId` 填同一個用戶端 ID。
+
+注意：
+
+- 學生的學校帳號如果被設定成「未滿 18 歲」，學校的 Google 管理員可能會擋掉第三方應用程式的登入。先找一位學生試登入；如果出現「已封鎖存取權」之類的訊息，請資訊組長在 Google 管理控制台把這個用戶端 ID 設為「信任」。
+- 要關掉登入，把 `Code.gs` 的 `GOOGLE_CLIENT_ID` 和 `config.js` 的 `googleClientId` 都改回空白即可。
+- 繳交紀錄會多一欄 Email；作業檔以名單上的「班級-座號 姓名」命名。
+
 ## Updating the script 之後修改程式
 
 > 新增 Scratch 單元後，`Code.gs` 多了 `scratch` 單元。之前部署過的人要貼上新版 `Code.gs`（記得改回自己的 `TEACHER_KEY`），再部署新版本，學生才能從 Scratch Lab 繳交。

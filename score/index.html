@@ -196,6 +196,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
 .ck-tests span.ok{border-color:var(--accent);color:var(--accent)}
 .ck-tests span.no{border-color:var(--danger);color:var(--danger)}
 .ck-cert img{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px}
+.glogin{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;margin:4px 0 8px}.glogin p{margin:0;font-size:13px}.glogin.on{flex-direction:row;align-items:center;gap:10px}.glogin .gok{color:var(--accent);font-weight:700;font-size:18px}.glogin .gwho{display:flex;flex-direction:column;flex:1;min-width:0}.glogin .gwho small{color:var(--muted);overflow:hidden;text-overflow:ellipsis}.glogin .gbtn{min-height:44px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);font-size:13px;padding:8px 14px;border-radius:8px;z-index:40;max-width:calc(100% - 32px)}
 .drop{display:grid;place-items:center;border:2px dashed var(--stencil-edge);border-radius:10px;padding:30px 16px;cursor:pointer;color:var(--muted);font-size:14px;background:var(--stencil);text-align:center}
 .drop:hover,.drop.over{border-color:var(--accent);color:var(--accent)}
@@ -360,6 +361,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
   <div class="dialog narrow">
     <h2>Submit to your teacher 繳交作業</h2>
     <p>Your flowchart goes straight to your teacher's Google Drive. You can submit again later; the newest one replaces the old one. 作品會直接送到老師的 Google Drive。之後可以再交一次，新的會取代舊的。</p>
+    <div id="sbLogin" hidden></div>
     <div class="fields">
       <div class="who"><label class="field"><span>Class 班級</span><input type="text" id="sbCls" inputmode="numeric" placeholder="801" autocomplete="off"></label><label class="field"><span>No. 座號</span><input type="text" id="sbSeat" inputmode="numeric" placeholder="12" autocomplete="off"></label><label class="field"><span>Name 姓名</span><input type="text" id="sbName" placeholder="王小明" autocomplete="off"></label><input type="hidden" id="sbStudent"></div>
       <label class="field" id="sbCodeWrap" hidden><span>Class code 班級代碼</span><input type="text" id="sbCode" autocomplete="off"></label>
@@ -1142,6 +1144,52 @@ function feedbackScratchSum(work,g){
   feedbackTask=function(w,g){ const t=g.task||taskOf(w); return t==='sum'?feedbackSum(w,g):t==='scratch-sum'?feedbackScratchSum(w,g):_fb(w,g); };
 })();
 if(typeof module!=='undefined') Object.assign(module.exports,{gradeSum,feedbackSum,gradeScratchSum,feedbackScratchSum,SUM_CASES,sumOf,gradeTask,feedbackTask,taskOf});
+
+/* ===== Sign in with the school Google account; the Apps Script looks the student up in the roster ===== */
+function GLogin(o){
+  const SK='glogin-v1', domain=String(o.domain||'').trim();
+  const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let user=null, ready=false, waiting=false;
+  try{ const s=JSON.parse(sessionStorage.getItem(SK)||'null'); if(s&&s.exp*1000>Date.now()+60000) user=s; }catch(err){}
+  const MSG={not_in_roster:'This account is not on the class list. Tell your teacher. 名單裡找不到這個帳號，請告訴老師。',
+    bad_domain:`Use your school account${domain?' (@'+domain+')':''}. 請用學校的帳號登入${domain?'（@'+domain+'）':''}。`,
+    no_roster:'Your teacher has not added the class list yet. 老師還沒放學生名單。',
+    login_off:'Sign-in is not turned on yet. Tell your teacher. 老師的雲端程式還沒開啟登入功能。',
+    login_required:'Sign in first. 請先用學校帳號登入。',
+    bad_token:'Sign-in failed. Try again. 登入失敗，請再試一次。', login_expired:'Sign-in expired. Sign in again. 登入過期了，請再登入一次。'};
+  function setUser(u){ user=u; try{ if(u) sessionStorage.setItem(SK,JSON.stringify(u)); else sessionStorage.removeItem(SK); }catch(err){} render(); if(u&&o.onUser) o.onUser(u); if(!u&&o.onOut) o.onOut(); }
+  function status(t,bad){ const s=o.box.querySelector('.gst'); if(s){ s.textContent=t||''; s.classList.toggle('err',!!bad); } }
+  function render(){
+    const b=o.box; if(!b) return;
+    if(user){ b.innerHTML=`<div class="glogin on"><span class="gok">✓</span><span class="gwho"><b>${e(user.student)}</b><small>${e(user.email)}</small></span><button type="button" class="btn" data-gout>Sign out 登出</button></div>`;
+      b.querySelector('[data-gout]').onclick=()=>{ try{ google.accounts.id.disableAutoSelect(); }catch(err){} setUser(null); }; return; }
+    b.innerHTML=`<div class="glogin"><p>Sign in with your school Google account first. 請先用學校的 Google 帳號登入${domain?'（…@'+e(domain)+'）':''}。</p><div class="gbtn"></div><span class="status gst"></span></div>`;
+    if(ready) button(); else load();
+  }
+  function button(){ const el=o.box.querySelector('.gbtn'); if(!el) return; try{ google.accounts.id.renderButton(el,{type:'standard',theme:'outline',size:'large',text:'signin_with',shape:'pill',locale:'zh-TW'}); }catch(err){ status('Could not show the sign-in button. 無法顯示登入按鈕。',true); } }
+  function load(){
+    if(waiting) return; waiting=true;
+    const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true;
+    s.onload=()=>{ try{ const opt={client_id:o.clientId,callback:onCred,auto_select:false,cancel_on_tap_outside:true,ux_mode:'popup'}; if(domain) opt.hd=domain; google.accounts.id.initialize(opt); ready=true; button(); }catch(err){ status('Sign-in is not available. 無法使用登入。',true); } };
+    s.onerror=()=>status('Cannot reach Google. Check the internet. 連不上 Google，請確認網路。',true);
+    document.head.appendChild(s);
+  }
+  async function onCred(resp){
+    status('Checking… 確認中…');
+    try{ const r=await fetch(o.url,{method:'POST',body:JSON.stringify({action:'whoami',idToken:resp.credential})}); const res=await r.json();
+      if(res&&res.ok){ setUser({cls:res.who.cls,seat:res.who.seat,name:res.who.name,student:res.who.student,email:res.email,exp:res.exp,token:resp.credential}); return; }
+      const m=MSG[res&&res.error]||('Sign-in failed. 登入失敗。'+(res&&res.error?`（${res.error}）`:''));
+      status(m+(res&&res.email?' '+res.email:''),true);
+    }catch(err){ status('Cannot reach Google Drive. 連不上雲端。',true); }
+  }
+  return {
+    user:()=>user,
+    token:()=>user&&user.exp*1000>Date.now()+30000?user.token:null,
+    expired:()=>{ setUser(null); status(MSG.login_expired,true); },
+    message:k=>MSG[k],
+    render
+  };
+}
 
 /*GRADER-END*/
 </script>
@@ -2110,6 +2158,9 @@ function computeHelpSum(){
 }
 
 const canSubmit=!FREE&&!window.claude&&/^https:\/\/script\.google(usercontent)?\.com\//.test(SUBMIT_URL);
+const LOGIN=canSubmit&&String(CFG.googleClientId||'').trim()?GLogin({clientId:String(CFG.googleClientId).trim(),domain:CFG.emailDomain,url:SUBMIT_URL,box:$('#sbLogin'),
+  onUser:u=>{ setWho({cls:u.cls,seat:u.seat,name:u.name}); saveMeta(); fillWho('sb'); $('#sbStatus').textContent=''; $('#sbStatus').classList.remove('err'); }}):null;
+if(LOGIN){ $('#sbLogin').hidden=false; document.querySelector('#submitModal .who').hidden=true; }
 async function callDrive(payload){
   const r=await fetch(SUBMIT_URL,{method:'POST',body:JSON.stringify(payload)});
   if(!r.ok) throw new Error('http_'+r.status);
@@ -2119,7 +2170,7 @@ function openSubmit(){
   commitEdit();
   if(!state.nodes.length){ toast('Draw your flowchart first 畫布是空的，先畫流程圖'); return; }
   const g=gradeTask({nodes:state.nodes,edges:state.edges,task:TASK});
-  fillWho('sb');
+  fillWho('sb'); if(LOGIN) LOGIN.render();
   $('#sbCodeWrap').hidden=!CFG.needCode;
   $('#sbSummary').textContent=`Self-check 自我批改：${g.total} / 100 · ${g.passed?'Passed 達成':'Not yet 尚未達成'}`;
   const st=$('#sbStatus'); st.textContent=g.passed?'':'You can still submit now, or fix it first. 還沒全對也可以先繳交，之後再改再交一次（會覆蓋前一次）。'; st.classList.remove('err');
@@ -2131,16 +2182,20 @@ function openSubmit(){
 $('#bDoSubmit').onclick=async()=>{
   const st=$('#sbStatus'), btn=$('#bDoSubmit'); st.classList.remove('err');
   const fail=m=>{ st.textContent=m; st.classList.add('err'); btn.disabled=false; };
+  const tok=LOGIN?LOGIN.token():null;
+  if(LOGIN&&!tok){ fail('Sign in first. 請先用學校帳號登入。'); LOGIN.render(); return; }
   const student=String(meta.student||'').trim();
-  if(!student){ fail('Enter your name first. 請先填寫姓名。'); $('#sbName').focus(); return; }
+  if(!LOGIN&&!student){ fail('Enter your name first. 請先填寫姓名。'); $('#sbName').focus(); return; }
   const code=$('#sbCode').value.trim();
   if(CFG.needCode&&!code){ fail('Enter the class code. 請輸入班級代碼。'); $('#sbCode').focus(); return; }
   const g=gradeTask({nodes:state.nodes,edges:state.edges,task:TASK});
   btn.disabled=true; st.textContent='Submitting… 繳交中…';
   try{
-    const res=await callDrive({action:'submit',unit:TASK,code,student,cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:meta.title||DEFAULT_TITLE,work:exportData(),check:{total:g.total,passed:g.passed,english:g.english}});
+    const res=await callDrive({action:'submit',unit:TASK,code,idToken:tok||'',student,cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:meta.title||DEFAULT_TITLE,work:exportData(),check:{total:g.total,passed:g.passed,english:g.english}});
     if(res&&res.ok){ const t=new Date(res.time||Date.now()); st.textContent=`Submitted! 已繳交 ${t.toLocaleString('zh-TW',{hour12:false})}`; toast('Submitted 已繳交'); btn.disabled=false; return; }
     const e=res&&res.error;
+    if(LOGIN&&e==='login_expired'){ LOGIN.expired(); fail(LOGIN.message(e)); return; }
+    if(LOGIN&&LOGIN.message(e)){ fail(LOGIN.message(e)); return; }
     fail(e==='bad_code'?'Wrong class code. 班級代碼不對，請再確認。':e==='no_name'?'Enter your name first. 請先填寫座號與姓名。':e==='too_large'?'The file is too large. 作品太大，請刪掉多餘的圖形。':'The server said no. 雲端拒絕了這次繳交，請告訴老師。'+(e?`（${e}）`:''));
   }catch(err){
     fail('Cannot reach Google Drive. Use “下載作業檔” instead. 連不上雲端，請改用「下載作業檔」交給老師。');
