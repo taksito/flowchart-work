@@ -1210,11 +1210,10 @@ function gradeSum(work){
   const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
   const enUnits=textNodes.length+decLabels.length, english=enUnits?Math.round(100*(enUnits-zhNodes.length-zhLabels.length)/enUnits):0;
   /* every answer right: other ways of writing it also count (the loop itself is still required) */
-  if(fp===SUM_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.label.startsWith('輸入 n')||(hasLoop&&i.group==='判斷'))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); P.calcs.forEach(({n})=>bad.delete(n.id)); }
+  if(fp===SUM_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.label.startsWith('輸入 n')||i.group==='判斷')&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); P.calcs.forEach(({n})=>bad.delete(n.id)); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   const fixes=[]; if(Object.keys(badEdges).length) fixes.push(`有 ${Object.keys(badEdges).length} 條紅色的線：方向拉反，或形成停不下來的迴圈`);
-  if(fp===SUM_CASES.length&&!hasLoop) fixes.push('答案都對，可是這個單元要練習迴圈：用判斷和線讓 sum = sum + i 重複執行');
   items.filter(i=>i.got<i.max&&i.note&&!/題正確$|無法檢查|答案全部正確/.test(i.note)).forEach(i=>i.note.split('；').forEach(x=>{ if(!/（紅線）/.test(x)) fixes.push(x); }));
   full.filter(t=>!t.ok&&t.why&&t.got!==null).slice(-1).forEach(t=>fixes.push(t.why));
   full.filter(t=>!t.ok&&t.got!==null).slice(0,2).forEach(t=>fixes.push(`n = ${t.n} 應該輸出 ${t.exp}，你的流程輸出 ${t.got}`));
@@ -1226,8 +1225,8 @@ function gradeSum(work){
 function feedbackSum(work,g){
   const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
   if(g.passed) return {
-    en:'Excellent! Your loop adds 1 + 2 + … + n correctly and all 8 tests passed.'+(enOK?' You wrote everything in English. Great job!':' Next time, try writing every label in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
-    zh:'流程圖完整又正確，迴圈把 1 加到 n，八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
+    en:(g.hasLoop?'Excellent! Your loop adds 1 + 2 + … + n correctly':'Excellent! Your flowchart works out 1 + 2 + … + n correctly')+' and all 8 tests passed.'+(enOK?' You wrote everything in English. Great job!':' Next time, try writing every label in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
+    zh:(g.hasLoop?'流程圖完整又正確，迴圈把 1 加到 n，':'流程圖完整又正確，')+'八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
   const pos=[],pz=[],fx=[],fz=[]; const add=(e,z)=>{fx.push(e);fz.push(z);};
   if(full(it('輸入 n'))){ pos.push('you input n'); pz.push('有輸入 n'); }
   if(full(it('累加'))){ pos.push('you add up the numbers with sum = sum + i'); pz.push('累加 sum = sum + i 寫對了'); }
@@ -1295,10 +1294,10 @@ function gradeScratchSum(work){
   const english=units.length?Math.round(100*(units.length-zh.length)/units.length):0;
   const words=[...new Set(zh.join(' ').match(/[㐀-鿿]+/g)||[])];
   const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
-  if(fp===SUM_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='輸入'||(loops.length&&i.group==='判斷'))&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); }
+  if(fp===SUM_CASES.length){ items.forEach(i=>{ if((i.group==='計算'||i.group==='輸入'||i.group==='判斷')&&i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } }); }
   const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
-  const fixes=[]; if(fp===SUM_CASES.length&&!loops.length) fixes.push('答案都對，可是這個單元要練習重複積木：用 repeat 把 1 到 n 一個一個加起來');
+  const fixes=[];
   items.filter(i=>i.got<i.max-1e-9&&i.note&&!/題正確$|答案全部正確/.test(i.note)).forEach(i=>fixes.push(i.note));
   full.filter(t=>!t.ok&&t.why&&t.got!==null).slice(-1).forEach(t=>fixes.push(t.why));
   full.filter(t=>!t.ok&&t.got!==null).slice(0,2).forEach(t=>fixes.push(`n = ${t.n} 應該說 ${t.exp}，你的程式說 ${t.got}`));
@@ -1309,8 +1308,8 @@ function gradeScratchSum(work){
 }
 function feedbackScratchSum(work,g){
   const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
-  if(g.passed) return {en:'Excellent! Your program asks for n, adds 1 + 2 + … + n with a loop and says the right sum in all 8 tests.'+(enOK?' Everything is in English. Great job!':' Next time, try writing every message in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
-    zh:'程式完整又正確，用重複積木把 1 加到 n，八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
+  if(g.passed) return {en:'Excellent! Your program asks for n, adds 1 + 2 + … + n'+(g.loops.length?' with a loop':'')+' and says the right sum in all 8 tests.'+(enOK?' Everything is in English. Great job!':' Next time, try writing every message in English'+(g.enTips.length?` (${g.enTips.slice(0,3).join(', ')}).`:'.')),
+    zh:'程式完整又正確，'+(g.loops.length?'用重複積木把 1 加到 n，':'')+'八個測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'下次試著把文字都改成英文'+(g.enTips.length?`（${g.enTips.slice(0,3).join('、')}）`:'')+'。')};
   const pos=[],pz=[],fx=[],fz=[]; const add=(e,z)=>{fx.push(e);fz.push(z);};
   if(full(it('詢問 n'))){ pos.push('you ask for n'); pz.push('有詢問 n'); }
   if(full(it('使用重複積木'))){ pos.push('you used a repeat loop'); pz.push('有用到重複積木'); }

@@ -74,7 +74,8 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 - Scratch (`scratch-sum/`): ask n, set n to answer, set sum and i to 0, repeat (n) { change i by 1, change sum by (i) }, say (sum). A **repeat until** block was added for this unit. 積木：新增「repeat until 重複直到」積木。
 - Tests 測試：n = 1, 2, 3, 4, 5, 10, 20, 100 → 1, 3, 6, 10, 15, 55, 210, 5050.
 - Rubric (flowchart): Structure 20, Input 10, Process 25 (start values 5, add 10, count 10), Loop 15, Output 5, Test run 25. Scratch: Structure 10, Input 15, Process 20, Loop 20, Output 10, Test run 25.
-- Different correct loops get full marks (sum += i, i++, counting down, i > n with Yes/No swapped). The formula n(n+1)/2 without a loop gives the right answers but misses the loop items, because this unit practises loops. 不同的正確迴圈都給滿分；只用公式沒有迴圈的話，迴圈項目不給分。
+- Any correct approach gets full marks: sum += i, i++, counting down, i > n with Yes/No swapped, or the formula sum = n × (n + 1) / 2. 不同的正確寫法都給滿分，直接用公式也算對。
+- The INPUT / OUTPUT / PROCESS / DECISION boxes show n, sum, sum = sum + i and i <= n as hints. 圖形的提示文字是 n、sum、sum = sum + i、i <= n。
 - Common mistakes get a direct hint: i < n misses the last number, outputting i instead of sum, a loop with no i = i + 1 never stops. 常見錯誤會直接提示。
 - In this unit a loop through a decision is correct, so red lines only mark loops with no decision (they never stop). 這個單元的迴圈是正確的，只有沒有判斷、停不下來的迴圈才標紅線。
 
