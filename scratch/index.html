@@ -1661,7 +1661,9 @@ function placeBubble(){ const b=$('#bubble'), im=$('#sprite'), st=$('#stage'); i
 function setSprite(){ const im=$('#sprite'); im.src=SPRITES[who+(talking?'_point':'_hips')]; }
 $('#sprite').addEventListener('load',placeBubble); new ResizeObserver(placeBubble).observe($('#stage'));
 $('#sprite').addEventListener('click',()=>{ who=who==='girl'?'boy':'girl'; try{ localStorage.setItem(CKEY,who); }catch(e){} setSprite(); placeBubble(); });
-function showBubble(t){ const b=$('#bubble'); if(t==null||t===''){ b.hidden=true; talking=false; setSprite(); return; } b.textContent=t; b.hidden=false; talking=true; setSprite(); placeBubble(); }
+let bubT=null;
+/* ms: hide the bubble after this long (say = 5 s); without it the bubble stays (ask) */
+function showBubble(t,ms){ clearTimeout(bubT); const b=$('#bubble'); if(t==null||t===''){ b.hidden=true; talking=false; setSprite(); return; } b.textContent=t; b.hidden=false; talking=true; setSprite(); placeBubble(); if(ms) bubT=setTimeout(()=>showBubble(''),ms); }
 Object.values(SPRITES).forEach(u=>{ const i=new Image(); i.src=u; });
 setSprite();
 const WKEY=KEY+'-watch'; let watched=[]; try{ watched=JSON.parse(localStorage.getItem(WKEY)||'[]'); }catch(e){}
@@ -1700,9 +1702,9 @@ async function runWith(j,o){
       r=it.next(send); send=undefined;
       if(r.done){ st=r.value; break; }
       const e=r.value;
-      if(e.type==='say'){ showBubble(e.msg); await new Promise(res=>setTimeout(res,e.secs?Math.min(10,e.secs)*1000:450)); }
+      if(e.type==='say'){ showBubble(e.msg,e.secs?Math.min(10,e.secs)*1000:5000); await new Promise(res=>setTimeout(res,e.secs?Math.min(10,e.secs)*1000:450)); }
       else if(e.type==='wait'){ await new Promise(res=>setTimeout(res,Math.min(10,Math.max(0,e.secs))*1000)); }
-      else if(e.type==='ask'){ showBubble(e.q); send=await askUser(token); }
+      else if(e.type==='ask'){ showBubble(e.q); send=await askUser(token); showBubble(''); }
     }
   }catch(err){ showBubble(''); toast(err.message==='too_many_steps'?'The program did not stop, so it was stopped. 程式停不下來，已經幫你停止。':'Something went wrong. 程式執行出錯。'); }
   clearInterval(vt); renderMonitors((st&&st.vars)||(liveSt&&liveSt.vars)||{},(st&&st.answer!==undefined)?st.answer:(liveSt?liveSt.answer:'')); try{ ws.highlightBlock(null); }catch(e){}
