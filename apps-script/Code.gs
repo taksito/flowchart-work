@@ -25,7 +25,7 @@ const CONFIG = {
 const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', sum: 'Summation', 'scratch-sum': 'Scratch Summation' };
 /* Units added later work without changing this file: any short lowercase name is accepted. */
 function unitName_(u) { return UNITS[u] || (/^[a-z][a-z0-9-]{1,30}$/.test(String(u || '')) ? String(u) : null); }
-const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File', 'Email'];
+const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File', 'Email', '電腦代號 Device'];
 const SCORE_HEAD = ['單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '總分 Total', '等第 Level', 'Structure 結構', 'Input 輸入', 'Process 計算', 'Decision 判斷', 'Output 輸出', 'Test run 執行測試', '英文使用率 English %', '需要修正 Fixes', '評語 Comment', '批改時間 Graded'];
 
 /* ---------- one-time setup ---------- */
@@ -88,6 +88,8 @@ function submit_(req) {
   work.task = unit;
   work.student = student; work.cls = who.cls; work.seat = who.seat; work.name = who.name;
   if (email) work.email = email;
+  const device = /^PC-[A-Z0-9]{4}$/.test(String(req.device || '')) ? String(req.device) : '';
+  if (device) work.device = device;
   work.submittedAt = new Date().toISOString();
 
   const folder = unitFolder_(unit);
@@ -101,7 +103,8 @@ function submit_(req) {
   const ck = req.check || {};
   const sh = tab_('繳交紀錄 Submissions', SUB_HEAD);
   if (!sh.getRange(1, 11).getValue()) sh.getRange(1, 11).setValue('Email').setFontWeight('bold');
-  sh.appendRow([new Date(), unitName_(unit), who.cls, who.seat, who.name, clean_(req.title), num_(ck.total), ck.passed ? 'Yes' : 'No', num_(ck.english), f.getUrl(), email]);
+  if (!sh.getRange(1, 12).getValue()) sh.getRange(1, 12).setValue('電腦代號 Device').setFontWeight('bold');
+  sh.appendRow([new Date(), unitName_(unit), who.cls, who.seat, who.name, clean_(req.title), num_(ck.total), ck.passed ? 'Yes' : 'No', num_(ck.english), f.getUrl(), email, device]);
   return { ok: true, time: work.submittedAt, file: name };
 }
 

@@ -1524,6 +1524,16 @@ function GLogin(o){
   };
 }
 
+/* ===== A random code for this computer's browser, made once and remembered (e.g. PC-7F3K) ===== */
+function flowDeviceId(){
+  const K='flowchart-device-id';
+  try{ const v=localStorage.getItem(K); if(/^PC-[A-Z0-9]{4}$/.test(v||'')) return v; }catch(e){}
+  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=new Uint8Array(4); try{ crypto.getRandomValues(r); }catch(e){ r=r.map(()=>Math.floor(Math.random()*256)); }
+  const id='PC-'+[...r].map(x=>A[x%A.length]).join('');
+  try{ localStorage.setItem(K,id); }catch(e){}
+  return id;
+}
+
 /* ===== Helper robot: hints stay hidden until the student clicks the robot ===== */
 function BuddyBot(o){
   const panel=o.panel, mode=o.mode==='head'?'head':'walk';
@@ -1654,6 +1664,13 @@ let works=[], usingSamples=false, cur=null, clsFilter='';
 const RSKEY='grader-roster-v1'; let roster={}; try{ roster=JSON.parse(localStorage.getItem(RSKEY)||'{}'); }catch(e){}
 const seatKey=x=>{ const t=String(x==null?'':x).trim(); return /^\d+$/.test(t)?String(+t):t; };
 function refilter(){ works=ALL.filter(w=>w.g.task===unit&&(!clsFilter||whoOf(w.work).cls===clsFilter)); }
+/* works in this unit sent from the same computer by different students */
+const stuKey=w=>{ const o=whoOf(w.work); return o.cls+'-'+seatKey(o.seat)+'-'+o.name; };
+function sharedWith(w){ if(!w.work.device) return []; return ALL.filter(x=>x!==w&&x.g.task===w.g.task&&x.work.device===w.work.device&&stuKey(x)!==stuKey(w)); }
+function sharedHTML(){ const by={}; works.forEach(w=>{ if(w.work.device) (by[w.work.device]=by[w.work.device]||[]).push(w); });
+  const groups=Object.entries(by).map(([d,l])=>[d,[...new Map(l.map(w=>[stuKey(w),w])).values()]]).filter(([d,l])=>l.length>1);
+  if(!groups.length) return '';
+  return `<div class="missing"><b>Same computer 同一台電腦交了多人的作業</b>${groups.map(([d,l])=>`<span class="m">${esc(d)}：${l.map(w=>esc(w.work.student||'?')).join('、')}</span>`).join('')}</div>`; }
 function missingHTML(){
   if(!clsFilter) return Object.keys(roster).length?'<div class="missing">Choose a class above to see who has not submitted. 在上方選一個班級，就能看到還沒繳交的學生。</div>':'';
   const list=roster[clsFilter]; if(!list||!list.length) return '<div class="missing">No class list for this class yet. Load it from Google Drive to see who has not submitted. 還沒有這個班的名單，從 Google Drive 載入一次就會帶進名單。</div>';
@@ -1700,7 +1717,7 @@ function renderList(){
   const cnt=lv=>works.filter(w=>effLevel(w)===lv).length;
   $('#summary').innerHTML=`<div class="stat"><span>份數</span><b>${ts.length}</b></div><div class="stat"><span>平均</span><b>${avg.toFixed(1)}</b></div>
     <div class="stat"><span>最高</span><b>${Math.max(...ts)}</b></div><div class="stat"><span>最低</span><b>${Math.min(...ts)}</b></div><div class="stat"><span>All English 全英文</span><b>${works.filter(w=>w.g.english>=100).length}</b></div><div class="stat"><span>English 英文使用率</span><b>${Math.round(works.reduce((a,w)=>a+w.g.english,0)/works.length)}%</b></div>
-    <div class="dist">${['優秀','良好','及格','需加強'].map(l=>`<span class="pill lv-${l}">${l} ${cnt(l)}</span>`).join('')}</div>${missingHTML()}`;
+    <div class="dist">${['優秀','良好','及格','需加強'].map(l=>`<span class="pill lv-${l}">${l} ${cnt(l)}</span>`).join('')}</div>${missingHTML()}${sharedHTML()}`;
 }
 const barColor=v=>v>=75?'var(--good)':v>=60?'var(--warn)':'var(--bad)';
 $('#clsSel').onchange=e=>{ clsFilter=e.target.value; refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); };
@@ -1734,7 +1751,7 @@ function renderDetail(){
     <div class="big"><h2>${esc(w.work.student||'（未填姓名）')}</h2><span class="sub">${esc(w.work.title||'')}${w.file?' · '+esc(w.file):''}</span>
       <span class="num">${effTotal(w)}<small> / 100</small></span><span class="pill lv-${effLevel(w)}">${effLevel(w)}</span>
       ${w.override?`<span class="sub adj">自動批改 ${g.total} 分 → 老師調整為 ${effTotal(w)} 分${w.override.note?'：'+esc(w.override.note):''}</span>`:''}
-      <span class="sub">English 英文使用率 ${g.english}%${g.english>=100?' · EN':''}</span>
+      <span class="sub">English 英文使用率 ${g.english}%${g.english>=100?' · EN':''}${w.work.device?` · 電腦 ${esc(w.work.device)}${sharedWith(w).length?`<b style="color:var(--bad)">（這台電腦也交了：${sharedWith(w).map(x=>esc(x.work.student||'?')).join('、')}）</b>`:''}`:''}</span>
       <div class="adjbox">
         <button class="btn" id="bRecheckOne">Re-check 重新審核</button>
         <button class="btn" id="bAdjOpen">${w.override?'修改調整':'Adjust 調整分數'}</button>
@@ -1979,8 +1996,8 @@ const dlPromise=(async()=>{ try{ return (window.claude&&window.claude.use)?await
 function csv(){
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const GROUPS=GR();
-  const head=['班級','座號','姓名','作品名稱','總分','等第',...GROUPS.map(([k,m])=>`${k}(${m})`),'English 英文使用率(%)','需要修正','評語'];
-  const rows=works.map(w=>{ const o=whoOf(w.work); return [o.cls,o.seat,o.name,w.work.title||'',effTotal(w),effLevel(w),...GROUPS.map(([k])=>fmt(w.g.groups[k].got)),w.g.english,w.g.fixes.join('；')+(w.override?`（老師調整：自動 ${w.g.total} 分${w.override.note?'，'+w.override.note:''}）`:''),commentOf(w)]; });
+  const head=['班級','座號','姓名','作品名稱','總分','等第',...GROUPS.map(([k,m])=>`${k}(${m})`),'English 英文使用率(%)','需要修正','評語','電腦代號'];
+  const rows=works.map(w=>{ const o=whoOf(w.work); return [o.cls,o.seat,o.name,w.work.title||'',effTotal(w),effLevel(w),...GROUPS.map(([k])=>fmt(w.g.groups[k].got)),w.g.english,w.g.fixes.join('；')+(w.override?`（老師調整：自動 ${w.g.total} 分${w.override.note?'，'+w.override.note:''}）`:''),commentOf(w),w.work.device||'']; });
   return '﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n');
 }
 $('#bCsv').onclick=async()=>{

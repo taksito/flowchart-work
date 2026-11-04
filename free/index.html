@@ -369,6 +369,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
       <div class="who"><label class="field"><span>Class 班級</span><input type="text" id="sbCls" inputmode="numeric" placeholder="801" autocomplete="off"></label><label class="field"><span>No. 座號</span><input type="text" id="sbSeat" inputmode="numeric" placeholder="12" autocomplete="off"></label><label class="field"><span>Name 姓名</span><input type="text" id="sbName" placeholder="王小明" autocomplete="off"></label><input type="hidden" id="sbStudent"></div>
       <label class="field" id="sbCodeWrap" hidden><span>Class code 班級代碼</span><input type="text" id="sbCode" autocomplete="off"></label>
     </div>
+<p class="devnote" style="margin:0;font-size:12px;color:var(--muted)">This computer 這台電腦的代號：<b class="devid" style="font-family:var(--font-mono)"></b></p>
     <p id="sbSummary" style="color:var(--ink);font-weight:500"></p>
     <div class="row"><span class="status" id="sbStatus"></span><button class="btn" data-close>Cancel 取消</button><button class="btn primary" id="bDoSubmit">Submit 繳交</button></div>
   </div>
@@ -1221,6 +1222,16 @@ function GLogin(o){
   };
 }
 
+/* ===== A random code for this computer's browser, made once and remembered (e.g. PC-7F3K) ===== */
+function flowDeviceId(){
+  const K='flowchart-device-id';
+  try{ const v=localStorage.getItem(K); if(/^PC-[A-Z0-9]{4}$/.test(v||'')) return v; }catch(e){}
+  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=new Uint8Array(4); try{ crypto.getRandomValues(r); }catch(e){ r=r.map(()=>Math.floor(Math.random()*256)); }
+  const id='PC-'+[...r].map(x=>A[x%A.length]).join('');
+  try{ localStorage.setItem(K,id); }catch(e){}
+  return id;
+}
+
 /* ===== Helper robot: hints stay hidden until the student clicks the robot ===== */
 function BuddyBot(o){
   const panel=o.panel, mode=o.mode==='head'?'head':'walk';
@@ -1757,7 +1768,7 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ i
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal').forEach(m=>{m.hidden=true;}); });
 
 function exportData(){
-  return {format:'flowboard-v1',task:TASK,student:meta.student,cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:meta.title,exportedAt:new Date().toISOString(),line:state.line,
+  return {format:'flowboard-v1',task:TASK,device:flowDeviceId(),student:meta.student,cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:meta.title,exportedAt:new Date().toISOString(),line:state.line,
     order:state.order||'',
     nodes:state.nodes.map(n=>({id:n.id,type:n.type,typeName:n.role==='input'?'輸入':n.role==='output'?'輸出':(TYPE_NAME[n.type]||n.type),...(n.role?{role:n.role}:{}),text:n.text,x:n.x,y:n.y,w:n.w,h:n.h})),
     edges:state.edges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label||''}))};
@@ -2301,7 +2312,7 @@ function openSubmit(){
   commitEdit();
   if(!state.nodes.length){ toast('Draw your flowchart first 畫布是空的，先畫流程圖'); return; }
   const g=gradeTask({nodes:state.nodes,edges:state.edges,task:TASK});
-  fillWho('sb'); if(LOGIN) LOGIN.render();
+  fillWho('sb'); if(LOGIN) LOGIN.render(); document.querySelectorAll('.devid').forEach(e=>e.textContent=flowDeviceId());
   $('#sbCodeWrap').hidden=!CFG.needCode;
   $('#sbSummary').textContent=`Self-check 自我批改：${g.total} / 100 · ${g.passed?'Passed 達成':'Not yet 尚未達成'}`;
   const st=$('#sbStatus'); st.textContent=g.passed?'':'You can still submit now, or fix it first. 還沒全對也可以先繳交，之後再改再交一次（會覆蓋前一次）。'; st.classList.remove('err');
@@ -2322,7 +2333,7 @@ $('#bDoSubmit').onclick=async()=>{
   const g=gradeTask({nodes:state.nodes,edges:state.edges,task:TASK});
   btn.disabled=true; st.textContent='Submitting… 繳交中…';
   try{
-    const res=await callDrive({action:'submit',unit:TASK,code,idToken:tok||'',student,cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:meta.title||DEFAULT_TITLE,work:exportData(),check:{total:g.total,passed:g.passed,english:g.english}});
+    const res=await callDrive({action:'submit',unit:TASK,code,idToken:tok||'',device:flowDeviceId(),student,cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:meta.title||DEFAULT_TITLE,work:exportData(),check:{total:g.total,passed:g.passed,english:g.english}});
     if(res&&res.ok){ const t=new Date(res.time||Date.now()); st.textContent=`Submitted! 已繳交 ${t.toLocaleString('zh-TW',{hour12:false})}`; toast('Submitted 已繳交'); btn.disabled=false; return; }
     const e=res&&res.error;
     if(LOGIN&&e==='login_expired'){ LOGIN.expired(); fail(LOGIN.message(e)); return; }

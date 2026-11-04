@@ -236,6 +236,7 @@ button{font:inherit;color:inherit}
     <p>Your program goes straight to your teacher's Google Drive. You can submit again later; the newest one replaces the old one. 作品會直接送到老師的 Google Drive，之後可以再交一次，新的會取代舊的。</p>
     <div id="sbLogin" hidden></div>
     <div class="who" data-who="sb"></div>
+<p class="devnote" style="margin:0;font-size:12px;color:var(--muted)">This computer 這台電腦的代號：<b class="devid" style="font-family:var(--font-mono)"></b></p>
     <p id="sbSummary" style="color:var(--ink);font-weight:500"></p>
     <div class="row"><span class="status" id="sbStatus"></span><button class="btn" data-close>Cancel 取消</button><button class="btn primary" id="bDoSubmit">Submit 繳交</button></div>
   </div>
@@ -1413,6 +1414,16 @@ function GLogin(o){
   };
 }
 
+/* ===== A random code for this computer's browser, made once and remembered (e.g. PC-7F3K) ===== */
+function flowDeviceId(){
+  const K='flowchart-device-id';
+  try{ const v=localStorage.getItem(K); if(/^PC-[A-Z0-9]{4}$/.test(v||'')) return v; }catch(e){}
+  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=new Uint8Array(4); try{ crypto.getRandomValues(r); }catch(e){ r=r.map(()=>Math.floor(Math.random()*256)); }
+  const id='PC-'+[...r].map(x=>A[x%A.length]).join('');
+  try{ localStorage.setItem(K,id); }catch(e){}
+  return id;
+}
+
 /* ===== Helper robot: hints stay hidden until the student clicks the robot ===== */
 function BuddyBot(o){
   const panel=o.panel, mode=o.mode==='head'?'head':'walk';
@@ -1872,7 +1883,7 @@ const browserSave={save:async({filename,data})=>{ const blob=data instanceof Blo
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); return {status:'saved'}; }};
 const dlPromise=(async()=>{ try{ return (window.claude&&window.claude.use)?await window.claude.use('downloads'):browserSave; }catch(e){ return null; } })();
 const cleanName=s=>String(s).replace(/[\\/:*?"<>|\n\r\t]/g,'').trim();
-function exportData(){ return {format:'blocklab-v1',task:TC.unit,student:studentStr(),cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:TITLE,exportedAt:new Date().toISOString(),workspace:wsJSON()}; }
+function exportData(){ return {format:'blocklab-v1',task:TC.unit,device:flowDeviceId(),student:studentStr(),cls:meta.cls||'',seat:meta.seat||'',name:meta.name||'',title:TITLE,exportedAt:new Date().toISOString(),workspace:wsJSON()}; }
 async function saveFile(name,data,st){
   const dl=await dlPromise; st.classList.remove('err');
   if(!dl){ st.textContent='Downloads are not available here. 這個畫面無法下載檔案。'; st.classList.add('err'); return; }
@@ -1941,7 +1952,7 @@ const canSubmit=!window.claude&&/^https:\/\/script\.google(usercontent)?\.com\//
 const LOGIN=canSubmit&&String(CFG.googleClientId||'').trim()?GLogin({clientId:String(CFG.googleClientId).trim(),domain:CFG.emailDomain,url:SUBMIT_URL,box:$('#sbLogin'),
   onUser:u=>{ meta.cls=u.cls; meta.seat=u.seat; meta.name=u.name; saveMeta(); fillWho('sb'); $('#sbStatus').textContent=''; $('#sbStatus').classList.remove('err'); }}):null;
 if(LOGIN){ $('#sbLogin').hidden=false; document.querySelector('[data-who="sb"]').hidden=true; }
-function openSubmit(){ const g=gradeFn(exportData()); fillWho('sb'); if(LOGIN) LOGIN.render();
+function openSubmit(){ const g=gradeFn(exportData()); fillWho('sb'); if(LOGIN) LOGIN.render(); document.querySelectorAll('.devid').forEach(e=>e.textContent=flowDeviceId());
   $('#sbSummary').textContent=`Self-check 自我批改：${g.total} / 100 · ${g.passed?'Passed 達成':'Not yet 尚未達成'}`;
   const st=$('#sbStatus'); st.classList.remove('err'); st.textContent=g.passed?'':'You can still submit now, or fix it first. 還沒全對也可以先交，之後再交一次會覆蓋。';
   $('#bDoSubmit').disabled=false; $('#checkModal').hidden=true; $('#submitModal').hidden=false; }
@@ -1951,7 +1962,7 @@ $('#bDoSubmit').onclick=async()=>{ const st=$('#sbStatus'), btn=$('#bDoSubmit');
   if(LOGIN&&!tok){ fail('Sign in first. 請先用學校帳號登入。'); LOGIN.render(); return; }
   if(!LOGIN&&!String(meta.name||'').trim()){ fail('Enter your name first. 請先填寫姓名。'); $('#sbName').focus(); return; }
   const w=exportData(), g=gradeFn(w); btn.disabled=true; st.textContent='Submitting… 繳交中…';
-  try{ const r=await fetch(SUBMIT_URL,{method:'POST',body:JSON.stringify({action:'submit',unit:TC.unit,idToken:tok||'',student:w.student,cls:w.cls,seat:w.seat,name:w.name,title:TITLE,work:w,check:{total:g.total,passed:g.passed,english:g.english}})});
+  try{ const r=await fetch(SUBMIT_URL,{method:'POST',body:JSON.stringify({action:'submit',unit:TC.unit,idToken:tok||'',device:flowDeviceId(),student:w.student,cls:w.cls,seat:w.seat,name:w.name,title:TITLE,work:w,check:{total:g.total,passed:g.passed,english:g.english}})});
     const res=await r.json();
     if(res&&res.ok){ st.textContent=`Submitted! 已繳交 ${new Date(res.time||Date.now()).toLocaleString('zh-TW',{hour12:false})}`; toast('Submitted 已繳交'); btn.disabled=false; return; }
     const e=res&&res.error;

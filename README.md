@@ -91,6 +91,7 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 
 - Units 單元：switch between **BMI**, **Pass or Fail**, **Scratch**, **Scratch BMI**, **Summation** and **Scratch Sum** at the top. Uploaded files go to the right unit automatically. 上方切換單元，上傳的檔案會自動分到對應單元。
 
+- **Computer code 電腦代號**: each browser gets a random code such as `PC-7F3K` the first time it opens the site, and it is sent with every submission (new column 電腦代號 Device in 繳交紀錄 Submissions, also in the CSV). The desk shows it on each work and lists **Same computer 同一台電腦交了多人的作業** when one computer submitted for different students. Clearing browser data or switching browsers makes a new code. 每台電腦的瀏覽器有一組代號，繳交時一起送出；同一台電腦交了不同學生的作業會列出來。
 - **Class 班級**: Google Drive → choose a class (701, 702, …) to load just that class, which is much faster. The Class menu at the top filters the list; with the 名單 Roster tab in the score sheet, the desk lists who has **not submitted 未繳交** yet (matched by class and seat number). 可以一次只載入一個班；選了班級會列出還沒繳交的學生（依名單的班級座號比對）。
 - Upload many `.json` files at once (or drag them in). 一次上傳多份作業檔。
 - Rubric (100 points): Structure 20, Input 10, Process 10, Decision 20, Output 10, Test run 30.

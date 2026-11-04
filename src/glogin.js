@@ -43,3 +43,13 @@ function GLogin(o){
     render
   };
 }
+
+/* ===== A random code for this computer's browser, made once and remembered (e.g. PC-7F3K) ===== */
+function flowDeviceId(){
+  const K='flowchart-device-id';
+  try{ const v=localStorage.getItem(K); if(/^PC-[A-Z0-9]{4}$/.test(v||'')) return v; }catch(e){}
+  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=new Uint8Array(4); try{ crypto.getRandomValues(r); }catch(e){ r=r.map(()=>Math.floor(Math.random()*256)); }
+  const id='PC-'+[...r].map(x=>A[x%A.length]).join('');
+  try{ localStorage.setItem(K,id); }catch(e){}
+  return id;
+}
