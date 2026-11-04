@@ -1655,7 +1655,8 @@ function placeBubble(){ const b=$('#bubble'), im=$('#sprite'), st=$('#stage'); i
   const S=st.getBoundingClientRect(), r=im.getBoundingClientRect(); if(!r.width) return;
   const [fx,fy]=TIP[who], tx=r.left-S.left+fx*r.width, ty=r.top-S.top+fy*r.height, bw=b.offsetWidth;
   b.style.top='auto'; b.style.bottom=Math.max(4,S.height-ty+14)+'px';
-  if(fx<0.5){ b.classList.remove('tr'); b.style.right='auto'; b.style.left=Math.max(4,Math.min(S.width-bw-4,tx-24))+'px'; }
+  /* the bubble opens away from the face: to the left of a finger on the left, to the right of a finger on the right */
+  if(fx>=0.5){ b.classList.remove('tr'); b.style.right='auto'; b.style.left=Math.max(4,Math.min(S.width-bw-4,tx-24))+'px'; }
   else { b.classList.add('tr'); b.style.left='auto'; b.style.right=Math.max(4,Math.min(S.width-bw-4,S.width-tx-24))+'px'; } }
 function setSprite(){ const im=$('#sprite'); im.src=SPRITES[who+(talking?'_point':'_hips')]; }
 $('#sprite').addEventListener('load',placeBubble); new ResizeObserver(placeBubble).observe($('#stage'));
