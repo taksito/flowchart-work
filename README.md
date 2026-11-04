@@ -81,6 +81,12 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 - Common mistakes get a direct hint: i < n misses the last number, outputting i instead of sum, a loop with no i = i + 1 never stops. 常見錯誤會直接提示。
 - In this unit a loop through a decision is correct, so red lines only mark loops with no decision (they never stop). 這個單元的迴圈是正確的，只有沒有判斷、停不下來的迴圈才標紅線。
 
+## Helper robot 小幫手機器人
+
+- Hints are hidden until a student clicks the robot. Hovering says 「你真的需要提示嗎？點我一下。」; clicking opens the hint card; the small red ✕ at the robot's bottom-left closes it and the robot says 「如果有需要，再點我喔！」. 提示預設收起，點機器人才會出現；紅色小按鈕關閉提示。
+- While students work it now and then cheers 「加油，好好解題！」; after a minute with no activity it quietly reminds 「請專心聽課喔。」 (at most every few minutes). 操作時偶爾說加油；一段時間沒操作會輕輕提醒專心聽課。
+- Scratch Lab: a small robot walks back and forth above the hint card. Flowcharts: only the robot's head sits in the bottom-left corner; its eyes blink and follow the mouse. Motion stops for users who turn on “reduce motion”. Scratch 版機器人會走來走去；流程圖只放機器人的頭，眼睛會眨、會看滑鼠。
+
 ## Grading Desk 批改台
 
 - Units 單元：switch between **BMI**, **Pass or Fail**, **Scratch**, **Scratch BMI**, **Summation** and **Scratch Sum** at the top. Uploaded files go to the right unit automatically. 上方切換單元，上傳的檔案會自動分到對應單元。
