@@ -178,7 +178,7 @@ button{font:inherit;color:inherit}
           <div class="bubble" id="bubble" hidden></div>
           <form class="askbox" id="askbox" hidden><input id="askInput" autocomplete="off" aria-label="Your answer 你的回答"><button type="submit" aria-label="OK 確定">✓</button></form>
         </div>
-        <div class="stagebar" id="stagebar"><span class="dot"></span><span id="stageMsg">Press Run to try your program. Tick ☐ next to a variable to watch it. 按 Run 執行；在變數旁點 ☐ 可以在舞台上看到它的值。</span></div>
+        <div class="stagebar" id="stagebar"><span class="dot"></span><span id="stageMsg">Press Run, or click a block to try it. Tick ☐ to watch a variable. 按 Run 執行，也可以直接點程式區的積木試試看；在變數旁點 ☐ 可以在舞台上看到它的值。</span></div>
       </div>
       <section class="buddy" id="buddy" aria-live="polite">
         <div class="b-head">
@@ -793,8 +793,8 @@ function sbCmp(a,b){ const na=Number(String(a).trim()), nb=Number(String(b).trim
 
 /* generator interpreter: yields {ask}|{say}|{wait}; receives answer for ask */
 function* sbExec(ws,opts={}){
-  const names=sbVarNames(ws), vars={}; Object.values(names).forEach(n=>vars[n]=0);
-  const st={answer:'',steps:0,vars};
+  const names=sbVarNames(ws), vars={}, init=opts.vars||{}; Object.values(names).forEach(n=>vars[n]=Object.prototype.hasOwnProperty.call(init,n)?init[n]:0);
+  const st={answer:opts.answer!=null?String(opts.answer):'',steps:0,vars};
   if(opts.expose) opts.expose(st);
   const limit=opts.limit||20000;
   function tick(){ if(++st.steps>limit) throw new Error('too_many_steps'); }
@@ -838,6 +838,8 @@ function* sbExec(ws,opts={}){
       b=b.next&&b.next.block;
     }
   }
+  if(opts.value){ st.value=ev(opts.value); return st; }   /* a clicked reporter: just work out its value */
+  if(opts.start){ const b=opts.start; yield* run(b.type==='sc_flag'?b.next&&b.next.block:b); return st; }   /* a clicked stack */
   for(const t of sbTop(ws)) if(t.type==='sc_flag') yield* run(t.next&&t.next.block);
   return st;
 }
@@ -1567,16 +1569,22 @@ function toggleName(n){
   const i=watched.indexOf(n); if(i>=0){ watched.splice(i,1); toast(`Stopped watching ${n} 不再顯示 ${n}`); } else { watched.push(n); toast(`Watching ${n} 舞台上顯示 ${n}`); }
   try{ localStorage.setItem(WKEY,JSON.stringify(watched)); }catch(e){} renderMonitors(); try{ ws.getToolbox().refreshSelection(); }catch(e){} }
 const clickWatch=w=>e=>{ if(e.type===Blockly.Events.CLICK&&e.blockId) toggleWatch(w.getBlockById(e.blockId)); };
-ws.addChangeListener(clickWatch(ws));
+ws.addChangeListener(e=>{ if(e.type===Blockly.Events.CLICK&&e.blockId&&e.targetType!=='workspace') clickRun(e.blockId); });
 try{ const fw=ws.getFlyout()&&ws.getFlyout().getWorkspace(); if(fw) fw.addChangeListener(clickWatch(fw)); }catch(e){}
 ws.addChangeListener(e=>{ if(e.type===Blockly.Events.VAR_RENAME){ const k=watched.indexOf(e.oldName); if(k>=0){ watched[k]=e.newName; try{ localStorage.setItem(WKEY,JSON.stringify(watched)); }catch(err){} } } if(e.type===Blockly.Events.VAR_CREATE||e.type===Blockly.Events.VAR_DELETE||e.type===Blockly.Events.VAR_RENAME) renderMonitors(); });
 function setRunning(on,msg){ $('#bRun').disabled=on; $('#bStop').disabled=!on; $('#stage').classList.toggle('running',on); $('#stagebar').classList.toggle('on',on); if(msg) $('#stageMsg').textContent=msg; }
 async function runProgram(){
-  if(running) return;
   const j=wsJSON(); if(!sbTop(j).some(t=>t.type==='sc_flag')){ toast('Add “when ⚑ clicked” first. 先放「當綠旗被點擊」。'); return; }
-  const token={stop:false}; running=token; showBubble(''); setRunning(true,'Running… 執行中…');
-  let liveSt=null; const it=sbExec(j,{expose:s=>{liveSt=s;},onBlock:id=>{ try{ ws.highlightBlock(id); }catch(e){} }}); let send, r, st={vars:{}};
-  lastVals={}; lastAnswer='';
+  return runWith(j,{});
+}
+/* run a program on the stage; opts.start = a clicked stack, opts.keep = start from the values now on the stage */
+async function runWith(j,o){
+  if(running) return;
+  const token={stop:false}; running=token; showBubble(''); setRunning(true,o.start?'Running the clicked blocks… 執行點擊的積木…':'Running… 執行中…');
+  const opt={expose:s=>{liveSt=s;},onBlock:id=>{ try{ ws.highlightBlock(id); }catch(e){} }};
+  if(o.start){ opt.start=o.start; opt.vars={...lastVals}; opt.answer=lastAnswer; }
+  let liveSt=null; const it=sbExec(j,opt); let send, r, st={vars:{}};
+  if(!o.start){ lastVals={}; lastAnswer=''; }
   const vt=setInterval(()=>{ if(liveSt) renderMonitors(liveSt.vars,liveSt.answer); },150);
   try{
     while(!token.stop){
@@ -1590,6 +1598,20 @@ async function runProgram(){
   }catch(err){ showBubble(''); toast(err.message==='too_many_steps'?'The program did not stop, so it was stopped. 程式停不下來，已經幫你停止。':'Something went wrong. 程式執行出錯。'); }
   clearInterval(vt); renderMonitors((st&&st.vars)||(liveSt&&liveSt.vars)||{},(st&&st.answer!==undefined)?st.answer:(liveSt?liveSt.answer:'')); try{ ws.highlightBlock(null); }catch(e){}
   $('#askbox').hidden=true; running=null; setRunning(false,token.stop?'Stopped. 已停止。':'Finished. 執行完畢。');
+}
+/* click a block in the code area to try it, like Scratch: a stack runs from its top, a reporter shows its value */
+function findJSON(j,id){ let hit=null; const walk=b=>{ while(b&&!hit){ if(b.id===id){ hit=b; return; } Object.values(b.inputs||{}).forEach(i=>{ if(!hit&&(i.block||i.shadow)) walk(i.block||i.shadow); }); b=b.next&&b.next.block; } }; sbTop(j).forEach(t=>{ if(!hit) walk(t); }); return hit; }
+function clickRun(id){
+  if(running) return; const b=ws.getBlockById(id); if(!b) return;
+  const j=wsJSON();
+  let top=b; while(top.outputConnection&&top.getParent()&&top.getParent().outputConnection) top=top.getParent();
+  if(top.outputConnection&&!top.getParent()){
+    const node=findJSON(j,top.id); if(!node) return; let v;
+    try{ const it=sbExec(j,{value:node,vars:{...lastVals},answer:lastAnswer}); v=it.next().value.value; }catch(e){ v=''; }
+    const txt=typeof v==='boolean'?String(v):typeof v==='number'?String(Math.round(v*1e6)/1e6):String(v);
+    showBubble(txt===''?'(empty 空的)':txt); $('#stageMsg').textContent='Value of the clicked block 點擊積木的值'; return; }
+  const root=b.getRootBlock(); const node=findJSON(j,root.id); if(!node) return;
+  runWith(j,{start:node});
 }
 let askResolve=null;
 function askUser(token){ return new Promise(res=>{ askResolve=v=>{ askResolve=null; res(v); }; const box=$('#askbox'); box.hidden=false; const i=$('#askInput'); i.value=''; i.focus(); }); }

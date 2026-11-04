@@ -23,8 +23,8 @@ function sbCmp(a,b){ const na=Number(String(a).trim()), nb=Number(String(b).trim
 
 /* generator interpreter: yields {ask}|{say}|{wait}; receives answer for ask */
 function* sbExec(ws,opts={}){
-  const names=sbVarNames(ws), vars={}; Object.values(names).forEach(n=>vars[n]=0);
-  const st={answer:'',steps:0,vars};
+  const names=sbVarNames(ws), vars={}, init=opts.vars||{}; Object.values(names).forEach(n=>vars[n]=Object.prototype.hasOwnProperty.call(init,n)?init[n]:0);
+  const st={answer:opts.answer!=null?String(opts.answer):'',steps:0,vars};
   if(opts.expose) opts.expose(st);
   const limit=opts.limit||20000;
   function tick(){ if(++st.steps>limit) throw new Error('too_many_steps'); }
@@ -68,6 +68,8 @@ function* sbExec(ws,opts={}){
       b=b.next&&b.next.block;
     }
   }
+  if(opts.value){ st.value=ev(opts.value); return st; }   /* a clicked reporter: just work out its value */
+  if(opts.start){ const b=opts.start; yield* run(b.type==='sc_flag'?b.next&&b.next.block:b); return st; }   /* a clicked stack */
   for(const t of sbTop(ws)) if(t.type==='sc_flag') yield* run(t.next&&t.next.block);
   return st;
 }

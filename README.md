@@ -60,7 +60,8 @@ Input four scores, compute the total and the average (total ÷ 4), then output `
 A Scratch-style block editor built with [Blockly](https://developers.google.com/blockly) (loaded from unpkg). 用 Blockly 做的 Scratch 風格積木編輯器。
 
 - Blocks 積木：when ⚑ clicked, ask and wait / answer, say, variables (set, change), + − × ÷, > < =, and / or / not, join, round, if then (else), repeat, wait.
-- Stage 舞台：press **Run 執行** to run the program; the robot asks questions and says the result. Click a variable or **answer** block (in the palette or the code) to watch its value on the stage; click again to hide it.
+- Stage 舞台：press **Run 執行** to run the program; the robot asks questions and says the result. Tick ☐ next to a variable or **answer** in the palette to watch its value on the stage.
+- Click to try 點積木試試看：like Scratch, click any block in the code area to run its whole stack right away, without the green flag — e.g. click `change sum by 1` and the sum on the stage goes up by 1. Values stay on the stage between clicks (Run ⚑ starts again from 0). Click a loose reporter such as `(sum + 2)` to see its value in the speech bubble. 像 Scratch 一樣，直接點程式區的積木就會執行那一整疊；數值會保留，按 Run 才從 0 開始。
 - Duplicate 複製：right-click → Duplicate copies the block together with every block attached below it, like Scratch.
 - Tasks 題目：**BMI** (`scratch-bmi/`) — ask height and weight, set bmi to weight / (height * height), and say thin / normal / overweight / obesity; tests answer height 1.5 m (or 150 cm) with 8 weights. Rubric: Structure 15, Input 15, Process 20, Decision 20, Output 10, Test run 20.
 - **Pass or Fail** — ask four scores, store them in variables, compute total and average, then say `pass` (average ≥ 60) or `fail`.
