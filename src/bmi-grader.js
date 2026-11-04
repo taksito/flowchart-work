@@ -20,7 +20,7 @@ function flowEdgeIssues(A,start,wrongRuns,opt){
     while(q.length){ const id=q.shift(); (A.out[id]||[]).forEach(e=>{ if(!reach.has(e.to.node)){ reach.add(e.to.node); q.push(e.to.node); } }); }
     A.edges.forEach(e=>{ if(!reach.has(e.from.node)&&reach.has(e.to.node)) mark(e,'這條線的方向可能拉反了（起點從 START 走不到）'); });
     const color={}, stack=[]; const dfs=id=>{ color[id]=1; stack.push(id); for(const e of (A.out[id]||[])){ if(bad[e.id]) continue; const c=color[e.to.node];
-        if(c===1){ const cyc=stack.slice(stack.lastIndexOf(e.to.node)); const hasDec=cyc.some(x=>A.byId[x]&&A.byId[x].type==='decision');
+        if(c===1){ const cyc=stack.slice(stack.lastIndexOf(e.to.node)); const hasDec=cyc.some(x=>A.byId[x]&&(A.byId[x].type==='decision'||A.byId[x].type==='loop'));
           if(!allowLoops||!hasDec) mark(e,allowLoops?'形成迴圈，可是迴圈裡沒有判斷，會停不下來':'形成迴圈，方向可能拉反了'); }
         else if(!c) dfs(e.to.node); } stack.pop(); color[id]=2; };
     try{ dfs(start.id); }catch(err){}

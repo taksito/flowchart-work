@@ -70,7 +70,8 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 
 ## Summation 1 加到 n
 
-- Flowchart (`sum/`): input n, set sum = 0 and i = 1, decision i <= n, Yes → sum = sum + i → i = i + 1 → back to the decision, No → output sum. 流程圖：輸入 n，用迴圈把 1 加到 n，輸出總和。
+- Flowchart (`sum/`), built like the Scratch version: input n, sum = 0, i = 0, a **LOOP 重複** shape with `repeat n`, inside it i = i + 1 (Scratch: change i by 1) and sum = sum + i (Scratch: change sum by i), a line back to the LOOP, then output sum. A DECISION `i <= n` loop also works. 流程圖和 Scratch 一樣用「repeat n」：i = i + 1 就是 change i by 1，sum = sum + i 就是 change sum by i；用判斷 i <= n 也可以。
+- The LOOP shape has two lines out: the one that comes back around is the loop body, the other one runs after the loop finishes (labels are optional). LOOP 拉兩條線：會繞回來的是重複的內容，另一條是做完以後。
 - Scratch (`scratch-sum/`): ask n, set n to answer, set sum and i to 0, repeat (n) { change i by 1, change sum by (i) }, say (sum). A **repeat until** block was added for this unit. 積木：新增「repeat until 重複直到」積木。
 - Tests 測試：n = 1, 2, 3, 4, 5, 10, 20, 100 → 1, 3, 6, 10, 15, 55, 210, 5050.
 - Rubric (flowchart): Structure 20, Input 10, Process 25 (start values 5, add 10, count 10), Loop 15, Output 5, Test run 25. Scratch: Structure 10, Input 15, Process 20, Loop 20, Output 10, Test run 25.
