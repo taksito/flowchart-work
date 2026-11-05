@@ -56,6 +56,7 @@ button{font:inherit;color:inherit}
 .stat span{font-size:12px;color:var(--muted)}
 .stat b{font-family:var(--font-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums}
 .dist{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.pbar{height:14px;border-radius:999px;background:var(--soft);border:1px solid var(--line);overflow:hidden}.pbar i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}.pbar.busy i{width:35%!important;animation:pbusy 1.2s ease-in-out infinite}@keyframes pbusy{0%{margin-left:-35%}100%{margin-left:100%}}
 .missing{flex-basis:100%;border-top:1px dashed var(--line);padding-top:10px;font-size:13px}.missing b{color:var(--bad);font-weight:600;margin-right:8px}.missing.ok b{color:var(--good)}.missing span.m{display:inline-block;background:var(--soft);border-radius:999px;padding:1px 9px;margin:3px 4px 0 0;font-size:12px}
 
 .pill{display:inline-block;font-size:12px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap}
@@ -203,6 +204,7 @@ td .why{color:var(--muted);font-size:12px}
       <label class="btn primary" for="fileInput" tabindex="0" id="upLabel">上傳作業檔</label>
       <input type="file" id="fileInput" accept=".json,application/json" multiple hidden>
       <button class="btn" id="bDrive" hidden>Google Drive</button>
+      <button class="btn" id="bAll" hidden>Load all 讀取全部作業</button>
       <button class="btn" id="bRecheck">Re-check 重新審核</button>
       <button class="btn" id="bBatch">整班評語</button>
       <button class="btn" id="bCsv">下載成績表</button>
@@ -350,6 +352,16 @@ td .why{color:var(--muted);font-size:12px}
     <p id="drLinks" style="font-size:13px"></p>
     <p id="drStatus" style="font-size:13px;color:var(--accent);min-height:1.2em"></p>
     <div class="end"><button class="btn" data-close>關閉</button><button class="btn" id="bDrSave">Save scores 寫回成績</button><button class="btn primary" id="bDrLoad">Load from Drive 從雲端載入</button></div>
+  </div>
+</div>
+<div class="modal" id="allModal" hidden>
+  <div class="dialog narrow">
+    <h2>Load all work 讀取全部作業</h2>
+    <p id="allPhase" style="margin:0 0 10px">Finding the files… 正在找雲端上的作業…</p>
+    <div class="pbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="allBar"><i id="allFill"></i></div>
+    <p id="allCount" style="font:500 22px/1.3 var(--font-mono);margin:10px 0 2px"></p>
+    <p id="allUnits" style="font-size:12px;color:var(--muted);margin:0;min-height:1.2em"></p>
+    <div class="end"><button class="btn" id="bAllStop">Stop 停止</button><button class="btn primary" id="bAllClose" hidden>OK 完成</button></div>
   </div>
 </div>
 <div class="dropmask" id="dropmask" hidden>放開就上傳作業檔</div>
@@ -2107,7 +2119,45 @@ $('#bDrSave').onclick=async()=>{
   }catch(e){ st.textContent=driveErr(); st.classList.add('err'); }
   finally{ b.disabled=false; }
 };
-if(!window.claude) $('#bDrive').hidden=false;
+if(!window.claude){ $('#bDrive').hidden=false; $('#bAll').hidden=false; }
+/* ---------- load every unit from Drive, with a progress bar ---------- */
+let allStop=false;
+function allSet(done,total,phase,note){ const pct=total?Math.round(done/total*100):0;
+  $('#allFill').style.width=pct+'%'; $('#allBar').setAttribute('aria-valuenow',pct); $('#allBar').classList.toggle('busy',total===null);
+  if(phase!=null) $('#allPhase').textContent=phase; $('#allCount').textContent=total===null?'':`${done} / ${total}`+(total?`（${pct}%）`:''); if(note!=null) $('#allUnits').textContent=note; }
+$('#bAllStop').onclick=()=>{ allStop=true; $('#bAllStop').disabled=true; $('#allPhase').textContent='Stopping… 停止中…'; };
+$('#bAllClose').onclick=()=>{ $('#allModal').hidden=true; };
+$('#bAll').onclick=async()=>{
+  if(!driveOK()||!drive.key){ openDrive(); const st=$('#drStatus'); st.textContent='請先填好部署網址和教師密碼，再按「Load all 讀取全部作業」。'; st.classList.add('err'); return; }
+  allStop=false; $('#bAllStop').disabled=false; $('#bAllStop').hidden=false; $('#bAllClose').hidden=true; $('#allModal').hidden=false;
+  allSet(0,null,'Finding the files… 正在找雲端上的作業…','');
+  const fin=(msg,bad)=>{ $('#allPhase').textContent=msg; $('#allPhase').style.color=bad?'var(--bad)':''; $('#bAllStop').hidden=true; $('#bAllClose').hidden=false; $('#bAllClose').focus(); };
+  let idx;
+  try{ idx=await callDrive({action:'index',key:drive.key}); }catch(e){ fin(driveErr(),true); return; }
+  if(!idx.ok&&idx.error==='unknown_action'){ /* older Apps Script: one big request, no progress */
+    allSet(0,null,'Loading everything in one go (older Apps Script)… 一次載入全部（Apps Script 是舊版，沒有進度）…','');
+    try{ const res=await callDrive({action:'list',key:drive.key}); if(!res.ok){ fin(driveErr(res.error),true); return; }
+      if(res.works.length) ingest(res.works.map(x=>({ok:parseWork(JSON.stringify(x.work),x.file),file:'Drive · '+x.file})));
+      allSet(res.works.length,res.works.length,null,''); fin(`Done 完成：載入 ${res.works.length} 份作業。更新 Code.gs 後就會顯示進度。`); }catch(e){ fin(driveErr(),true); } return; }
+  if(!idx.ok){ fin(driveErr(idx.error),true); return; }
+  setLinks(idx);
+  if(Array.isArray(idx.roster)){ const by={}; idx.roster.filter(x=>inGrade(x.cls)).forEach(x=>{ (by[x.cls]=by[x.cls]||[]).push({seat:x.seat,name:x.name}); }); Object.assign(roster,by); try{ localStorage.setItem(RSKEY,JSON.stringify(roster)); }catch(e){} }
+  const items=idx.items||[], total=items.length;
+  const per={}; items.forEach(x=>per[x.unit]=(per[x.unit]||0)+1);
+  const note=Object.entries(per).map(([u,n])=>`${(TASKS[u]||{name:u}).name} ${n}`).join('　');
+  if(!total){ allSet(0,0,null,''); fin('雲端還沒有任何作業。'); return; }
+  allSet(0,total,`Loading ${total} works… 讀取中，共 ${total} 份作業`,note);
+  const B=15, batches=[]; for(let i=0;i<items.length;i+=B) batches.push(items.slice(i,i+B));
+  const got=[]; let done=0, failed=0, next=0;
+  const worker=async()=>{ while(next<batches.length&&!allStop){ const b=batches[next++];
+      let res=null; for(let t=0;t<2&&!res;t++){ try{ const r=await callDrive({action:'fetch',key:drive.key,items:b}); if(r.ok) res=r; }catch(e){} }
+      if(res) got.push(...res.works); else failed+=b.length;
+      done+=b.length; allSet(done,total,null,null); } };
+  await Promise.all([worker(),worker(),worker()]);
+  if(got.length){ const keep=unit; ingest(got.map(x=>({ok:parseWork(JSON.stringify(x.work),x.file),file:'Drive · '+x.file}))); unit=keep; clsFilter=''; refilter(); if(!works.length){ const u=Object.keys(TASKS).find(k=>ALL.some(w=>w.g.task===k)); if(u){ unit=u; refilter(); } } cur=works[0]&&works[0].id; renderList(); renderDetail(); }
+  allSet(done,total,null,null);
+  fin(`${allStop?'Stopped 已停止':'Done 完成'}：載入 ${got.length} 份作業${failed?`，${failed} 份讀取失敗（可以再按一次）`:''}。上方「Unit 單元」可以切換單元查看。`,!!failed);
+};
 
 /* ---------- re-check ---------- */
 $('#bRecheck').onclick=()=>{

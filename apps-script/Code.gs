@@ -50,6 +50,10 @@ function doGet() {
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: 'bad_request' }); }
+  /* read-only actions for "Load all": no lock, so several batches can run at once */
+  if (req.action === 'index' || req.action === 'fetch') {
+    try { return json_(req.action === 'index' ? index_(req) : fetch_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
+  }
   if (req.action === 'whoami') {
     try { return json_(whoami_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
   }
@@ -133,6 +137,27 @@ function list_(req) {
   });
   const roster = cls === OTHER ? [] : (rosterRows_() || []).filter(function (x) { return !cls || x.cls === cls; });
   return { ok: true, works: works, cls: cls, roster: roster, sheetUrl: sheet_().getUrl(), folderUrl: rootFolder_().getUrl() };
+}
+
+/* names of every submitted file (no contents), so the desk can show progress while it loads them */
+function index_(req) {
+  if (String(req.key || '') !== CONFIG.TEACHER_KEY) return { ok: false, error: 'bad_key' };
+  const units = req.unit && unitName_(req.unit) ? [req.unit] : Object.keys(UNITS), items = [];
+  units.forEach(function (u) {
+    const files = unitFolder_(u).getFiles();
+    while (files.hasNext()) { const f = files.next(); if (/\.json$/i.test(f.getName())) items.push({ unit: u, file: f.getName() }); }
+  });
+  return { ok: true, items: items, roster: rosterRows_() || [], sheetUrl: sheet_().getUrl(), folderUrl: rootFolder_().getUrl() };
+}
+/* contents of up to 40 files from index_ */
+function fetch_(req) {
+  if (String(req.key || '') !== CONFIG.TEACHER_KEY) return { ok: false, error: 'bad_key' };
+  const items = Array.isArray(req.items) ? req.items.slice(0, 40) : [], works = [];
+  items.forEach(function (x) {
+    const f = findWork_(x.unit, x.file); if (!f) return;
+    try { const w = JSON.parse(f.getBlob().getDataAsString('UTF-8')); w.task = x.unit; works.push({ unit: x.unit, file: f.getName(), updated: f.getLastUpdated().toISOString(), work: w }); } catch (err) {}
+  });
+  return { ok: true, works: works };
 }
 
 /* classes from the roster, plus any class found in the submitted file names */

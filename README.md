@@ -91,6 +91,7 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 
 - Units 單元：switch between **BMI**, **Pass or Fail**, **Scratch**, **Scratch BMI**, **Summation** and **Scratch Sum** at the top. Uploaded files go to the right unit automatically. 上方切換單元，上傳的檔案會自動分到對應單元。
 
+- **Load all 讀取全部作業**: loads every unit and class from Google Drive in small batches, with a progress bar showing how many works there are and how many have loaded (Stop is available). 一次讀取雲端上全部單元、全部班級的作業，有進度條顯示總共幾份、已讀取幾份。
 - **Delete 刪除作品**: press the red Delete button three times to remove a work (e.g. a wrong name). A work loaded from Google Drive is also moved to the Drive trash, so it will not come back on the next load (it can still be restored from the trash). 按三次才會刪除；從雲端載入的作業會移到雲端硬碟的垃圾桶。
 - **其他 Other**: works with no class, or a class outside this course, are grouped under 其他 Other in the Class menus (both on the desk and in Google Drive loading). Fix them with Edit name; for works from Drive the file in Drive is renamed too. 不知道班級座號的作業放在「其他」，用「修改班級座號姓名」更正，雲端檔名也會一起改。
 - **Seventh grade only 只用七年級**: `classPrefix: '7'` in `config.js` and `CLASS_PREFIX: '7'` in `Code.gs` keep only 7xx classes from the roster. Leave them empty to use every class. 名單只取七年級的班級。
