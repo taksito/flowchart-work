@@ -20,6 +20,7 @@ const CONFIG = {
   GOOGLE_CLIENT_ID: '',               // 學生登入用的 OAuth 用戶端 ID（…apps.googleusercontent.com）；留空 = 不用登入
   EMAIL_DOMAIN: 'apps.ntpc.edu.tw',   // 只接受這個網域的學校帳號
   ROSTER_TAB: '名單 Roster',           // 名單工作表名稱
+  CLASS_PREFIX: '7',                  // 只用這個年級的班級（例如 7 = 七年級）；留空 = 全部班級
 };
 
 const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', sum: 'Summation', 'scratch-sum': 'Scratch Summation' };
@@ -58,6 +59,8 @@ function doPost(e) {
     if (req.action === 'submit') return json_(submit_(req));
     if (req.action === 'list') return json_(list_(req));
     if (req.action === 'classes') return json_(classes_(req));
+    if (req.action === 'delete') return json_(delete_(req));
+    if (req.action === 'rename') return json_(rename_(req));
     if (req.action === 'save') return json_(save_(req));
     return json_({ ok: false, error: 'unknown_action' });
   } catch (err) {
@@ -111,14 +114,16 @@ function submit_(req) {
 function list_(req) {
   if (String(req.key || '') !== CONFIG.TEACHER_KEY) return { ok: false, error: 'bad_key' };
   const units = req.unit && unitName_(req.unit) ? [req.unit] : Object.keys(UNITS);
-  const cls = clean_(req.cls);
+  const cls = req.cls === OTHER ? OTHER : clean_(req.cls);
+  const known = knownClasses_();
   const works = [];
   units.forEach(function (u) {
     const files = unitFolder_(u).getFiles();
     while (files.hasNext()) {
       const f = files.next();
       if (!/\.json$/i.test(f.getName())) continue;
-      if (cls && f.getName().indexOf(cls + '-') !== 0) continue;   // files are named "701-12 王小明.json"
+      if (cls === OTHER && !isOther_(f.getName(), known)) continue;
+      if (cls && cls !== OTHER && f.getName().indexOf(cls + '-') !== 0) continue;   // files are named "701-12 王小明.json"
       try {
         const w = JSON.parse(f.getBlob().getDataAsString('UTF-8'));
         w.task = u;
@@ -126,7 +131,7 @@ function list_(req) {
       } catch (err) {}
     }
   });
-  const roster = (rosterRows_() || []).filter(function (x) { return !cls || x.cls === cls; });
+  const roster = cls === OTHER ? [] : (rosterRows_() || []).filter(function (x) { return !cls || x.cls === cls; });
   return { ok: true, works: works, cls: cls, roster: roster, sheetUrl: sheet_().getUrl(), folderUrl: rootFolder_().getUrl() };
 }
 
@@ -137,10 +142,47 @@ function classes_(req) {
   (rosterRows_() || []).forEach(function (x) { set[x.cls] = 1; });
   if (req.unit && unitName_(req.unit)) {
     const files = unitFolder_(req.unit).getFiles();
-    while (files.hasNext()) { const m = files.next().getName().match(/^(\d+)-/); if (m) set[m[1]] = 1; }
+    while (files.hasNext()) { const m = files.next().getName().match(/^(\d+)-/); if (m && (!CONFIG.CLASS_PREFIX || m[1].indexOf(CONFIG.CLASS_PREFIX) === 0)) set[m[1]] = 1; }
   }
   const classes = Object.keys(set).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
   return { ok: true, classes: classes };
+}
+/* works whose file name has no known class go to "其他 Other" */
+const OTHER = '__other';
+function knownClasses_() { const k = {}; (rosterRows_() || []).forEach(function (x) { k[x.cls] = 1; }); return k; }
+function isOther_(fileName, known) {
+  const m = String(fileName).match(/^(\d+)-\S/);
+  if (!m) return true;
+  if (Object.keys(known).length) return !known[m[1]];
+  return !!CONFIG.CLASS_PREFIX && m[1].indexOf(CONFIG.CLASS_PREFIX) !== 0;
+}
+function findWork_(unit, file) {
+  if (!unitName_(unit) || !/\.json$/i.test(String(file || ''))) return null;
+  const it = unitFolder_(unit).getFilesByName(String(file));
+  return it.hasNext() ? it.next() : null;
+}
+/* move one submitted file to the Drive trash (it can still be restored from the trash) */
+function delete_(req) {
+  if (String(req.key || '') !== CONFIG.TEACHER_KEY) return { ok: false, error: 'bad_key' };
+  const f = findWork_(req.unit, req.file);
+  if (!f) return { ok: false, error: 'not_found' };
+  f.setTrashed(true);
+  return { ok: true };
+}
+/* fix the class / seat / name of a submitted file: updates the file and its name */
+function rename_(req) {
+  if (String(req.key || '') !== CONFIG.TEACHER_KEY) return { ok: false, error: 'bad_key' };
+  const f = findWork_(req.unit, req.file);
+  if (!f) return { ok: false, error: 'not_found' };
+  const who = who_({ cls: req.cls, seat: req.seat, name: req.name });
+  if (!who.name) return { ok: false, error: 'no_name' };
+  const name = who.student + '.json';
+  if (name !== f.getName() && unitFolder_(req.unit).getFilesByName(name).hasNext()) return { ok: false, error: 'exists', file: name };
+  const w = JSON.parse(f.getBlob().getDataAsString('UTF-8'));
+  w.student = who.student; w.cls = who.cls; w.seat = who.seat; w.name = who.name;
+  f.setContent(JSON.stringify(w));
+  if (name !== f.getName()) f.setName(name);
+  return { ok: true, file: name };
 }
 /* roster tab rows: class, seat, name */
 function rosterRows_() {
@@ -149,7 +191,7 @@ function rosterRows_() {
   const v = sh.getDataRange().getDisplayValues(), out = [];
   for (let r = 1; r < v.length; r++) {
     const c = String(v[r][0] || '').trim(), seat = String(v[r][1] || '').trim(), name = String(v[r][2] || '').trim();
-    if (c && name) out.push({ cls: c, seat: seat, name: name });
+    if (c && name && (!CONFIG.CLASS_PREFIX || c.indexOf(CONFIG.CLASS_PREFIX) === 0)) out.push({ cls: c, seat: seat, name: name });
   }
   return out;
 }

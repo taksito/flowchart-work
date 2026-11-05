@@ -1663,7 +1663,13 @@ const glOf=(k,t)=>k==='判斷'&&/sum$/.test(t||unit)?'Loop 迴圈':(GL[k]||k);
 let works=[], usingSamples=false, cur=null, clsFilter='';
 const RSKEY='grader-roster-v1'; let roster={}; try{ roster=JSON.parse(localStorage.getItem(RSKEY)||'{}'); }catch(e){}
 const seatKey=x=>{ const t=String(x==null?'':x).trim(); return /^\d+$/.test(t)?String(+t):t; };
-function refilter(){ works=ALL.filter(w=>w.g.task===unit&&(!clsFilter||whoOf(w.work).cls===clsFilter)); }
+const OTHER='__other', CLS_PREFIX=String((window.FLOW_CONFIG||{}).classPrefix??'7');
+const inGrade=c=>!CLS_PREFIX||String(c).startsWith(CLS_PREFIX);
+Object.keys(roster).forEach(c=>{ if(!inGrade(c)) delete roster[c]; });
+/* a work belongs to "其他 Other" when its class is missing or not one of this course's classes */
+const knownCls=c=>!!c&&(Object.keys(roster).length?!!roster[c]:(/^\d+$/.test(c)&&inGrade(c)));
+const clsOf=w=>{ const c=whoOf(w.work).cls; return knownCls(c)?c:OTHER; };
+function refilter(){ works=ALL.filter(w=>w.g.task===unit&&(!clsFilter||clsOf(w)===clsFilter)); }
 /* works in this unit sent from the same computer by different students */
 const stuKey=w=>{ const o=whoOf(w.work); return o.cls+'-'+seatKey(o.seat)+'-'+o.name; };
 function sharedWith(w){ if(!w.work.device) return []; return ALL.filter(x=>x!==w&&x.g.task===w.g.task&&x.work.device===w.work.device&&stuKey(x)!==stuKey(w)); }
@@ -1672,6 +1678,7 @@ function sharedHTML(){ const by={}; works.forEach(w=>{ if(w.work.device) (by[w.w
   if(!groups.length) return '';
   return `<div class="missing"><b>Same computer 同一台電腦交了多人的作業</b>${groups.map(([d,l])=>`<span class="m">${esc(d)}：${l.map(w=>esc(w.work.student||'?')).join('、')}</span>`).join('')}</div>`; }
 function missingHTML(){
+  if(clsFilter===OTHER) return works.length?'<div class="missing">These works have no class, or a class that is not in this course. Open each one and press Edit name to fix it. 這些作業沒有班級，或班級不在名單裡，請點開後按「Edit name 修改班級座號姓名」更正。</div>':'';
   if(!clsFilter) return Object.keys(roster).length?'<div class="missing">Choose a class above to see who has not submitted. 在上方選一個班級，就能看到還沒繳交的學生。</div>':'';
   const list=roster[clsFilter]; if(!list||!list.length) return '<div class="missing">No class list for this class yet. Load it from Google Drive to see who has not submitted. 還沒有這個班的名單，從 Google Drive 載入一次就會帶進名單。</div>';
   const got=new Set(works.map(w=>seatKey(whoOf(w.work).seat)));
@@ -1680,9 +1687,10 @@ function missingHTML(){
   return `<div class="missing"><b>Not submitted 未繳交 ${miss.length} / ${list.length}</b>${miss.map(x=>`<span class="m">${esc(x.seat)} ${esc(x.name)}</span>`).join('')}</div>`;
 }
 function fillClasses(){ const sel=$('#clsSel'), set=new Set(Object.keys(roster));
-  ALL.filter(w=>w.g.task===unit).forEach(w=>{ const c=whoOf(w.work).cls; if(c) set.add(c); }); if(clsFilter) set.add(clsFilter);
+  ALL.filter(w=>w.g.task===unit).forEach(w=>{ const c=clsOf(w); if(c!==OTHER) set.add(c); }); if(clsFilter&&clsFilter!==OTHER) set.add(clsFilter);
   const cs=[...set].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
-  sel.innerHTML='<option value="">All 全部</option>'+cs.map(c=>{ const n=ALL.filter(w=>w.g.task===unit&&whoOf(w.work).cls===c).length, t=(roster[c]||[]).length; return `<option value="${esc(c)}">${esc(c)}${t?`（${n} / ${t}）`:n?`（${n}）`:''}</option>`; }).join('');
+  const no=ALL.filter(w=>w.g.task===unit&&clsOf(w)===OTHER).length;
+  sel.innerHTML='<option value="">All 全部</option>'+cs.map(c=>{ const n=ALL.filter(w=>w.g.task===unit&&clsOf(w)===c).length, t=(roster[c]||[]).length; return `<option value="${esc(c)}">${esc(c)}${t?`（${n} / ${t}）`:n?`（${n}）`:''}</option>`; }).join('')+`<option value="${OTHER}">其他 Other（不知道班級座號${no?'，'+no+' 份':''}）</option>`;
   sel.value=clsFilter; }
 function load(){ try{ ALL=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ ALL=[]; }
   if(!ALL.length&&SAMPLES.length){ ALL=SAMPLES.map(w=>({...w})); usingSamples=true; } }
@@ -1692,10 +1700,31 @@ const RKEY='grader-renames-v1'; let renames={}; try{ renames=JSON.parse(localSto
 const whoStr=o=>{ const c=String(o.cls||'').trim(), s=String(o.seat||'').trim(), n=String(o.name||'').trim(); return (c?c+(s?'-':''):'')+s+((c||s)&&n?' ':'')+n; };
 function applyRename(work){ const k=(work.task||'')+'|'+(work.student||''); const r=renames[k]; if(!r) return;
   if(!work.origStudent) work.origStudent=work.student; work.prevWho=whoOf({student:work.origStudent,cls:work.cls,seat:work.seat,name:work.name}); Object.assign(work,r); work.student=whoStr(r); }
+const fromDrive=w=>/^Drive · /.test(w.file||'');
+const driveFile=w=>String(w.file||'').replace(/^Drive · /,'');
+async function deleteWork(w){
+  const name=w.work.student||w.file||'這份作業'; let note='';
+  if(fromDrive(w)&&driveOK()&&drive.key){
+    try{ const res=await callDrive({action:'delete',key:drive.key,unit:w.g.task,file:driveFile(w)});
+      if(!res.ok) note=res.error==='unknown_action'?'（Apps Script 是舊版，雲端檔案沒有刪掉，更新 Code.gs 後再刪一次）':res.error==='not_found'?'（雲端已經沒有這個檔案）':'（雲端檔案沒有刪掉：'+res.error+'）';
+      else note='，雲端檔案已移到 Google 雲端硬碟的垃圾桶'; }
+    catch(e){ note='（連不上雲端，雲端檔案沒有刪掉）'; } }
+  else if(fromDrive(w)) note='（沒有設定教師密碼，雲端檔案沒有刪掉）';
+  const i=ALL.indexOf(w); if(i>=0) ALL.splice(i,1);
+  persist(); refilter(); cur=works[Math.min(i,works.length-1)]&&works[Math.min(i,works.length-1)].id; if(!works.some(x=>x.id===cur)) cur=works[0]&&works[0].id;
+  renderList(); renderDetail(); toast(`已刪除「${name}」${note}`); }
+async function renameOnDrive(w){
+  if(!fromDrive(w)||!driveOK()||!drive.key) return '';
+  try{ const o=whoOf(w.work); const res=await callDrive({action:'rename',key:drive.key,unit:w.g.task,file:driveFile(w),cls:o.cls,seat:o.seat,name:o.name});
+    if(res.ok){ w.file='Drive · '+res.file; persist(); return '，雲端檔案也改好了'; }
+    if(res.error==='exists') return `（雲端已經有「${res.file}」，這份沒有改檔名；可以刪掉其中一份）`;
+    if(res.error==='unknown_action') return '（Apps Script 是舊版，只改了批改台，雲端檔名沒變）';
+    return `（雲端檔案沒有改：${res.error}）`; }catch(e){ return '（連不上雲端，只改了批改台）'; } }
 function renameWork(w,o){ const orig=w.work.origStudent||w.work.student||''; if(!w.work.origStudent){ w.work.origStudent=orig; w.work.prevWho=whoOf(w.work); }
   Object.assign(w.work,{cls:o.cls,seat:o.seat,name:o.name}); w.work.student=whoStr(o);
   renames[(w.work.task||'')+'|'+orig]=o; try{ localStorage.setItem(RKEY,JSON.stringify(renames)); }catch(e){}
-  sortWorks(); persist(); renderList(); renderDetail(); toast(`已改成「${w.work.student}」`); }
+  sortWorks(); persist(); refilter(); if(!works.includes(w)){ clsFilter=clsOf(w); refilter(); } cur=w.id; renderList(); renderDetail(); toast(`已改成「${w.work.student}」`);
+  renameOnDrive(w).then(m=>{ if(m) toast(`已改成「${w.work.student}」${m}`); renderDetail(); }); }
 const sortWorks=()=>ALL.sort((a,b)=>String(a.work.student||'').localeCompare(String(b.work.student||''),'zh-Hant',{numeric:true})||String(a.work.title||'').localeCompare(String(b.work.title||'')));
 let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},2800); }
 
@@ -1756,6 +1785,7 @@ function renderDetail(){
         <button class="btn" id="bRecheckOne">Re-check 重新審核</button>
         <button class="btn" id="bAdjOpen">${w.override?'修改調整':'Adjust 調整分數'}</button>
         <button class="btn" id="bWhoOpen">Edit name 修改班級座號姓名</button>
+        <button class="btn" id="bDel" style="color:var(--bad);border-color:var(--bad)">Delete 刪除作品</button>
       </div>
       <form class="adjform" id="whoForm" hidden>
         <div class="whorow"><label>班級 Class<input id="whoCls" value="${esc(whoOf(w.work).cls)}" inputmode="numeric"></label><label>座號 No.<input id="whoSeat" value="${esc(whoOf(w.work).seat)}" inputmode="numeric"></label></div>
@@ -1794,6 +1824,10 @@ function renderDetail(){
   </div>`;
   setupComment(w);
   $('#bRecheckOne').onclick=()=>{ const old=w.g.total; w.g=gradeTask(w.work); renderList(); renderDetail(); toast(w.g.total===old?`已重新審核：分數不變（${old}）`:`已重新審核：${old} → ${w.g.total}`); };
+  let delN=0, delT=null; const bDel=$('#bDel');
+  bDel.onclick=async()=>{ delN++; clearTimeout(delT);
+    if(delN<3){ bDel.textContent=`再按 ${3-delN} 次確定刪除`; bDel.style.background='var(--bad)'; bDel.style.color='#fff'; delT=setTimeout(()=>{ delN=0; bDel.textContent='Delete 刪除作品'; bDel.style.background=''; bDel.style.color='var(--bad)'; },4000); return; }
+    deleteWork(w); };
   $('#bWhoOpen').onclick=()=>{ $('#whoForm').hidden=!$('#whoForm').hidden; if(!$('#whoForm').hidden) $('#whoName').focus(); };
   $('#whoCancel').onclick=()=>{ $('#whoForm').hidden=true; };
   $('#whoForm').onsubmit=e=>{ e.preventDefault(); const c=$('#whoCls').value.trim(), se=$('#whoSeat').value.trim(), n=$('#whoName').value.trim();
@@ -1974,7 +2008,7 @@ function ingest(list){
       const rec={id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),file,work,ai:'',g:gradeTask(work)};
       if(i>=0){ ALL[i]=rec; replaced++; } else { ALL.push(rec); added++; } last=rec.id; unit=rec.g.task;
     });
-    if(clsFilter&&last){ const r=ALL.find(w=>w.id===last); if(r&&whoOf(r.work).cls!==clsFilter) clsFilter=''; }
+    if(clsFilter&&last){ const r=ALL.find(w=>w.id===last); if(r&&clsOf(r)!==clsFilter) clsFilter=''; }
     sortWorks(); persist(); refilter();
     if(last) cur=last;
     renderList(); renderDetail();
@@ -2024,7 +2058,7 @@ async function callDrive(payload){
 function driveErr(e){ return e==='bad_key'?'教師密碼不對，請確認和 Apps Script 裡的 TEACHER_KEY 一樣。':e?`雲端回覆錯誤（${e}）。`:'連不上雲端。請確認部署網址正確、部署存取權是「任何人」。'; }
 function setLinks(res){ const l=[]; if(res.folderUrl) l.push(`<a href="${esc(res.folderUrl)}" target="_blank" rel="noopener">作業資料夾 Folder</a>`); if(res.sheetUrl) l.push(`<a href="${esc(res.sheetUrl)}" target="_blank" rel="noopener">成績試算表 Sheet</a>`); if(l.length) $('#drLinks').innerHTML=l.join(' · '); }
 function fillDrCls(){ const sel=$('#drCls'), cs=(drive.classes||[]).slice(); if(drive.cls&&!cs.includes(drive.cls)) cs.push(drive.cls);
-  sel.innerHTML='<option value="">All classes 全部班級</option>'+cs.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join(''); sel.value=drive.cls||''; }
+  sel.innerHTML='<option value="">All classes 全部班級</option>'+cs.filter(inGrade).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')+`<option value="${OTHER}">其他 Other（不知道班級座號）</option>`; sel.value=drive.cls||''; }
 async function loadClasses(quiet){ saveDriveCfg(); const st=$('#drStatus'); if(!driveOK()||!drive.key){ if(!quiet){ st.textContent='請先填好部署網址和教師密碼。'; st.classList.add('err'); } return; }
   if(!quiet) st.textContent='讀取班級清單…';
   try{ const res=await callDrive({action:'classes',key:drive.key,unit});
@@ -2050,9 +2084,9 @@ $('#bDrLoad').onclick=async()=>{
     if(!res.ok){ st.textContent=driveErr(res.error); st.classList.add('err'); return; }
     setLinks(res);
     const old=want&&res.roster===undefined;
-    if(Array.isArray(res.roster)){ const by={}; res.roster.forEach(x=>{ (by[x.cls]=by[x.cls]||[]).push({seat:x.seat,name:x.name}); }); Object.assign(roster,by); try{ localStorage.setItem(RSKEY,JSON.stringify(roster)); }catch(e){} }
+    if(Array.isArray(res.roster)){ const by={}; res.roster.filter(x=>inGrade(x.cls)).forEach(x=>{ (by[x.cls]=by[x.cls]||[]).push({seat:x.seat,name:x.name}); }); Object.assign(roster,by); try{ localStorage.setItem(RSKEY,JSON.stringify(roster)); }catch(e){} }
     clsFilter=old?'':want;
-    const label=`「${TASKS[unit].name}」${want&&!old?want+' 班':''}`;
+    const label=`「${TASKS[unit].name}」${want===OTHER&&!old?'其他（不知道班級座號）':want&&!old?want+' 班':''}`;
     if(!res.works.length){ refilter(); cur=works[0]&&works[0].id; renderList(); renderDetail(); st.textContent=`雲端還沒有${label}的作業。`; return; }
     ingest(res.works.map(x=>({ok:parseWork(JSON.stringify(x.work),x.file),file:'Drive · '+x.file})));
     st.textContent=`已從雲端載入${label} ${res.works.length} 份作業。`+(old?'（Apps Script 是舊版，所以載入了全部班級；更新 Code.gs 後就能分班載入。）':'');

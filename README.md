@@ -91,6 +91,9 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 
 - Units 單元：switch between **BMI**, **Pass or Fail**, **Scratch**, **Scratch BMI**, **Summation** and **Scratch Sum** at the top. Uploaded files go to the right unit automatically. 上方切換單元，上傳的檔案會自動分到對應單元。
 
+- **Delete 刪除作品**: press the red Delete button three times to remove a work (e.g. a wrong name). A work loaded from Google Drive is also moved to the Drive trash, so it will not come back on the next load (it can still be restored from the trash). 按三次才會刪除；從雲端載入的作業會移到雲端硬碟的垃圾桶。
+- **其他 Other**: works with no class, or a class outside this course, are grouped under 其他 Other in the Class menus (both on the desk and in Google Drive loading). Fix them with Edit name; for works from Drive the file in Drive is renamed too. 不知道班級座號的作業放在「其他」，用「修改班級座號姓名」更正，雲端檔名也會一起改。
+- **Seventh grade only 只用七年級**: `classPrefix: '7'` in `config.js` and `CLASS_PREFIX: '7'` in `Code.gs` keep only 7xx classes from the roster. Leave them empty to use every class. 名單只取七年級的班級。
 - **Computer code 電腦代號**: each browser gets a random code such as `PC-7F3K` the first time it opens the site, and it is sent with every submission (new column 電腦代號 Device in 繳交紀錄 Submissions, also in the CSV). The desk shows it on each work and lists **Same computer 同一台電腦交了多人的作業** when one computer submitted for different students. Clearing browser data or switching browsers makes a new code. 每台電腦的瀏覽器有一組代號，繳交時一起送出；同一台電腦交了不同學生的作業會列出來。
 - **Class 班級**: Google Drive → choose a class (701, 702, …) to load just that class, which is much faster. The Class menu at the top filters the list; with the 名單 Roster tab in the score sheet, the desk lists who has **not submitted 未繳交** yet (matched by class and seat number). 可以一次只載入一個班；選了班級會列出還沒繳交的學生（依名單的班級座號比對）。
 - Upload many `.json` files at once (or drag them in). 一次上傳多份作業檔。
