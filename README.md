@@ -91,6 +91,8 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 
 BMI, Pass or Fail and Summation flowcharts are scored as **1. Shapes 圖形 60** (the right kinds and number of shapes) → **2. Text 文字 30** (the right inputs, formulas, conditions and outputs) → **3. Lines 線段 10** (connections 4 + test runs 6). Dragging out every shape gives 60, correct text brings it to 90, and correct lines (all tests pass) make it 100. 拉完圖形 60 分、文字打對 90 分、線段接對 100 分。
 
+The Scratch units use the same three steps: **1. Blocks 積木 60** (the right kinds and number of blocks, attached or not) → **2. Text 文字 30** (typed text, numbers and variables, checked even before the blocks are snapped together) → **3. Snapped 接對 10** (everything under the green flag in the right order and nesting, plus test runs). 積木拉齊 60 分、文字打對 90 分、接對 100 分。
+
 ## Helper robot 小幫手機器人
 
 - Hints are hidden until a student clicks the robot. Hovering says 「你真的需要提示嗎？點我一下。」; clicking opens the hint card; the small red ✕ at the robot's bottom-left closes it and the robot says 「如果有需要，再點我喔！」. 提示預設收起，點機器人才會出現；紅色小按鈕關閉提示。
