@@ -8,7 +8,7 @@
  * 設定步驟請看 GOOGLE-DRIVE.md。
  */
 window.FLOW_CONFIG = {
-  submitUrl: 'https://script.google.com/macros/s/AKfycbxfPU_DKaV7EcnRjVZN8xnEQJvks48nm0vuq6GzCgc7HIaviIkYdZVCW5qadWrFjc7_/exec',
+  submitUrl: 'https://script.google.com/macros/s/AKfycbxGpXVeRGkgVsynV9LmNhkhcyr-uTm_HO2EBEEoh5pMI8CiLQ36_EUoxbIM3wXHz_Jk/exec',
   needCode: false,
   googleClientId: '',
   emailDomain: 'apps.ntpc.edu.tw',
