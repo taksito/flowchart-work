@@ -1725,6 +1725,7 @@ Blockly.defineBlocksWithJsonArray([
   {type:'sc_ask',message0:'ask %1 and wait 詢問並等待',args0:[{type:'input_value',name:'Q'}],previousStatement:null,nextStatement:null,style:'sensing_blocks',tooltip:'Asks a question. The reply goes into "answer". 詢問問題，回答會放進「answer 答案」。'},
   {type:'sc_answer',message0:'answer 答案',output:null,style:'sensing_blocks',tooltip:'The reply to the last ask. 最近一次詢問的回答。'},
   {type:'sc_say',message0:'say %1 說',args0:[{type:'input_value',name:'MSG'}],previousStatement:null,nextStatement:null,style:'looks_blocks'},
+  {type:'sc_saysecs',message0:'say %1 for %2 seconds 說…持續…秒',args0:[{type:'input_value',name:'MSG'},{type:'input_value',name:'SECS'}],inputsInline:true,previousStatement:null,nextStatement:null,style:'looks_blocks'},
   {type:'sc_set',message0:'set %1 to %2 設為',args0:[{type:'field_variable',name:'VAR',variable:'%{BKY_VARIABLES_DEFAULT_NAME}'},{type:'input_value',name:'VALUE'}],previousStatement:null,nextStatement:null,style:'variable_blocks'},
   {type:'sc_change',message0:'change %1 by %2 改變',args0:[{type:'field_variable',name:'VAR',variable:'%{BKY_VARIABLES_DEFAULT_NAME}'},{type:'input_value',name:'BY'}],previousStatement:null,nextStatement:null,style:'variable_blocks'},
   {type:'sc_var',message0:'%1',args0:[{type:'field_variable',name:'VAR',variable:'%{BKY_VARIABLES_DEFAULT_NAME}'}],output:null,style:'variable_blocks'},
@@ -1768,7 +1769,7 @@ const toolbox={kind:'categoryToolbox',contents:[
     {kind:'block',type:'sc_and'},{kind:'block',type:'sc_or'},{kind:'block',type:'sc_not'},
     {kind:'block',type:'sc_join',inputs:{A:T(SBT==='sum'?'Sum: ':'Average: '),B:T('')}},{kind:'block',type:'sc_round',inputs:{A:N('')}}]},
   {kind:'category',name:'Control 控制',categorystyle:'control',contents:[{kind:'block',type:'sc_ifelse'},{kind:'block',type:'sc_if'},{kind:'block',type:'sc_repeat',inputs:{TIMES:N(SBT==='sum'?10:4)}},{kind:'block',type:'sc_until'},{kind:'block',type:'sc_wait',inputs:{SECS:N(1)}},{kind:'block',type:'sc_stop'}]},
-  {kind:'category',name:'Looks 外觀',categorystyle:'looks',contents:TC.says.length?TC.says.map(t=>({kind:'block',type:'sc_say',inputs:{MSG:T(t)}})):[{kind:'block',type:'sc_say',inputs:{MSG:T('')}},{kind:'block',type:'sc_say',inputs:{MSG:{shadow:{type:'sc_text',fields:{TEXT:''}},block:{type:'sc_join',inputs:{A:T('Sum: '),B:T('')}}}}}]},
+  {kind:'category',name:'Looks 外觀',categorystyle:'looks',contents:TC.says.length?[...TC.says.map(t=>({kind:'block',type:'sc_say',inputs:{MSG:T(t)}})),{kind:'block',type:'sc_saysecs',inputs:{MSG:T(TC.says[0]),SECS:N(2)}}]:[{kind:'block',type:'sc_say',inputs:{MSG:T('')}},{kind:'block',type:'sc_say',inputs:{MSG:{shadow:{type:'sc_text',fields:{TEXT:''}},block:{type:'sc_join',inputs:{A:T('Sum: '),B:T('')}}}}}]},
 ]};
 /* in-page dialogs (window.prompt/confirm/alert are not reliable) */
 let pmCb=null;
