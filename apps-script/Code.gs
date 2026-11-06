@@ -23,11 +23,11 @@ const CONFIG = {
   CLASS_PREFIX: '7',                  // 只用這個年級的班級（例如 7 = 七年級）；留空 = 全部班級
 };
 
-const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', sum: 'Summation', 'scratch-sum': 'Scratch Summation' };
+const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', sum: 'Summation', 'scratch-sum': 'Scratch Summation', 'scratch-pw': 'Scratch Password' };
 /* Units added later work without changing this file: any short lowercase name is accepted. */
 function unitName_(u) { return UNITS[u] || (/^[a-z][a-z0-9-]{1,30}$/.test(String(u || '')) ? String(u) : null); }
 const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File', 'Email', '電腦代號 Device'];
-const SCORE_HEAD = ['單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '總分 Total', '等第 Level', 'Structure 結構', 'Input 輸入', 'Process 計算', 'Decision 判斷', 'Output 輸出', 'Test run 執行測試', '英文使用率 English %', '需要修正 Fixes', '評語 Comment', '批改時間 Graded'];
+const SCORE_HEAD = ['單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '總分 Total', '等第 Level', 'Structure 結構', 'Input 輸入', 'Process 計算', 'Decision 判斷', 'Output 輸出', 'Test run 執行測試', '英文使用率 English %', '需要修正 Fixes', '評語 Comment', '批改時間 Graded', 'Shapes 圖形', 'Text 文字', 'Lines 線段'];
 
 /* ---------- one-time setup ---------- */
 function setup() {
@@ -225,6 +225,7 @@ function save_(req) {
   if (String(req.key || '') !== CONFIG.TEACHER_KEY) return { ok: false, error: 'bad_key' };
   const rows = Array.isArray(req.rows) ? req.rows : [];
   const sh = tab_('成績 Scores', SCORE_HEAD);
+  if (sh.getLastColumn() < SCORE_HEAD.length) sh.getRange(1, 1, 1, SCORE_HEAD.length).setValues([SCORE_HEAD]).setFontWeight('bold');
   const data = sh.getDataRange().getValues();
   const index = {};
   for (let r = 1; r < data.length; r++) index[[data[r][0], data[r][1], data[r][2], data[r][3]].join('\u0000')] = r + 1;
@@ -236,7 +237,7 @@ function save_(req) {
     const who = who_(x);
     const row = [unitName, who.cls, who.seat, who.name, clean_(x.title), num_(x.total), x.level || '',
       num_(g['結構']), num_(g['輸入']), num_(g['計算']), num_(g['判斷']), num_(g['輸出']), num_(g['執行測試']),
-      num_(x.english), String(x.fixes || ''), String(x.comment || ''), now];
+      num_(x.english), String(x.fixes || ''), String(x.comment || ''), now, num_(g['圖形']), num_(g['文字']), num_(g['線段'])];
     const key = [unitName, who.cls, who.seat, who.name].join('\u0000');
     if (!index[key] && x.prev) {
       const pw = who_(x.prev), pk = [unitName, pw.cls, pw.seat, pw.name].join('\u0000');

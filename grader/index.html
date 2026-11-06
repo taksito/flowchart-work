@@ -197,7 +197,7 @@ td .why{color:var(--muted);font-size:12px}
     <h1>Grading Desk 批改台 <small id="unitName" hidden>BMI Flowchart</small></h1>
     <label class="unitpick"><span>Unit 單元</span><select id="unitSel" aria-label="Unit 單元">
       <optgroup label="Flowchart 流程圖"><option value="bmi">BMI 判斷</option><option value="score">Pass or Fail 成績及格判斷</option><option value="sum">Summation 1 加到 n</option></optgroup>
-      <optgroup label="Scratch 積木"><option value="scratch">Scratch Pass or Fail</option><option value="scratch-bmi">Scratch BMI</option><option value="scratch-sum">Scratch 1 加到 n</option></optgroup>
+      <optgroup label="Scratch 積木"><option value="scratch">Scratch Pass or Fail</option><option value="scratch-bmi">Scratch BMI</option><option value="scratch-sum">Scratch 1 加到 n</option><option value="scratch-pw">Scratch 密碼檢查</option></optgroup>
     </select></label>
     <label class="unitpick"><span>Class 班級</span><select id="clsSel" aria-label="Class 班級"><option value="">All 全部</option></select></label>
     <div class="tools">
@@ -230,6 +230,7 @@ td .why{color:var(--muted);font-size:12px}
   <div class="dialog">
     <div data-rub="bmi">
     <h2>BMI 流程圖評分標準（滿分 100）</h2>
+    <div class="tbl-wrap" style="margin-bottom:10px"><table><tr><th>步驟</th><th>檢查內容</th><th>分數</th></tr><tr><td>1. Shapes 圖形</td><td>拉出需要的圖形和數量（START、END、INPUT、PROCESS、DECISION／LOOP、OUTPUT），每少一個按比例扣分</td><td>60</td></tr><tr><td>2. Text 文字</td><td>圖形裡的文字打對：輸入的變數、算式、判斷條件、輸出內容</td><td>30</td></tr><tr><td>3. Lines 線段</td><td>線段接對：每個圖形都接上、判斷有兩條路、從開始走到結束（4 分）＋實際執行測試（6 分）</td><td>10</td></tr></table></div><p>拉完圖形 = 60 分，文字也打對 = 90 分，線段接對、測試全部通過 = 100 分。測試全部通過時，用不同畫法也給滿分。下面是原本的細項清單，各細項的分數會依比例換算到上面三個步驟（文字 30、線段 10）：</p>
     <p>越接近標準答案分數越高。除了檢查有沒有畫對符號，也會把學生的流程圖真的「跑一遍」，看每種 BMI 會不會輸出正確結果。</p>
     <div class="tbl-wrap"><table>
       <tr><th>項目</th><th>檢查內容</th><th>配分</th></tr>
@@ -272,6 +273,7 @@ td .why{color:var(--muted);font-size:12px}
     </div>
     <div data-rub="sum">
     <h2>1 加到 n 流程圖評分標準（滿分 100）</h2>
+    <div class="tbl-wrap" style="margin-bottom:10px"><table><tr><th>步驟</th><th>檢查內容</th><th>分數</th></tr><tr><td>1. Shapes 圖形</td><td>拉出需要的圖形和數量（START、END、INPUT、PROCESS、DECISION／LOOP、OUTPUT），每少一個按比例扣分</td><td>60</td></tr><tr><td>2. Text 文字</td><td>圖形裡的文字打對：輸入的變數、算式、判斷條件、輸出內容</td><td>30</td></tr><tr><td>3. Lines 線段</td><td>線段接對：每個圖形都接上、判斷有兩條路、從開始走到結束（4 分）＋實際執行測試（6 分）</td><td>10</td></tr></table></div><p>拉完圖形 = 60 分，文字也打對 = 90 分，線段接對、測試全部通過 = 100 分。測試全部通過時，用不同畫法也給滿分。下面是原本的細項清單，各細項的分數會依比例換算到上面三個步驟（文字 30、線段 10）：</p>
     <p>題目：輸入一個數 n，用迴圈算出 1 + 2 + … + n 並輸出總和。標準做法和 Scratch 一樣：sum = 0、i = 0，LOOP（重複）寫 repeat n，裡面 i = i + 1（Scratch 的 change i by 1）、sum = sum + i（change sum by i），最後一步拉線回到 LOOP，做完後 output sum。也可以用 DECISION 寫 i &lt;= n。批改時會把學生的流程圖真的「跑一遍」，輸入 n = 1、2、3、4、5、10、20、100，檢查輸出是不是 1、3、6、10、15、55、210、5050。</p>
     <div class="tbl-wrap"><table>
       <tr><th>項目</th><th>檢查內容</th><th>配分</th></tr>
@@ -298,8 +300,23 @@ td .why{color:var(--muted);font-size:12px}
     </table></div>
     <p>常見正確寫法：set sum to 0、set i to 0、repeat (n) { change i by 1、change sum by (i) }、say (sum)。也可以 i 從 1 開始、先加再加一；用 repeat until (i &gt; n) 也可以。</p>
     </div>
+    <div data-rub="scratch-pw">
+    <h2>Scratch 密碼檢查評分標準（滿分 100）</h2>
+    <p>題目：密碼是 137（學生自己設定其他密碼也可以，批改會自動找出來）。詢問密碼，答錯說「密碼錯誤」再問，最多試 3 次；答對說「歡迎使用本系統」，3 次都錯說「輸入密碼錯誤3次，帳號已被鎖定」。批改會依序自動輸入 6 組答案，檢查最後說的是歡迎還是鎖定，以及詢問的次數。</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>項目</th><th>檢查內容</th><th>配分</th></tr>
+      <tr><td>Structure 結構</td><td>有「當綠旗被點擊」、沒有散落的積木</td><td>10</td></tr>
+      <tr><td>Input 輸入</td><td>詢問密碼（8 分）、答錯後在迴圈裡再詢問（7 分）</td><td>15</td></tr>
+      <tr><td>Process 計算</td><td>設定 password、count 初始值（10 分）、迴圈裡 change count by 1（5 分）</td><td>15</td></tr>
+      <tr><td>Decision 判斷</td><td>用 repeat until（10 分）、條件「答對 or 次數 = 3」（10 分）、迴圈後用如果…否則（10 分）</td><td>30</td></tr>
+      <tr><td>Output 輸出</td><td>說出歡迎和鎖定兩種結果</td><td>5</td></tr>
+      <tr><td>Test run 執行測試</td><td>6 組輸入：137／1、137／1、2、137／1、2、3／999、0、138／1、2、3、137（第 4 次不該再問）</td><td>25</td></tr>
+    </table></div>
+    <p>只看最後的結果和詢問次數，訊息只要包含「歡迎／welcome」或「鎖定／locked」等關鍵字就算對。6 組都通過時，用不同寫法（例如 repeat 3 次加「stop all 停止全部」）也給滿分。常見錯誤會直接提示：count &gt; 3 會多問一次、迴圈裡沒有再詢問、沒有 count 加一而停不下來、迴圈後沒有用如果…否則。</p>
+    </div>
     <div data-rub="score">
     <h2>Pass or Fail 成績及格判斷評分標準（滿分 100）</h2>
+    <div class="tbl-wrap" style="margin-bottom:10px"><table><tr><th>步驟</th><th>檢查內容</th><th>分數</th></tr><tr><td>1. Shapes 圖形</td><td>拉出需要的圖形和數量（START、END、INPUT、PROCESS、DECISION／LOOP、OUTPUT），每少一個按比例扣分</td><td>60</td></tr><tr><td>2. Text 文字</td><td>圖形裡的文字打對：輸入的變數、算式、判斷條件、輸出內容</td><td>30</td></tr><tr><td>3. Lines 線段</td><td>線段接對：每個圖形都接上、判斷有兩條路、從開始走到結束（4 分）＋實際執行測試（6 分）</td><td>10</td></tr></table></div><p>拉完圖形 = 60 分，文字也打對 = 90 分，線段接對、測試全部通過 = 100 分。測試全部通過時，用不同畫法也給滿分。下面是原本的細項清單，各細項的分數會依比例換算到上面三個步驟（文字 30、線段 10）：</p>
     <p>題目：輸入四個成績，算出總分與平均，平均 ≥ 60 輸出 pass，否則輸出 fail（剛好 60 算 pass）。會把學生的流程圖真的「跑一遍」。</p>
     <div class="tbl-wrap"><table>
       <tr><th>項目</th><th>檢查內容</th><th>配分</th></tr>
@@ -889,7 +906,7 @@ if(typeof module!=='undefined') Object.assign(module.exports,{gradeScore,feedbac
 /* ===== Scratch-style block programs: interpreter, outline, grading (Pass or Fail) ===== */
 const SB_CAT={sc_flag:'events',sc_ask:'sensing',sc_answer:'sensing',sc_say:'looks',sc_saysecs:'looks',sc_set:'variables',sc_change:'variables',sc_var:'variables',
   sc_add:'operators',sc_sub:'operators',sc_mul:'operators',sc_div:'operators',sc_gt:'operators',sc_lt:'operators',sc_eq:'operators',sc_and:'operators',sc_or:'operators',sc_not:'operators',sc_join:'operators',sc_round:'operators',
-  sc_if:'control',sc_ifelse:'control',sc_repeat:'control',sc_until:'control',sc_wait:'control',sc_num:'operators',sc_text:'operators'};
+  sc_if:'control',sc_ifelse:'control',sc_repeat:'control',sc_until:'control',sc_stop:'control',sc_wait:'control',sc_num:'operators',sc_text:'operators'};
 const SB_COLORS={events:'#FFBF00',sensing:'#5CB1D6',looks:'#9966FF',variables:'#FF8C1A',operators:'#59C059',control:'#FFAB19'};
 const SB_CASES=(typeof SCORE_CASES!=='undefined'?SCORE_CASES:[[70,80,90,60],[60,60,60,60],[59,60,60,60],[100,100,100,0],[40,50,60,80],[0,0,0,0],[61,59,60,60],[100,90,80,70]]);
 
@@ -910,6 +927,7 @@ function sbCmp(a,b){ const na=Number(String(a).trim()), nb=Number(String(b).trim
   const x=String(a).toLowerCase(), y=String(b).toLowerCase(); return x===y?0:x<y?-1:1; }
 
 /* generator interpreter: yields {ask}|{say}|{wait}; receives answer for ask */
+const SB_STOP={stop:true};
 function* sbExec(ws,opts={}){
   const names=sbVarNames(ws), vars={}, init=opts.vars||{}; Object.values(names).forEach(n=>vars[n]=Object.prototype.hasOwnProperty.call(init,n)?init[n]:0);
   const st={answer:opts.answer!=null?String(opts.answer):'',steps:0,vars};
@@ -948,6 +966,7 @@ function* sbExec(ws,opts={}){
         case 'sc_set': { const n=sbVarOf(b,names); const v=ev(sbIn(b,'VALUE')); vars[n]=(typeof v==='boolean')?String(v):v; break; }
         case 'sc_change': { const n=sbVarOf(b,names); vars[n]=sbNum(vars[n])+sbNum(ev(sbIn(b,'BY'))); break; }
         case 'sc_wait': yield {type:'wait',secs:sbNum(ev(sbIn(b,'SECS'))),id:b.id}; break;
+        case 'sc_stop': throw SB_STOP;
         case 'sc_if': if(ev(sbIn(b,'COND'))) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); break;
         case 'sc_ifelse': if(ev(sbIn(b,'COND'))) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); else yield* run(b.inputs&&b.inputs.ELSE&&b.inputs.ELSE.block); break;
         case 'sc_repeat': { const n=Math.min(1000,Math.round(sbNum(ev(sbIn(b,'TIMES'))))); for(let i=0;i<n;i++) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); break; }
@@ -957,8 +976,10 @@ function* sbExec(ws,opts={}){
     }
   }
   if(opts.value){ st.value=ev(opts.value); return st; }   /* a clicked reporter: just work out its value */
-  if(opts.start){ const b=opts.start; yield* run(b.type==='sc_flag'?b.next&&b.next.block:b); return st; }   /* a clicked stack */
-  for(const t of sbTop(ws)) if(t.type==='sc_flag') yield* run(t.next&&t.next.block);
+  try{
+    if(opts.start){ const b=opts.start; yield* run(b.type==='sc_flag'?b.next&&b.next.block:b); return st; }   /* a clicked stack */
+    for(const t of sbTop(ws)) if(t.type==='sc_flag') yield* run(t.next&&t.next.block);
+  }catch(e){ if(e!==SB_STOP) throw e; st.stopped=true; }   /* stop all */
   return st;
 }
 /* synchronous run for tests */
@@ -993,6 +1014,7 @@ function sbOutline(ws){
       case 'sc_set': L(`set ${sbVarOf(b,names)} to ${r(sbIn(b,'VALUE'))}`); break;
       case 'sc_change': L(`change ${sbVarOf(b,names)} by ${r(sbIn(b,'BY'))}`); break;
       case 'sc_wait': L(`wait ${r(sbIn(b,'SECS'))} seconds`); break;
+      case 'sc_stop': L('stop all'); break;
       case 'sc_repeat': L(`repeat ${r(sbIn(b,'TIMES'))}`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
       case 'sc_until': L(`repeat until ${r(sbIn(b,'COND'))}`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
       case 'sc_if': L(`if ${r(sbIn(b,'COND'))} then`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
@@ -1332,13 +1354,14 @@ function gradeSum(work){
   add('計算','計數加一（例如 i = i + 1）',10,cntX?(procOK(cntX)?10:7):0,cntX?(procOK(cntX)?'':'計算要放在 PROCESS（長方形）裡'):'沒有找到讓 i 加一的步驟，例如 i = i + 1');
   /* loop 15 (sheet column 判斷) */
   const loopDec=loops.find(d=>{ const c=loopCount(d.text); return c&&[...c.vars].some(v=>inVars.includes(v)); })||decs.find(d=>{ const c=sCond(d.text); return c&&[...c.vars].some(v=>inVars.includes(v)); });
-  add('判斷','用重複或判斷控制次數（例如 repeat n、i <= n）',5,loopDec?5:ctl?2:0,loopDec?'':loops.length?'重複的次數要用 n，例如 repeat n':decs.length?'判斷要和 n 比較，例如 i <= n':'用 LOOP（重複）寫 repeat n，或用 DECISION 寫 i <= n');
+  add('判斷','用重複或判斷控制次數（例如 repeat n、i <= n）',5,loopDec?5:[...decs,...loops].some(n=>String(n.text||'').trim()&&!/^repeat$/i.test(String(n.text).trim()))?2:0,loopDec?'':loops.length?'重複的次數要用 n，例如 repeat n':decs.length?'判斷要和 n 比較，例如 i <= n':'用 LOOP（重複）寫 repeat n，或用 DECISION 寫 i <= n');
   const hasLoop=sumHasLoop(A,start);
   add('判斷','有線回到前面，形成迴圈',5,hasLoop?5:0,hasLoop?'':loops.length?'重複的最後一步要拉一條線回到 LOOP（重複）':'要從最後一步拉一條線回到判斷，讓流程重複');
   const condNodes=nodes.filter(n=>n.type!=='decision'&&/[<>]/.test(sNorm(n.text||''))&&n._r!=='calc');
   add('判斷','條件寫在 LOOP（重複）或 DECISION（菱形）裡',5,ctl&&!condNodes.length?5:ctl?3:0,!ctl?'沒有使用重複或判斷符號':condNodes.length?'有條件寫在別的符號裡':'');
   /* output 5 */
-  const outs=nodes.filter(n=>n._r==='output'), outIO=outs.find(n=>n.type==='io');
+  const said=n=>String(n.text||'').replace(/^\s*(output|輸出|print|印出|顯示|show|display)\s*[:：]?/i,'').trim();
+  const outs=nodes.filter(n=>n._r==='output'&&said(n)), outIO=outs.find(n=>n.type==='io');
   add('輸出','輸出總和',5,outIO?5:outs.length?2:0,outIO?'':outs.length?'輸出要用 OUTPUT 符號':'缺少輸出總和的步驟，例如 output sum');
   /* tests 25 */
   const full=SUM_CASES.map(n=>{ const exp=sumOf(n); if(!start) return {n,exp,got:null,ok:false,why:'沒有 START',lab:`n = ${n}`};
@@ -1489,6 +1512,165 @@ function feedbackScratchSum(work,g){
   feedbackTask=function(w,g){ const t=g.task||taskOf(w); return t==='sum'?feedbackSum(w,g):t==='scratch-sum'?feedbackScratchSum(w,g):_fb(w,g); };
 })();
 if(typeof module!=='undefined') Object.assign(module.exports,{gradeSum,feedbackSum,gradeScratchSum,feedbackScratchSum,SUM_CASES,sumOf,gradeTask,feedbackTask,taskOf});
+
+/* ===== Scratch password check: at most 3 tries, then welcome or locked ===== */
+const PW_DEFAULT='137';
+const PW_WELCOME=/歡迎|welcome|成功|success|登入|log ?in|correct|正確|hello/i, PW_LOCK=/鎖|lock|封鎖|停用|blocked|3\s*次|三次|three/i, PW_WRONG=/錯|wrong|incorrect|再試|try again/i;
+function pwCat(msg){ const m=String(msg||''); if(PW_LOCK.test(m)) return 'locked'; if(PW_WELCOME.test(m)&&!PW_WRONG.test(m)) return 'welcome'; if(PW_WRONG.test(m)) return 'wrong'; return null; }
+function pwRun(ws,answers){ const r=sbRunFn(ws,(q,k)=>k<answers.length?answers[k]:'0'); const cats=r.says.map(pwCat); const last=[...cats].reverse().find(c=>c==='welcome'||c==='locked')||null; return {...r,result:last,cats}; }
+/* the password the program checks against: 137, or a number the student set */
+function pwFind(ws,F){
+  const names=F.names, cands=[PW_DEFAULT];
+  F.inFlag.forEach(b=>{ const add=x=>{ if(!x) return; const v=x.type==='sc_num'?sbField(x,'NUM'):x.type==='sc_text'?sbField(x,'TEXT'):null; if(v!=null&&String(v).trim()!==''&&!cands.includes(String(v).trim())) cands.push(String(v).trim()); };
+    if(b.type==='sc_set') add(sbIn(b,'VALUE')); if(b.type==='sc_eq'){ add(sbIn(b,'A')); add(sbIn(b,'B')); } });
+  return cands.find(c=>pwRun(ws,[c]).result==='welcome')||PW_DEFAULT;
+}
+function gradeScratchPw(work){
+  const ws=work.workspace||{}, F=sbFacts(ws), items=[], bad=new Set();
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  const names=F.names;
+  add('結構','有「當綠旗被點擊」',5,F.flags.length?5:0,F.flags.length?'':'程式要從「when ⚑ clicked 當綠旗被點擊」開始');
+  add('結構','沒有散落的積木',5,5-2.5*F.loose.length,F.loose.length?`有 ${F.loose.length} 組積木沒有接在綠旗下面`:'');
+  F.loose.forEach(b=>bad.add(b.id));
+  const loops=F.inFlag.filter(b=>b.type==='sc_until'||b.type==='sc_repeat');
+  const inLoop=[]; loops.forEach(l=>{ const d=l.inputs&&l.inputs.DO&&l.inputs.DO.block; if(d) sbWalk(d,b=>inLoop.push(b)); });
+  const asks=F.inFlag.filter(b=>b.type==='sc_ask'), askIn=inLoop.some(b=>b.type==='sc_ask');
+  /* input 15 */
+  add('輸入','詢問密碼',8,asks.length?8:0,asks.length?'':'用「ask 詢問並等待」詢問密碼');
+  add('輸入','答錯後在迴圈裡再詢問一次',7,askIn?7:0,askIn?'':'在重複積木裡面再放一個「ask 詢問」，讓使用者重新輸入');
+  /* process 15 */
+  const isConst=x=>x&&(x.type==='sc_num'||x.type==='sc_text');
+  const consts=F.inFlag.filter(b=>b.type==='sc_set'&&isConst(sbIn(b,'VALUE'))&&!inLoop.includes(b));
+  const one=x=>x&&((x.type==='sc_num'&&sbNum(sbField(x,'NUM'))===1)||(x.type==='sc_text'&&String(sbField(x,'TEXT')).trim()==='1'));
+  const cnt=inLoop.find(b=>(b.type==='sc_change'&&one(sbIn(b,'BY')))||(b.type==='sc_set'&&sbIn(b,'VALUE')&&sbIn(b,'VALUE').type==='sc_add'));
+  add('計算','設定初始值（密碼 = 137、次數 = 1）',10,consts.length>=2?10:consts.length?5:0,consts.length>=2?'':'迴圈前先設定：set password to 137、set count to 1');
+  add('計算','次數加一（change count by 1）',5,cnt?5:0,cnt?'':'在重複積木裡讓次數加一：change count by 1');
+  /* decision & loop 30 */
+  const until=loops.find(b=>b.type==='sc_until'), cond=until&&sbIn(until,'COND');
+  let hasOr=false, condAns=false, condCnt=false;
+  if(cond) sbWalk(cond,x=>{ if(x.type==='sc_or') hasOr=true; if(x.type==='sc_answer') condAns=true; if(x.type==='sc_var') condCnt=true; });
+  const ifAfter=F.inFlag.some(b=>(b.type==='sc_ifelse'||b.type==='sc_if')&&!inLoop.includes(b));
+  add('判斷','使用重複積木（repeat until 重複直到）',10,until?10:loops.length?7:0,until?'':loops.length?'這題建議用「repeat until 重複直到」':'用「repeat until 重複直到」讓使用者重新輸入');
+  add('判斷','停止條件：答對「或」次數到 3',10,cond&&hasOr&&condAns&&condCnt?10:cond&&(condAns||condCnt)?5:0,cond&&hasOr&&condAns&&condCnt?'':'條件要寫成 <(answer = password) or (count = 3)>，答對或試滿 3 次就停');
+  add('判斷','迴圈結束後用「如果…否則」判斷結果',10,ifAfter?10:0,ifAfter?'':'迴圈結束後用「if … else 如果…否則」：答對說歡迎，否則說鎖定');
+  /* output 5 */
+  const texts=[]; F.inFlag.forEach(b=>{ if(b.type==='sc_say'||b.type==='sc_saysecs') sbWalk(sbIn(b,'MSG')||{},x=>{ if(x.type==='sc_text') texts.push(String(sbField(x,'TEXT')||'')); }); });
+  const sayW=texts.some(t=>pwCat(t)==='welcome'), sayL=texts.some(t=>pwCat(t)==='locked');
+  add('輸出','說出「歡迎」和「鎖定」兩種結果',5,(sayW?2.5:0)+(sayL?2.5:0),sayW&&sayL?'':!sayW?'答對時要說「歡迎使用本系統」':'3 次都錯要說「帳號已被鎖定」');
+  /* tests 25 */
+  const P=pwFind(ws,F), W=['1','2','3','999','0',P+'8'].filter(x=>x!==P);
+  const CASES=[{a:[P],exp:'welcome',n:1},{a:[W[0],P],exp:'welcome',n:2},{a:[W[0],W[1],P],exp:'welcome',n:3},{a:[W[0],W[1],W[2]],exp:'locked',n:3},{a:[W[3],W[4],W[5]],exp:'locked',n:3},{a:[W[0],W[1],W[2],P],exp:'locked',n:3}];
+  const NAME={welcome:'歡迎',locked:'鎖定'};
+  const full=CASES.map(c=>{ const r=pwRun(ws,c.a); const ok=!r.err&&r.result===c.exp&&r.asks.length===c.n;
+    let why='';
+    if(r.err) why='程式停不下來：迴圈裡要讓次數加一，也要再詢問一次';
+    else if(r.asks.length>c.n&&c.exp==='locked') why=`問了 ${r.asks.length} 次，最多只能試 3 次（條件用 count = 3，不是 count > 3）`;
+    else if(r.asks.length>c.n) why='答對以後就不該再問了';
+    else if(r.asks.length<c.n&&c.a[0]!==P&&r.asks.length===1) why='答錯之後要在迴圈裡再詢問一次';
+    else if(r.asks.length<c.n) why=`只問了 ${r.asks.length} 次，要給使用者 3 次機會`;
+    else if(!r.result) why='最後要說出「歡迎使用本系統」或「帳號已被鎖定」';
+    else if(r.result!==c.exp) why=c.exp==='welcome'?'答對了卻說鎖定：迴圈後用「如果 answer = password」判斷':'3 次都錯卻說歡迎：檢查「如果…否則」的條件';
+    return {a:c.a,exp:NAME[c.exp],got:r.result?NAME[r.result]:(r.says.length?r.says[r.says.length-1]:null),asks:r.asks.length,needAsks:c.n,ok,why,lab:`答 ${c.a.join('、')}`}; });
+  const fp=full.filter(t=>t.ok).length;
+  add('執行測試','執行測試（6 組輸入）',25,25*fp/full.length,`${fp} / ${full.length} 題正確`);
+  /* english */
+  const CJK=/[㐀-鿿]/; const units=[...F.texts,...F.varNames]; const zh=units.filter(t=>CJK.test(t));
+  const english=units.length?Math.round(100*(units.length-zh.length)/units.length):0;
+  const words=[...new Set(zh.join(' ').match(/[㐀-鿿]+/g)||[])];
+  const sug=[...new Set(words.map(w=>{ const k=Object.keys(EN_WORDS).find(z=>w.includes(z)); return k?`${k} → ${EN_WORDS[k]}`:null; }).filter(Boolean))];
+  if(fp===full.length) items.forEach(i=>{ if(i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } });
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max-1e-9&&i.note&&!/題正確$|答案全部正確/.test(i.note)).forEach(i=>fixes.push(i.note));
+  full.filter(t=>!t.ok&&t.why).slice(0,1).forEach(t=>fixes.push(t.why));
+  full.filter(t=>!t.ok).slice(0,2).forEach(t=>fixes.push(`依序輸入 ${t.a.join('、')}：應該問 ${t.needAsks} 次、最後說${t.exp}；你的程式問了 ${t.asks} 次${t.got?'、最後說'+t.got:''}`));
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  return {task:'scratch-pw',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:fp===full.length&&total>=100,english,zhWords:words,enTips:sug,facts:F,password:P,until,cond,hasOr,ifAfter,askIn,cnt,consts};
+}
+function feedbackScratchPw(work,g){
+  const it=l=>g.items.find(i=>i.label.startsWith(l)), full=i=>!!i&&i.got>=i.max-1e-9, enOK=g.english>=100;
+  if(g.passed) return {en:'Excellent! Your program gives 3 tries, welcomes the right password and locks the account after 3 wrong ones. All 6 tests passed.'+(enOK?' Everything is in English. Great job!':''),
+    zh:'程式完整又正確：最多試 3 次，答對說歡迎，3 次都錯就鎖定，6 組測試全部通過！'+(enOK?'而且全部用英文，非常棒！':'')};
+  const pos=[],pz=[],fx=[],fz=[]; const add=(e,z)=>{fx.push(e);fz.push(z);};
+  if(full(it('詢問密碼'))){ pos.push('you ask for the password'); pz.push('有詢問密碼'); }
+  if(full(it('使用重複積木'))){ pos.push('you used repeat until'); pz.push('有用重複直到'); }
+  if(full(it('迴圈結束後'))){ pos.push('you check the result with if-else'); pz.push('迴圈後有用如果…否則'); }
+  if(!full(it('有「當綠旗'))) add('start with "when ⚑ clicked"','程式要從「當綠旗被點擊」開始');
+  if(!full(it('設定初始值'))) add('set password to 137 and count to 1 first','先設定 password = 137、count = 1');
+  if(!full(it('使用重複積木'))) add('use repeat until','用「repeat until 重複直到」');
+  if(!full(it('停止條件'))) add('stop when (answer = password) or (count = 3)','條件寫 (answer = password) 或 (count = 3)');
+  if(!full(it('答錯後'))) add('ask again inside the loop','迴圈裡要再詢問一次');
+  if(!full(it('次數加一'))) add('change count by 1 inside the loop','迴圈裡 change count by 1');
+  if(!full(it('迴圈結束後'))) add('after the loop, use if-else to say welcome or locked','迴圈後用如果…否則說歡迎或鎖定');
+  const wrong=g.full.find(t=>!t.ok);
+  let en=pos.length?`Good work: ${pos.slice(0,2).join(' and ')}.`:'Thank you for your program!';
+  let zh=pz.length?pz.slice(0,2).join('，')+'，很不錯！':'謝謝你完成這個程式！';
+  if(fx.length){ en+=` To improve: ${fx.slice(0,2).join('; ')}.`; zh+='需要修正：'+fz.slice(0,2).join('；')+'。'; }
+  if(wrong){ en+=` Try typing ${wrong.a.join(', ')}: it should end with "${wrong.exp==='歡迎'?'welcome':'locked'}".`; zh+=`試試看依序輸入 ${wrong.a.join('、')}：應該${wrong.exp==='歡迎'?'說歡迎':'被鎖定'}。`+(wrong.why?wrong.why+'。':''); }
+  en+=' Fix these step by step and run it again. You can do it!'; zh+='照著修改，再按綠旗試一次，一定會更好！';
+  return {en,zh};
+}
+Object.assign(EN_WORDS,{'密碼':'password','次數':'count','歡迎':'welcome','鎖定':'locked','錯誤':'wrong'});
+(function(){
+  const _taskOf=taskOf, _grade=gradeTask, _fb=feedbackTask;
+  taskOf=function(w){ if(w&&w.task==='scratch-pw') return 'scratch-pw'; return _taskOf(w); };
+  gradeTask=function(w){ return taskOf(w)==='scratch-pw'?gradeScratchPw(w):_grade(w); };
+  feedbackTask=function(w,g){ return (g&&g.task||taskOf(w))==='scratch-pw'?feedbackScratchPw(w,g):_fb(w,g); };
+})();
+if(typeof module!=='undefined') Object.assign(module.exports,{gradeScratchPw,feedbackScratchPw,pwCat,gradeTask,feedbackTask,taskOf});
+
+/* ===== Flowchart scoring in three steps: shapes 60 → text 90 → lines 100 ===== */
+const TIER_NEED={
+  bmi:[['start','START 開始',1],['end','END 結束',1],['input','INPUT 輸入',2],['process','PROCESS 處理',1],['decision','DECISION 判斷',3],['output','OUTPUT 輸出',4]],
+  score:[['start','START 開始',1],['end','END 結束',1],['input','INPUT 輸入',4],['process','PROCESS 處理',2],['decision','DECISION 判斷',1],['output','OUTPUT 輸出',2]],
+  sum:[['start','START 開始',1],['end','END 結束',1],['input','INPUT 輸入',1],['process','PROCESS 處理',4],['control','LOOP 重複 或 DECISION 判斷',1],['output','OUTPUT 輸出',1]]
+};
+/* how many of each kind of shape the chart has (an INPUT holding "s1, s2" counts as two) */
+function tierCount(work){
+  const A=sAnalyze(work), c={start:0,end:0,input:0,output:0,process:0,decision:0,control:0};
+  A.nodes.forEach(n=>{
+    if(n.type==='terminator'){ if(n._r==='start') c.start++; else if(n._r==='end') c.end++; else if(!c.start) c.start++; else c.end++; }
+    else if(n.type==='io'){ if(n._r==='output') c.output++; else c.input+=Math.max(1,sInputVars(n).length); }
+    else if(n.type==='process') c.process++;
+    else if(n.type==='decision'){ c.decision++; c.control++; }
+    else if(n.type==='loop') c.control++;
+  });
+  return c;
+}
+const TIER_LINE=/一路走到結束|接上線|兩條路|有線回到前面/;
+function tierFlow(g,work,task){
+  const need=TIER_NEED[task]; if(!need||!g||!g.items) return g;
+  const have=tierCount(work), totalNeed=need.reduce((s,x)=>s+x[2],0), items=[];
+  /* 1. shapes: 60 */
+  need.forEach(([k,label,n])=>{ const h=Math.min(n,have[k]||0), max=60*n/totalNeed;
+    items.push({group:'圖形',label:`${label} × ${n}`,max,got:max*h/n,note:h<n?`已放 ${have[k]||0} 個，需要 ${n} 個`:''}); });
+  /* 2. text: 30, from the content checks of the detailed rubric */
+  /* (checks that only look at which shape was used, like "use the INPUT symbol", are covered by step 1) */
+  const text=g.items.filter(i=>['輸入','計算','判斷','輸出'].includes(i.group)&&!TIER_LINE.test(i.label)&&!/符號|寫在/.test(i.label));
+  const tmax=text.reduce((s,i)=>s+i.max,0)||1;
+  text.forEach(i=>items.push({group:'文字',label:i.label,max:30*i.max/tmax,got:30*i.got/tmax,note:i.note}));
+  /* 3. lines: 10 = connections 4 + test runs 6 */
+  const lines=g.items.filter(i=>i.group==='結構'&&TIER_LINE.test(i.label)||i.group!=='結構'&&i.group!=='執行測試'&&TIER_LINE.test(i.label));
+  const lmax=lines.reduce((s,i)=>s+i.max,0)||1;
+  lines.forEach(i=>items.push({group:'線段',label:i.label,max:4*i.max/lmax,got:4*i.got/lmax,note:i.note}));
+  const tests=g.items.filter(i=>i.group==='執行測試'), smax=tests.reduce((s,i)=>s+i.max,0)||1;
+  tests.forEach(i=>items.push({group:'線段',label:i.label,max:6*i.max/smax,got:6*i.got/smax,note:i.note}));
+  /* every test right: any correct way of drawing it gets full marks */
+  const allOK=tests.length&&tests.every(i=>i.got>=i.max-1e-9);
+  if(allOK) items.forEach(i=>{ if(i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同畫法也算對'; } });
+  const groups={}; items.forEach(i=>{ const x=groups[i.group]||(groups[i.group]={got:0,max:0}); x.got+=i.got; x.max+=i.max; });
+  let total=Math.round(items.reduce((s,i)=>s+i.got,0)); if(!allOK) total=Math.min(total,99);
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  const out=Object.assign({},g,{items,groups,total,level,passed:!!allOK,tiers:true});
+  Object.defineProperty(out,'_orig',{value:g,enumerable:false});
+  return out;
+}
+(function(){
+  const _grade=gradeTask, _fb=feedbackTask;
+  gradeTask=function(w){ const g=_grade(w); const t=g&&g.task||taskOf(w); return TIER_NEED[t]?tierFlow(g,w,t):g; };
+  feedbackTask=function(w,g){ return _fb(w,(g&&g._orig)||g); };
+})();
+if(typeof module!=='undefined') Object.assign(module.exports,{tierFlow,tierCount,TIER_NEED,gradeTask,feedbackTask});
 
 /* ===== Sign in with the school Google account; the Apps Script looks the student up in the roster ===== */
 function GLogin(o){
@@ -1650,16 +1832,18 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const SAMPLES=[];
 const KEY='grader-works-v1';
 const TASKS={
-  bmi:{name:'BMI Flowchart',title:'BMI 判斷',groups:[['結構',20],['輸入',10],['計算',10],['判斷',20],['輸出',10],['執行測試',30]],csv:'BMI流程圖成績.csv',
+  bmi:{name:'BMI Flowchart',title:'BMI 判斷',groups:[['圖形',60],['文字',30],['線段',10]],csv:'BMI流程圖成績.csv',
     text:'題目要求：輸入身高與體重，計算 BMI = 體重 ÷ 身高²（身高單位公尺），然後依 BMI 輸出：BMI < 18.5 輸出 thin；18.5 ≤ BMI < 24 輸出 normal；24 ≤ BMI < 27 輸出 overweight；BMI ≥ 27 輸出 obesity。'},
   'scratch-bmi':{name:'Scratch BMI',title:'Scratch 積木程式：BMI 判斷',groups:[['結構',15],['輸入',15],['計算',20],['判斷',20],['輸出',10],['執行測試',20]],csv:'ScratchBMI成績.csv',
     text:'題目要求：用 Scratch 積木寫程式。當綠旗被點擊時，詢問身高和體重並存進變數，計算 BMI = 體重 ÷ (身高 × 身高)（身高用公尺），再用如果否則判斷：BMI < 18.5 說 thin；< 24 說 normal；< 27 說 overweight；其餘說 obesity。'},
   scratch:{name:'Scratch Pass or Fail',title:'Scratch 積木程式：成績及格判斷',groups:[['結構',15],['輸入',15],['計算',20],['判斷',15],['輸出',10],['執行測試',25]],csv:'Scratch成績及格判斷成績.csv',
     text:'題目要求：用 Scratch 積木寫程式。當綠旗被點擊時，詢問四個成績並存進變數，計算總分和平均（總分 ÷ 4），平均 ≥ 60 說 pass，否則說 fail（剛好 60 算 pass）。'},
-  score:{name:'Pass or Fail Flowchart',title:'成績及格判斷',groups:[['結構',20],['輸入',10],['計算',20],['判斷',15],['輸出',10],['執行測試',25]],csv:'成績及格判斷成績.csv',
+  score:{name:'Pass or Fail Flowchart',title:'成績及格判斷',groups:[['圖形',60],['文字',30],['線段',10]],csv:'成績及格判斷成績.csv',
     text:'題目要求：輸入四個成績，計算總分（四個相加）和平均（總分 ÷ 4），平均 ≥ 60 輸出 pass，否則輸出 fail（剛好 60 算 pass）。'},
-  sum:{name:'Summation Flowchart',title:'1 加到 n',groups:[['結構',20],['輸入',10],['計算',25],['判斷',15],['輸出',5],['執行測試',25]],csv:'1加到n流程圖成績.csv',
+  sum:{name:'Summation Flowchart',title:'1 加到 n',groups:[['圖形',60],['文字',30],['線段',10]],csv:'1加到n流程圖成績.csv',
     text:'題目要求：輸入一個正整數 n，用迴圈算出 1 + 2 + … + n 並輸出總和。標準做法：sum = 0、i = 0，LOOP（重複）repeat n，裡面 i = i + 1、sum = sum + i，再接回 LOOP，做完後輸出 sum；也可以用判斷 i <= n。'},
+  'scratch-pw':{name:'Scratch Password',title:'Scratch 積木程式：密碼檢查',groups:[['結構',10],['輸入',15],['計算',15],['判斷',30],['輸出',5],['執行測試',25]],csv:'Scratch密碼檢查成績.csv',
+    text:'題目要求：用 Scratch 積木寫程式。密碼是 137，詢問密碼，答錯說密碼錯誤再問，最多試 3 次（repeat until 答對 or 次數 = 3）；迴圈後用如果…否則：答對說歡迎使用本系統，3 次都錯說帳號已被鎖定。'},
   'scratch-sum':{name:'Scratch Summation',title:'Scratch 積木程式：1 加到 n',groups:[['結構',10],['輸入',15],['計算',20],['判斷',20],['輸出',10],['執行測試',25]],csv:'Scratch1加到n成績.csv',
     text:'題目要求：用 Scratch 積木寫程式。當綠旗被點擊時，詢問 n 並存進變數，用 repeat 重複 n 次（或 repeat until），在迴圈裡讓 i 加一、把 i 加進 sum，最後說出 1 + 2 + … + n 的總和。'}};
 let unit='bmi', ALL=[];
@@ -1669,7 +1853,7 @@ const effTotal=w=>(w.override&&w.override.total!=null&&w.override.total!=='')?Nu
 const effLevel=w=>levelOf(effTotal(w));
 function whoOf(w){ if(w.name) return {cls:w.cls||'',seat:w.seat||'',name:w.name}; const st=String(w.student||'').trim();
   let m=st.match(/^(\d+)\s*[-－\s]\s*(\d+)\s+(.+)$/); if(m) return {cls:m[1],seat:m[2],name:m[3]}; m=st.match(/^(\d+)\s+(.+)$/); if(m) return {cls:'',seat:m[1],name:m[2]}; return {cls:'',seat:'',name:st}; }
-const GL={'結構':'Structure 結構','輸入':'Input 輸入','計算':'Process 計算','判斷':'Decision 判斷','輸出':'Output 輸出','執行測試':'Test run 執行測試'};
+const GL={'圖形':'1. Shapes 圖形','文字':'2. Text 文字','線段':'3. Lines 線段','結構':'Structure 結構','輸入':'Input 輸入','計算':'Process 計算','判斷':'Decision 判斷','輸出':'Output 輸出','執行測試':'Test run 執行測試'};
 const glOf=(k,t)=>k==='判斷'&&/sum$/.test(t||unit)?'Loop 迴圈':(GL[k]||k);
 
 let works=[], usingSamples=false, cur=null, clsFilter='';
@@ -1785,7 +1969,8 @@ function renderDetail(){
   const lp=g.logic.filter(t=>t.ok).length, fp=g.full.filter(t=>t.ok).length;
   const stable=list=>`<div class="tbl-wrap"><table><tr><th>Scores 成績</th><th>Avg 平均</th><th>應輸出</th><th>流程輸出</th><th></th></tr>${list.map(t=>`<tr><td class="n">${t.scores.join(', ')}</td><td class="n">${t.avg}</td><td>${t.exp}</td><td>${t.got?esc(t.got):`<span class="why">${esc(t.why||'沒有輸出')}</span>`}</td><td class="${t.ok?'ok':'no'}">${t.ok?'✓':'✗'}</td></tr>`).join('')}</table></div>`;
   const ntable=list=>`<div class="tbl-wrap"><table><tr><th>n</th><th>應輸出 1+…+n</th><th>${/^scratch/.test(g.task)?'程式說':'流程輸出'}</th><th></th></tr>${list.map(t=>`<tr><td class="n">${t.n}</td><td class="n">${t.exp}</td><td>${t.got!=null?esc(t.got)+(t.why?`<span class="why"> ${esc(t.why)}</span>`:''):`<span class="why">${esc(t.why||'沒有輸出')}</span>`}</td><td class="${t.ok?'ok':'no'}">${t.ok?'✓':'✗'}</td></tr>`).join('')}</table></div>`;
-  const testsHTML=/sum$/.test(g.task)?`<div><div class="tcap">${g.task==='scratch-sum'?'執行測試 <span>按綠旗，自動回答 n':'完整流程測試 <span>從 START 輸入 n'} · ${fp}/8</span></div>${ntable(g.full)}</div>`:g.task==='scratch-bmi'?`<div><div class="tcap">執行測試 <span>按綠旗，自動回答身高 1.5 m 和體重 · ${fp}/8</span></div>${ttable(g.full,true)}</div>`:g.task==='score'||g.task==='scratch'?`<div><div class="tcap">${g.task==='scratch'?'執行測試 <span>按綠旗，自動回答四個成績':'完整流程測試 <span>從 START 輸入四個成績'} · ${fp}/8</span></div>${stable(g.full)}</div>`:`<div><div class="tcap">判斷邏輯測試 <span>直接給 BMI，從第一個判斷開始跑 · ${lp}/8</span></div>${ttable(g.logic,false)}</div>
+  const pwTable=list=>`<div class="tbl-wrap"><table><tr><th>依序輸入</th><th>應該</th><th>程式</th><th></th></tr>${list.map(t=>`<tr><td class="n">${esc(t.a.join('、'))}</td><td>問 ${t.needAsks} 次 → ${esc(t.exp)}</td><td>問 ${t.asks} 次 → ${esc(t.got||'（沒有說結果）')}${t.why?`<span class="why"> ${esc(t.why)}</span>`:''}</td><td class="${t.ok?'ok':'no'}">${t.ok?'✓':'✗'}</td></tr>`).join('')}</table></div>`;
+  const testsHTML=g.task==='scratch-pw'?`<div><div class="tcap">執行測試 <span>按綠旗，依序自動輸入密碼（密碼 ${esc(g.password||'137')}）· ${g.full.filter(t=>t.ok).length}/${g.full.length}</span></div>${pwTable(g.full)}</div>`:/sum$/.test(g.task)?`<div><div class="tcap">${g.task==='scratch-sum'?'執行測試 <span>按綠旗，自動回答 n':'完整流程測試 <span>從 START 輸入 n'} · ${fp}/8</span></div>${ntable(g.full)}</div>`:g.task==='scratch-bmi'?`<div><div class="tcap">執行測試 <span>按綠旗，自動回答身高 1.5 m 和體重 · ${fp}/8</span></div>${ttable(g.full,true)}</div>`:g.task==='score'||g.task==='scratch'?`<div><div class="tcap">${g.task==='scratch'?'執行測試 <span>按綠旗，自動回答四個成績':'完整流程測試 <span>從 START 輸入四個成績'} · ${fp}/8</span></div>${stable(g.full)}</div>`:`<div><div class="tcap">判斷邏輯測試 <span>直接給 BMI，從第一個判斷開始跑 · ${lp}/8</span></div>${ttable(g.logic,false)}</div>
     <div><div class="tcap">完整流程測試 <span>從開始輸入身高體重 · ${fp}/8</span></div>${ttable(g.full,true)}</div>`;
   d.innerHTML=`
   <div class="card top">
@@ -1997,7 +2182,7 @@ $('#bBatchApply').onclick=()=>{
 /* ---------- upload ---------- */
 function parseWork(text,file){
   let o; try{ o=JSON.parse(text); }catch(e){ throw new Error(file+'：不是 JSON 檔'); }
-  if(o&&o.format==='blocklab-v1'&&o.workspace){ if(o.task!=='scratch-bmi'&&o.task!=='scratch-sum') o.task='scratch'; return o; }
+  if(o&&o.format==='blocklab-v1'&&o.workspace){ if(!['scratch-bmi','scratch-sum','scratch-pw'].includes(o.task)) o.task='scratch'; return o; }
   if(!o||!Array.isArray(o.nodes)||!Array.isArray(o.edges)) throw new Error(file+'：不是流程圖畫板或積木程式的作業檔');
   o.nodes=o.nodes.filter(n=>n&&n.id!=null&&isFinite(n.x)&&isFinite(n.y)).map(n=>({...n,id:String(n.id),x:+n.x,y:+n.y,w:+n.w||140,h:+n.h||60,text:String(n.text==null?'':n.text)}));
   o.edges=o.edges.filter(e=>e&&e.from&&e.to).map(e=>({...e,from:{node:String(e.from.node),port:e.from.port},to:{node:String(e.to.node),port:e.to.port},label:String(e.label||'')}));

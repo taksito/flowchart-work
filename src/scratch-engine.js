@@ -1,7 +1,7 @@
 /* ===== Scratch-style block programs: interpreter, outline, grading (Pass or Fail) ===== */
 const SB_CAT={sc_flag:'events',sc_ask:'sensing',sc_answer:'sensing',sc_say:'looks',sc_saysecs:'looks',sc_set:'variables',sc_change:'variables',sc_var:'variables',
   sc_add:'operators',sc_sub:'operators',sc_mul:'operators',sc_div:'operators',sc_gt:'operators',sc_lt:'operators',sc_eq:'operators',sc_and:'operators',sc_or:'operators',sc_not:'operators',sc_join:'operators',sc_round:'operators',
-  sc_if:'control',sc_ifelse:'control',sc_repeat:'control',sc_until:'control',sc_wait:'control',sc_num:'operators',sc_text:'operators'};
+  sc_if:'control',sc_ifelse:'control',sc_repeat:'control',sc_until:'control',sc_stop:'control',sc_wait:'control',sc_num:'operators',sc_text:'operators'};
 const SB_COLORS={events:'#FFBF00',sensing:'#5CB1D6',looks:'#9966FF',variables:'#FF8C1A',operators:'#59C059',control:'#FFAB19'};
 const SB_CASES=(typeof SCORE_CASES!=='undefined'?SCORE_CASES:[[70,80,90,60],[60,60,60,60],[59,60,60,60],[100,100,100,0],[40,50,60,80],[0,0,0,0],[61,59,60,60],[100,90,80,70]]);
 
@@ -22,6 +22,7 @@ function sbCmp(a,b){ const na=Number(String(a).trim()), nb=Number(String(b).trim
   const x=String(a).toLowerCase(), y=String(b).toLowerCase(); return x===y?0:x<y?-1:1; }
 
 /* generator interpreter: yields {ask}|{say}|{wait}; receives answer for ask */
+const SB_STOP={stop:true};
 function* sbExec(ws,opts={}){
   const names=sbVarNames(ws), vars={}, init=opts.vars||{}; Object.values(names).forEach(n=>vars[n]=Object.prototype.hasOwnProperty.call(init,n)?init[n]:0);
   const st={answer:opts.answer!=null?String(opts.answer):'',steps:0,vars};
@@ -60,6 +61,7 @@ function* sbExec(ws,opts={}){
         case 'sc_set': { const n=sbVarOf(b,names); const v=ev(sbIn(b,'VALUE')); vars[n]=(typeof v==='boolean')?String(v):v; break; }
         case 'sc_change': { const n=sbVarOf(b,names); vars[n]=sbNum(vars[n])+sbNum(ev(sbIn(b,'BY'))); break; }
         case 'sc_wait': yield {type:'wait',secs:sbNum(ev(sbIn(b,'SECS'))),id:b.id}; break;
+        case 'sc_stop': throw SB_STOP;
         case 'sc_if': if(ev(sbIn(b,'COND'))) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); break;
         case 'sc_ifelse': if(ev(sbIn(b,'COND'))) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); else yield* run(b.inputs&&b.inputs.ELSE&&b.inputs.ELSE.block); break;
         case 'sc_repeat': { const n=Math.min(1000,Math.round(sbNum(ev(sbIn(b,'TIMES'))))); for(let i=0;i<n;i++) yield* run(b.inputs&&b.inputs.DO&&b.inputs.DO.block); break; }
@@ -69,8 +71,10 @@ function* sbExec(ws,opts={}){
     }
   }
   if(opts.value){ st.value=ev(opts.value); return st; }   /* a clicked reporter: just work out its value */
-  if(opts.start){ const b=opts.start; yield* run(b.type==='sc_flag'?b.next&&b.next.block:b); return st; }   /* a clicked stack */
-  for(const t of sbTop(ws)) if(t.type==='sc_flag') yield* run(t.next&&t.next.block);
+  try{
+    if(opts.start){ const b=opts.start; yield* run(b.type==='sc_flag'?b.next&&b.next.block:b); return st; }   /* a clicked stack */
+    for(const t of sbTop(ws)) if(t.type==='sc_flag') yield* run(t.next&&t.next.block);
+  }catch(e){ if(e!==SB_STOP) throw e; st.stopped=true; }   /* stop all */
   return st;
 }
 /* synchronous run for tests */
@@ -105,6 +109,7 @@ function sbOutline(ws){
       case 'sc_set': L(`set ${sbVarOf(b,names)} to ${r(sbIn(b,'VALUE'))}`); break;
       case 'sc_change': L(`change ${sbVarOf(b,names)} by ${r(sbIn(b,'BY'))}`); break;
       case 'sc_wait': L(`wait ${r(sbIn(b,'SECS'))} seconds`); break;
+      case 'sc_stop': L('stop all'); break;
       case 'sc_repeat': L(`repeat ${r(sbIn(b,'TIMES'))}`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
       case 'sc_until': L(`repeat until ${r(sbIn(b,'COND'))}`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;
       case 'sc_if': L(`if ${r(sbIn(b,'COND'))} then`); s(b.inputs&&b.inputs.DO&&b.inputs.DO.block,d+1,loose); lines.push({d,t:'end',c,loose}); break;

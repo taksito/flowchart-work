@@ -119,13 +119,14 @@ function gradeSum(work){
   add('計算','計數加一（例如 i = i + 1）',10,cntX?(procOK(cntX)?10:7):0,cntX?(procOK(cntX)?'':'計算要放在 PROCESS（長方形）裡'):'沒有找到讓 i 加一的步驟，例如 i = i + 1');
   /* loop 15 (sheet column 判斷) */
   const loopDec=loops.find(d=>{ const c=loopCount(d.text); return c&&[...c.vars].some(v=>inVars.includes(v)); })||decs.find(d=>{ const c=sCond(d.text); return c&&[...c.vars].some(v=>inVars.includes(v)); });
-  add('判斷','用重複或判斷控制次數（例如 repeat n、i <= n）',5,loopDec?5:ctl?2:0,loopDec?'':loops.length?'重複的次數要用 n，例如 repeat n':decs.length?'判斷要和 n 比較，例如 i <= n':'用 LOOP（重複）寫 repeat n，或用 DECISION 寫 i <= n');
+  add('判斷','用重複或判斷控制次數（例如 repeat n、i <= n）',5,loopDec?5:[...decs,...loops].some(n=>String(n.text||'').trim()&&!/^repeat$/i.test(String(n.text).trim()))?2:0,loopDec?'':loops.length?'重複的次數要用 n，例如 repeat n':decs.length?'判斷要和 n 比較，例如 i <= n':'用 LOOP（重複）寫 repeat n，或用 DECISION 寫 i <= n');
   const hasLoop=sumHasLoop(A,start);
   add('判斷','有線回到前面，形成迴圈',5,hasLoop?5:0,hasLoop?'':loops.length?'重複的最後一步要拉一條線回到 LOOP（重複）':'要從最後一步拉一條線回到判斷，讓流程重複');
   const condNodes=nodes.filter(n=>n.type!=='decision'&&/[<>]/.test(sNorm(n.text||''))&&n._r!=='calc');
   add('判斷','條件寫在 LOOP（重複）或 DECISION（菱形）裡',5,ctl&&!condNodes.length?5:ctl?3:0,!ctl?'沒有使用重複或判斷符號':condNodes.length?'有條件寫在別的符號裡':'');
   /* output 5 */
-  const outs=nodes.filter(n=>n._r==='output'), outIO=outs.find(n=>n.type==='io');
+  const said=n=>String(n.text||'').replace(/^\s*(output|輸出|print|印出|顯示|show|display)\s*[:：]?/i,'').trim();
+  const outs=nodes.filter(n=>n._r==='output'&&said(n)), outIO=outs.find(n=>n.type==='io');
   add('輸出','輸出總和',5,outIO?5:outs.length?2:0,outIO?'':outs.length?'輸出要用 OUTPUT 符號':'缺少輸出總和的步驟，例如 output sum');
   /* tests 25 */
   const full=SUM_CASES.map(n=>{ const exp=sumOf(n); if(!start) return {n,exp,got:null,ok:false,why:'沒有 START',lab:`n = ${n}`};
