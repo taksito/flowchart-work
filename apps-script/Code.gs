@@ -28,7 +28,7 @@ const CONFIG = {
   ROSTER_TAB: '名單 Roster',           // 名單工作表名稱
   CLASS_PREFIX: '7',                  // 只用這個年級的班級（例如 7 = 七年級）；留空 = 全部班級
   NTPC_OPENID: false,                 // true = 學生用新北市 OpenID（校務行政帳號）登入後才能繳交
-  NTPC_SITE: 'https://taksito.github.io/flowchart-work/',  // 作業網站網址：登入完成後回到這個網站
+  NTPC_SITE: 'https://taksito.github.io/flowchart-work/, https://raw.githack.com/taksito/flowchart-work/',  // 作業網站網址（可以用逗號分開好幾個）：登入完成後只會回到這些網站
   SHOW_SCORES: true,                  // true = 學生登入「我的成績」頁可以看到老師批改的分數與評語；false = 只看繳交狀態
   NTPC_SCHOOL: '忠孝國中',             // 只接受這所學校的師生（學校名稱或單位代碼）；留空 = 新北市所有學校
 };
@@ -360,7 +360,8 @@ const NTPC_HOURS = 4;   // a sign-in lasts this long
 function ntpcReturn_() { return ScriptApp.getService().getUrl() || ''; }
 /* the deployment id in …/macros/s/<id>/exec, so the two spellings of the same web app URL match */
 function execId_(u) { const m = String(u || '').split('?')[0].match(/^https:\/\/script\.google\.com\/(?:a\/macros\/[^/]+|macros)\/s\/([\w-]+)\/exec$/); return m ? m[1] : null; }
-function siteOrigin_() { const m = String(CONFIG.NTPC_SITE || '').match(/^https:\/\/[^/]+/); return m ? m[0] : ''; }
+function sites_() { return String(CONFIG.NTPC_SITE || '').split(/[,\s]+/).filter(function (x) { return /^https:\/\/[^/]+\//.test(x); }); }
+function originOf_(u) { const m = String(u || '').match(/^https:\/\/[^/]+/); return m ? m[0] : ''; }
 function ntpcSecret_() {
   const p = PropertiesService.getScriptProperties();
   let k = p.getProperty('NTPC_SECRET');
@@ -390,9 +391,9 @@ function ntpcLogin_(q) {
 function ntpcPage_(q) {
   let r;
   try { r = ntpcLogin_(q); } catch (err) { r = { ok: false, error: 'server_error' }; }
-  const site = String(CONFIG.NTPC_SITE || '');
+  const sites = sites_();
   let back = String(q.back || '');
-  if (!site || back.indexOf(site) !== 0) back = site;   // only ever go back to our own site
+  if (!sites.some(function (x) { return back.indexOf(x) === 0; })) back = sites[0] || '';   // only ever go back to our own site
   const msg = { type: 'ntpc-login', ok: !!r.ok, error: r.error || '' };
   if (r.ok) msg.user = { cls: r.who.cls, seat: r.who.seat, name: r.who.name, student: r.who.student, email: r.email, role: r.role, exp: r.exp, token: r.token };
   const data = JSON.stringify(msg).replace(/</g, '\\u003c');
@@ -403,7 +404,7 @@ function ntpcPage_(q) {
   const html = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<style>body{font:16px/1.6 system-ui,sans-serif;margin:0;padding:32px 20px;text-align:center;color:#1f2933}a{display:inline-block;margin-top:16px;padding:10px 18px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none}small{color:#52606d}</style>' +
     '<p>' + text + '</p>' + (link ? '<a id="back" target="_top" href="' + esc(link) + '">回到作業 Back to my work</a>' : '') +
-    '<script>(function(){var d=' + data + ',o=' + JSON.stringify(siteOrigin_()) + ',sent=false;' +
+    '<script>(function(){var d=' + data + ',o=' + JSON.stringify(originOf_(back)) + ',sent=false;' +
     'try{var w=window.top.opener;if(w&&o){w.postMessage(d,o);sent=true;}}catch(e){}' +
     'if(sent&&d.ok)setTimeout(function(){try{window.top.close();}catch(e){}},600);})();<\/script>';
   return HtmlService.createHtmlOutput(html).setTitle('新北市 OpenID 登入 Sign in');

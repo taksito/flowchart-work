@@ -13,7 +13,7 @@ window.FLOW_CONFIG = {
   submitUrl: 'https://script.google.com/macros/s/AKfycbxGpXVeRGkgVsynV9LmNhkhcyr-uTm_HO2EBEEoh5pMI8CiLQ36_EUoxbIM3wXHz_Jk/exec',
   needCode: false,
   googleClientId: '',
-  ntpcOpenId: false,
+  ntpcOpenId: true,
   emailDomain: 'apps.ntpc.edu.tw',
   classPrefix: '7',
   assignments: ['bmi', 'score', 'sum', 'scratch', 'scratch-bmi', 'scratch-sum', 'scratch-pw']
