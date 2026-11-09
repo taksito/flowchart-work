@@ -95,7 +95,6 @@ td.c .cm{font-size:10px;color:var(--muted);max-width:110px;overflow:hidden;text-
       <div class="row">
         <button class="btn" type="button" id="bImp">Import 匯入成績</button>
         <button class="btn" type="button" id="bAdd">＋ Add student 新增學生</button>
-        <button class="btn" type="button" id="bUnit">＋ Add assignment 新增作業</button>
         <button class="btn" type="button" id="bReload">Refresh 重新整理</button>
       </div>
     </div>
@@ -130,15 +129,6 @@ td.c .cm{font-size:10px;color:var(--muted);max-width:110px;overflow:hidden;text-
     <div class="row"><label class="f">No. 座號<input id="aSeat" type="number" min="1" max="99" required style="width:90px"></label>
     <label class="f">Name 姓名<input id="aName" required style="width:160px"></label></div>
     <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" value="add">Add 新增</button></div>
-  </form>
-</dialog>
-<dialog id="unitDlg">
-  <form method="dialog" id="unitForm">
-    <h2>Add assignment 新增作業<small>給在學習吧或其他地方做的作業加一欄，之後可以匯入成績。學生在「我的成績」頁看得到。</small></h2>
-    <div class="row"><label class="f">Name 作業名稱<input id="uName" required maxlength="60" placeholder="Classwork L2-3" style="width:220px"></label>
-    <label class="f">Code 代號（英文小寫、數字、-）<input id="uKey" required pattern="[a-z][a-z0-9\-]{1,30}" placeholder="cw-l2-3" style="width:140px"></label></div>
-    <p class="status" id="uSt"></p>
-    <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" id="uGo" value="go">Add 新增</button></div>
   </form>
 </dialog>
 <dialog id="impDlg">
@@ -214,7 +204,7 @@ function NtpcLogin(o){
 const $=s=>document.querySelector(s);
 const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CFG=window.FLOW_CONFIG||{}, URL_=String(CFG.submitUrl||'').trim(), KK='teach-key';
-const SHORT={dog:['Dog Talk','流程圖'],avg:['平均計算機','流程圖'],'scratch-avg':['平均計算機','積木'],bmi:['BMI','流程圖'],score:['成績及格','流程圖'],sum:['1 加到 n','流程圖'],scratch:['成績及格','積木'],'scratch-bmi':['BMI','積木'],'scratch-sum':['1 加到 n','積木'],'scratch-pw':['密碼檢查','積木']};
+const SHORT={dog:['Dog Talk','流程圖'],bmi:['BMI','流程圖'],score:['成績及格','流程圖'],sum:['1 加到 n','流程圖'],scratch:['成績及格','積木'],'scratch-bmi':['BMI','積木'],'scratch-sum':['1 加到 n','積木'],'scratch-pw':['密碼檢查','積木']};
 const SRC={auto:['自動','s-auto'],manual:['學習吧','s-manual'],override:['修改','s-override'],waiting:['待批改','s-waiting'],missing:['缺交','s-missing']};
 const SRC_LONG={auto:'系統自動批改',manual:'人工批改（學習吧）',override:'老師修改',waiting:'已繳交，等待批改',missing:'缺交'};
 const ERR={not_teacher:'This account cannot enter scores. 這個帳號不能登錄成績（只有 Code.gs 的 TEACHERS 帳號可以）。',bad_key:'Wrong teacher password. 教師密碼不對。',
@@ -300,15 +290,6 @@ $('#impForm').addEventListener('submit',async ev=>{ ev.preventDefault(); const r
 $('#keyForm').onsubmit=ev=>{ ev.preventDefault(); key=$('#key').value; $('#keySt').textContent=''; $('#keySt').classList.remove('err'); load(); };
 $('#cls').onchange=()=>load($('#cls').value);
 $('#bReload').onclick=()=>load($('#cls').value);
-$('#bUnit').onclick=()=>{ $('#uName').value=''; $('#uKey').value=''; $('#uSt').textContent=''; $('#uGo').disabled=false; $('#unitDlg').showModal(); $('#uName').focus(); };
-$('#uName').oninput=()=>{ const k=$('#uName').value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^[^a-z]+|-+$/g,'').slice(0,30); if(!$('#uKey').dataset.touched) $('#uKey').value=k; };
-$('#uKey').oninput=()=>{ $('#uKey').dataset.touched='1'; };
-$('#unitForm').addEventListener('submit',async ev=>{ ev.preventDefault(); const st=$('#uSt'), unit=$('#uKey').value.trim(), name=$('#uName').value.trim();
-  if(!unit||!name) return; $('#uGo').disabled=true; st.classList.remove('err'); st.textContent='Saving… 儲存中…';
-  try{ const res=await call({action:'unit_add',unit,name});
-    if(!res||!res.ok){ const k=res&&res.error; st.textContent=(k==='unit_exists'?'This code or name is already used. 這個代號或名稱已經有了。':k==='bad_unit'?'Code: start with a letter; only a–z, 0–9 and -. 代號要英文字母開頭，只能用小寫英文、數字和 -。':k==='unknown_action'?'Update Code.gs first (new version). 請先更新雲端程式 Code.gs（部署新版本）。':(ERR[k]||'Could not add. 新增失敗。'))+(k?'（'+k+'）':''); st.classList.add('err'); $('#uGo').disabled=false; return; }
-    delete $('#uKey').dataset.touched; $('#unitDlg').close(); toast('Added 已新增：'+name); load($('#cls').value);
-  }catch(err){ st.textContent='Cannot reach Google Drive. 連不上雲端。'; st.classList.add('err'); $('#uGo').disabled=false; } });
 $('#bAdd').onclick=()=>{ $('#aSeat').value=''; $('#aName').value=''; $('#addDlg').showModal(); $('#aSeat').focus(); };
 $('#addForm').addEventListener('submit',ev=>{ if(ev.submitter&&ev.submitter.value==='cancel') return;
   const seat=String(Number($('#aSeat').value)||''), name=$('#aName').value.trim(); if(!seat||!name){ ev.preventDefault(); return; }

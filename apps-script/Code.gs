@@ -38,15 +38,7 @@ const CONFIG = {
   NTPC_SCHOOL: '忠孝國中',             // 只接受這所學校的師生（學校名稱或單位代碼）；留空 = 新北市所有學校
 };
 
-const UNITS = Object.assign({ dog: 'Dog Talk', avg: 'Average Calculator', score: 'Pass or Fail', bmi: 'BMI', sum: 'Summation', 'scratch-avg': 'Scratch Average Calculator', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', 'scratch-sum': 'Scratch Summation', 'scratch-pw': 'Scratch Password' }, extraUnits_());
-/* Assignments the teacher adds in the Gradebook (e.g. 學習吧 classwork) are kept in Script Property EXTRA_UNITS, so no redeploy is needed. */
-function extraUnits_() {
-  try {
-    const o = JSON.parse(PropertiesService.getScriptProperties().getProperty('EXTRA_UNITS') || '{}'), out = {};
-    Object.keys(o).forEach(function (k) { if (/^[a-z][a-z0-9-]{1,30}$/.test(k) && o[k]) out[k] = String(o[k]).slice(0, 60); });
-    return out;
-  } catch (err) { return {}; }
-}
+const UNITS = { dog: 'Dog Talk', score: 'Pass or Fail', bmi: 'BMI', sum: 'Summation', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', 'scratch-sum': 'Scratch Summation', 'scratch-pw': 'Scratch Password' };
 /* Units added later work without changing this file: any short lowercase name is accepted. */
 function unitName_(u) { return UNITS[u] || (/^[a-z][a-z0-9-]{1,30}$/.test(String(u || '')) ? String(u) : null); }
 const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File', 'Email', '電腦代號 Device'];
@@ -119,7 +111,6 @@ function doPost(e) {
     if (req.action === 'save') return json_(save_(req));
     if (req.action === 'class_set') return json_(classSet_(req));
     if (req.action === 'class_import') return json_(classImport_(req));
-    if (req.action === 'unit_add') return json_(unitAdd_(req));
     return json_({ ok: false, error: 'unknown_action' });
   } catch (err) {
     return json_({ ok: false, error: 'server_error', message: String(err) });
@@ -549,19 +540,6 @@ function classSet_(req) {
   return { ok: true, unit: unitView_(x) };
 }
 /* many 學習吧 scores at once: rows of {cls, seat, name, unit, manual, comment}; existing rows are updated, the changed score is kept */
-/* Gradebook "+ Add assignment": a new column for work done elsewhere (學習吧). Built-in units cannot be renamed here. */
-function unitAdd_(req) {
-  const a = teacherAuth_(req);
-  if (a.error) return { ok: false, error: a.error };
-  const key = String(req.unit || '').trim().toLowerCase(), name = String(req.name || '').replace(/\s+/g, ' ').trim().slice(0, 60);
-  if (!/^[a-z][a-z0-9-]{1,30}$/.test(key) || !name) return { ok: false, error: 'bad_unit' };
-  const props = PropertiesService.getScriptProperties();
-  let o = {}; try { o = JSON.parse(props.getProperty('EXTRA_UNITS') || '{}'); } catch (err) {}
-  if (UNITS[key] && !o[key]) return { ok: false, error: 'unit_exists' };
-  if (Object.keys(UNITS).some(function (k) { return k !== key && UNITS[k] === name; })) return { ok: false, error: 'unit_exists' };
-  o[key] = name; props.setProperty('EXTRA_UNITS', JSON.stringify(o)); UNITS[key] = name;
-  return { ok: true, units: Object.keys(UNITS).map(function (u) { return { unit: u, name: UNITS[u] }; }) };
-}
 function classImport_(req) {
   const a = teacherAuth_(req);
   if (a.error) return { ok: false, error: a.error, email: a.email || '' };
