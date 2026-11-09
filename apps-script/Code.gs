@@ -11,6 +11,12 @@
  * - 成績試算表裡要有「名單 Roster」工作表：班級 Class｜座號 No.｜姓名 Name｜Email。
  * - 開啟後學生一定要登入才能繳交，班級座號姓名一律以名單為準。
  * - 第一次開啟後，要再執行一次 setup，允許「連線到外部服務」。
+ *
+ * 學生用新北市教育局 OpenID 登入（選用，和 Google 登入二選一）：
+ * - NTPC_OPENID 改成 true，NTPC_SITE 填作業網站的網址（登入完成後只會回到這個網站）。
+ * - NTPC_SCHOOL 填學校名稱的一部分（例如 忠孝國中），只讓這所學校的師生登入。
+ * - 不需要名單：班級、座號、姓名直接用校務行政系統的資料。
+ * - 開啟後要再執行一次 setup，允許「連線到外部服務」，再部署新版本。
  */
 const CONFIG = {
   TEACHER_KEY: 'change-me-teacher',   // 教師密碼：批改台載入作業、寫回成績時要用。請一定要改掉。
@@ -21,6 +27,9 @@ const CONFIG = {
   EMAIL_DOMAIN: 'apps.ntpc.edu.tw',   // 只接受這個網域的學校帳號
   ROSTER_TAB: '名單 Roster',           // 名單工作表名稱
   CLASS_PREFIX: '7',                  // 只用這個年級的班級（例如 7 = 七年級）；留空 = 全部班級
+  NTPC_OPENID: false,                 // true = 學生用新北市 OpenID（校務行政帳號）登入後才能繳交
+  NTPC_SITE: 'https://taksito.github.io/flowchart-work/',  // 作業網站網址：登入完成後回到這個網站
+  NTPC_SCHOOL: '忠孝國中',             // 只接受這所學校的師生（學校名稱或單位代碼）；留空 = 新北市所有學校
 };
 
 const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', sum: 'Summation', 'scratch-sum': 'Scratch Summation', 'scratch-pw': 'Scratch Password' };
@@ -33,6 +42,11 @@ const SCORE_HEAD = ['單元 Unit', '班級 Class', '座號 No.', '姓名 Name', 
 function setup() {
   const folder = rootFolder_();
   const ss = sheet_();
+  if (CONFIG.NTPC_OPENID) {
+    UrlFetchApp.fetch(NTPC_OP, { muteHttpExceptions: true });  // asks for permission to verify sign-ins
+    ntpcSecret_();
+    Logger.log('新北市 OpenID 登入已開啟。部署成網頁應用程式後，登入會回到 Return URL: ' + (ntpcReturn_() || '（部署後才有網址）'));
+  }
   if (CONFIG.GOOGLE_CLIENT_ID) {
     UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=x', { muteHttpExceptions: true });  // asks for permission to verify sign-ins
     const map = roster_(true);
@@ -43,11 +57,13 @@ function setup() {
 }
 
 /* ---------- web app ---------- */
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter['openid.mode']) return ntpcPage_(e.parameter);   // back from the NTPC OpenID sign-in
   return json_({ ok: true, app: 'Flowchart Work', units: Object.keys(UNITS) });
 }
 
 function doPost(e) {
+  if (e && e.parameter && e.parameter['openid.mode']) return ntpcPage_(e.parameter);   // the OpenID server may send long replies as a form POST
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: 'bad_request' }); }
   /* read-only actions for "Load all": no lock, so several batches can run at once */
@@ -80,7 +96,7 @@ function submit_(req) {
   const unit = unitName_(req.unit) ? req.unit : null;
   if (!unit) return { ok: false, error: 'bad_unit' };
   let who = who_(req), email = '';
-  if (CONFIG.GOOGLE_CLIENT_ID) {
+  if (loginOn_()) {
     const v = verify_(req.idToken);
     if (v.error) return { ok: false, error: v.error, email: v.email || '' };
     who = v.who; email = v.email;
@@ -256,8 +272,11 @@ function whoami_(req) {
   if (v.error) return { ok: false, error: v.error, email: v.email || '' };
   return { ok: true, email: v.email, who: v.who, exp: v.exp };
 }
+function loginOn_() { return !!(CONFIG.GOOGLE_CLIENT_ID || CONFIG.NTPC_OPENID); }
 function verify_(token) {
   if (!token) return { error: 'login_required' };
+  if (String(token).indexOf('ntpc.') === 0) return CONFIG.NTPC_OPENID ? ntpcVerify_(token) : { error: 'login_off' };
+  if (!CONFIG.GOOGLE_CLIENT_ID) return { error: 'bad_token' };
   const r = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(token), { muteHttpExceptions: true });
   if (r.getResponseCode() !== 200) return { error: 'login_expired' };
   const p = JSON.parse(r.getContentText());
@@ -284,6 +303,126 @@ function roster_(fresh) {
   }
   try { cache.put('roster', JSON.stringify(map), 600); } catch (err) {}
   return map;
+}
+
+/* ---------- sign-in with 新北市教育局 OpenID (OpenID 2.0) ---------- */
+const NTPC_OP = 'https://openid.ntpc.edu.tw/OpenId/Provider';
+const NTPC_SREG = 'http://openid.net/extensions/sreg/1.1';
+const NTPC_HOURS = 4;   // a sign-in lasts this long
+function ntpcReturn_() { return ScriptApp.getService().getUrl() || ''; }
+/* the deployment id in …/macros/s/<id>/exec, so the two spellings of the same web app URL match */
+function execId_(u) { const m = String(u || '').split('?')[0].match(/^https:\/\/script\.google\.com\/(?:a\/macros\/[^/]+|macros)\/s\/([\w-]+)\/exec$/); return m ? m[1] : null; }
+function siteOrigin_() { const m = String(CONFIG.NTPC_SITE || '').match(/^https:\/\/[^/]+/); return m ? m[0] : ''; }
+function ntpcSecret_() {
+  const p = PropertiesService.getScriptProperties();
+  let k = p.getProperty('NTPC_SECRET');
+  if (!k) { k = Utilities.getUuid() + Utilities.getUuid(); p.setProperty('NTPC_SECRET', k); }
+  return k;
+}
+function b64_(s) { return Utilities.base64EncodeWebSafe(s, Utilities.Charset.UTF_8).replace(/=+$/, ''); }
+function unb64_(s) { return Utilities.newBlob(Utilities.base64DecodeWebSafe(String(s) + '==='.slice((String(s).length + 3) % 4))).getDataAsString('UTF-8'); }
+function sign_(s) { return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(s, ntpcSecret_())).replace(/=+$/, ''); }
+
+/* The OpenID server sends the student back here; check the reply with the server, then hand out our own signed sign-in. */
+function ntpcLogin_(q) {
+  if (!CONFIG.NTPC_OPENID) return { ok: false, error: 'login_off' };
+  const r = ntpcCheck_(q, function (body) {
+    return UrlFetchApp.fetch(NTPC_OP, { method: 'post', payload: body, muteHttpExceptions: true }).getContentText();
+  }, function (nonce) {
+    const c = CacheService.getScriptCache(), k = 'nonce:' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, nonce));
+    if (c.get(k)) return false;
+    c.put(k, '1', 21600); return true;
+  });
+  if (r.error) return { ok: false, error: r.error };
+  const exp = Math.floor(Date.now() / 1000) + NTPC_HOURS * 3600;
+  const body = b64_(JSON.stringify({ c: r.who.cls, s: r.who.seat, n: r.who.name, a: r.account, r: r.role, e: exp }));
+  return { ok: true, email: r.account, who: r.who, role: r.role, exp: exp, token: 'ntpc.' + body + '.' + sign_(body) };
+}
+/* the small page the student sees after signing in: it passes the result to the work page and closes */
+function ntpcPage_(q) {
+  let r;
+  try { r = ntpcLogin_(q); } catch (err) { r = { ok: false, error: 'server_error' }; }
+  const site = String(CONFIG.NTPC_SITE || '');
+  let back = String(q.back || '');
+  if (!site || back.indexOf(site) !== 0) back = site;   // only ever go back to our own site
+  const msg = { type: 'ntpc-login', ok: !!r.ok, error: r.error || '' };
+  if (r.ok) msg.user = { cls: r.who.cls, seat: r.who.seat, name: r.who.name, student: r.who.student, email: r.email, role: r.role, exp: r.exp, token: r.token };
+  const data = JSON.stringify(msg).replace(/</g, '\\u003c');
+  const link = back ? back.split('#')[0] + '#ntpc=' + b64_(JSON.stringify(msg)) : '';
+  const esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  const text = r.ok ? '✓ 登入成功 Signed in：' + esc(r.who.student || r.who.name) + '<br><small>這個視窗會自動關閉。This window will close.</small>'
+    : '登入沒有成功 Sign-in failed（' + esc(r.error) + '）<br><small>' + esc(NTPC_MSG[r.error] || '請再試一次，或告訴老師。') + '</small>';
+  const html = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<style>body{font:16px/1.6 system-ui,sans-serif;margin:0;padding:32px 20px;text-align:center;color:#1f2933}a{display:inline-block;margin-top:16px;padding:10px 18px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none}small{color:#52606d}</style>' +
+    '<p>' + text + '</p>' + (link ? '<a id="back" target="_top" href="' + esc(link) + '">回到作業 Back to my work</a>' : '') +
+    '<script>(function(){var d=' + data + ',o=' + JSON.stringify(siteOrigin_()) + ',sent=false;' +
+    'try{var w=window.top.opener;if(w&&o){w.postMessage(d,o);sent=true;}}catch(e){}' +
+    'if(sent&&d.ok)setTimeout(function(){try{window.top.close();}catch(e){}},600);})();<\/script>';
+  return HtmlService.createHtmlOutput(html).setTitle('新北市 OpenID 登入 Sign in');
+}
+const NTPC_MSG = {
+  ntpc_cancel: '你取消了登入。You cancelled the sign-in.',
+  not_school: '這個帳號不是本校的學生或老師。This account is not from our school.',
+  bad_openid: '登入驗證失敗，請重新登入。Please sign in again.',
+  login_expired: '登入逾時，請重新登入。Please sign in again.',
+  ntpc_no_data: '沒有收到姓名資料，請在授權畫面按「同意」。Please allow sharing your profile.',
+  ntpc_no_class: '校務行政系統裡沒有你的班級座號，請告訴老師。Your class is missing; tell your teacher.',
+  login_off: '老師還沒開啟登入功能。Sign-in is not turned on yet.'
+};
+function ntpcVerify_(token) {
+  const p = String(token).split('.');
+  if (p.length !== 3 || sign_(p[1]) !== p[2]) return { error: 'bad_token' };
+  let d; try { d = JSON.parse(unb64_(p[1])); } catch (err) { return { error: 'bad_token' }; }
+  if (Number(d.e) * 1000 < Date.now()) return { error: 'login_expired' };
+  return { email: d.a, exp: d.e, who: who_({ cls: d.c, seat: d.s, name: d.n }) };
+}
+
+/* Pure checks, kept apart from Google services so they can be tested. post(body) returns the server's reply; fresh(nonce) is false for a reused nonce. */
+function ntpcCheck_(q, post, fresh) {
+  const g = function (k) { return q['openid.' + k] == null ? '' : String(q['openid.' + k]); };
+  if (g('mode') === 'cancel') return { error: 'ntpc_cancel' };
+  if (g('mode') !== 'id_res' || g('ns') !== 'http://specs.openid.net/auth/2.0') return { error: 'bad_openid' };
+  if (g('op_endpoint') !== NTPC_OP) return { error: 'bad_openid' };
+  if (!execId_(g('return_to')) || execId_(g('return_to')) !== execId_(ntpcReturn_())) return { error: 'bad_openid' };
+  if (!/^https:\/\/openid\.ntpc\.edu\.tw\//.test(g('claimed_id'))) return { error: 'bad_openid' };
+  const m = g('response_nonce').match(/^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)/);
+  if (!m || Math.abs(Date.now() - Date.parse(m[1])) > 10 * 60 * 1000) return { error: 'login_expired' };
+  /* the sreg alias the server used (usually "sreg") */
+  let alias = '';
+  Object.keys(q).forEach(function (k) { const a = k.match(/^openid\.ns\.(\w+)$/); if (a && String(q[k]) === NTPC_SREG) alias = a[1]; });
+  if (!alias) return { error: 'ntpc_no_data' };
+  const signed = ',' + g('signed') + ',';
+  const need = ['op_endpoint', 'return_to', 'response_nonce', 'assoc_handle', 'claimed_id', 'identity', alias + '.fullname', alias + '.timezone'];
+  if (need.some(function (k) { return signed.indexOf(',' + k + ',') < 0; })) return { error: 'bad_openid' };
+  if (q['openid.' + alias + '.language'] != null && signed.indexOf(',' + alias + '.language,') < 0) return { error: 'bad_openid' };
+  /* ask the OpenID server whether it really signed this */
+  const body = {};
+  Object.keys(q).forEach(function (k) { if (/^openid\./.test(k)) body[k] = String(q[k]); });
+  body['openid.mode'] = 'check_authentication';
+  if (!/(^|\n)is_valid:true(\r?\n|$)/.test(String(post(body) || ''))) return { error: 'bad_openid' };
+  if (!fresh(g('response_nonce') + '|' + g('claimed_id'))) return { error: 'bad_openid' };
+  /* who it is */
+  const sr = function (k) { return g(alias + '.' + k).trim(); };
+  let places = [];
+  try { places = JSON.parse(sr('timezone') || '[]'); } catch (err) { places = []; }
+  if (!Array.isArray(places)) places = [places];
+  const school = String(CONFIG.NTPC_SCHOOL || '').trim();
+  const short = function (t) { return String(t || '').replace(/國民中學/g, '國中').replace(/國民小學/g, '國小').replace(/\s/g, ''); };   // 新北市立忠孝國民中學 → 新北市立忠孝國中
+  const here = places.filter(function (x) { return x && (!school || short(x.name).indexOf(short(school)) >= 0 || String(x.id || '') === school); });
+  if (!here.length) return { error: 'not_school' };
+  const roles = here.map(function (x) { return String(x.role || ''); });
+  const role = roles.indexOf('學生') >= 0 ? '學生' : roles.indexOf('教師') >= 0 ? '教師' : roles.indexOf('管理員') >= 0 ? '管理員' : '';
+  if (!role) return { error: 'not_school' };
+  const name = sr('fullname') || sr('nickname');
+  if (!name) return { error: 'ntpc_no_data' };
+  let cls = '', seat = '';
+  const lang = sr('language').match(/^(\d{2})(\d{2})(\d{2})/);
+  if (role === '學生') {
+    if (!lang) return { error: 'ntpc_no_class' };
+    cls = String(Number(lang[1])) + lang[2]; seat = String(Number(lang[3]));
+  }
+  const account = g('claimed_id').replace(/\/+$/, '').split('/').pop();
+  return { who: who_({ cls: cls, seat: seat, name: name }), role: role, account: account };
 }
 
 /* ---------- helpers ---------- */

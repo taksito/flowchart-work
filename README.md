@@ -128,9 +128,11 @@ The Scratch units use the same three steps: **1. Blocks 積木 60** (the right k
 Optional. Students press **Submit 繳交** to send their work to the teacher's Google Drive, and the Grading Desk can load the whole class from Drive and write scores back to a Google Sheet. It runs on a free Google Apps Script that the teacher deploys once.
 選用功能：學生按「Submit 繳交」，作業直接存進老師的 Google Drive；批改台可以從雲端一次載入全班作業，再把成績寫回 Google 試算表。
 
+Students can be asked to sign in first, with either their school Google account or their 新北市 OpenID (校務行政帳號). 可以要求學生先登入再繳交：學校 Google 帳號，或新北市 OpenID（校務行政帳號）。
+
 Setup 設定步驟：[GOOGLE-DRIVE.md](GOOGLE-DRIVE.md) · Script：[`apps-script/Code.gs`](apps-script/Code.gs) · Settings：[`config.js`](config.js)
 
 ## Privacy 隱私
 
-Everything runs in the browser. Unless the teacher sets up Google Drive, drawings and uploaded work stay in that browser's local storage. With Google Drive, submitted work goes only to the teacher's own Drive.
+Everything runs in the browser. Unless the teacher sets up Google Drive, drawings and uploaded work stay in that browser's local storage. With Google Drive, submitted work goes only to the teacher's own Drive. With 新北市 OpenID sign-in, only the name, class, seat number and account name are kept with the work; the password never reaches this site. 使用新北市 OpenID 登入時，只保留姓名、班級座號和帳號名稱，密碼不會經過本網站。
 所有功能都在瀏覽器裡執行。沒有設定 Google Drive 時，作品只存在該瀏覽器；設定後，繳交的作業只會送到老師自己的 Google Drive。

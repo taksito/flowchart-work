@@ -87,6 +87,27 @@ window.FLOW_CONFIG = {
 - 要關掉登入，把 `Code.gs` 的 `GOOGLE_CLIENT_ID` 和 `config.js` 的 `googleClientId` 都改回空白即可。
 - 繳交紀錄會多一欄 Email；作業檔以名單上的「班級-座號 姓名」命名。
 
+## Student sign-in with NTPC OpenID 學生用新北市 OpenID 登入（選用）
+
+開啟後，學生繳交前要先用**新北市校務行政系統的帳號密碼**登入（新北市教育局 OpenID），班級、座號、姓名直接用校務行政系統的資料，學生不能自己改，也**不需要名單**。不用向教育局申請，也不需要 Google Cloud 設定。
+
+1. **Apps Script**：貼上新版 `Code.gs`，改回自己的 `TEACHER_KEY`，再改 `CONFIG`：
+   - `NTPC_OPENID: true`
+   - `NTPC_SITE`：作業網站的網址，例如 `https://taksito.github.io/flowchart-work/`（登入完成後只會回到這個網站）
+   - `NTPC_SCHOOL`：學校名稱，例如 `忠孝國中`（「新北市立忠孝國民中學」也對得上），只讓這所學校的師生登入；也可以填單位代碼
+2. 選 `setup` 按「執行」，允許「連線到外部服務」。
+3. **部署 → 管理部署作業 → ✏️ 編輯 → 版本選「新版本」→ 部署**（網址不變）。
+4. **config.js**：`ntpcOpenId: false` 改成 `ntpcOpenId: true`。
+
+學生按 **Submit 繳交** → **新北市 OpenID 登入** → 在跳出的視窗輸入校務行政帳號密碼 → 第一次會出現授權畫面，按「同意」→ 視窗自動關閉，就能繳交。同一個分頁裡換別的作業不用再登入；登入 4 小時後過期。
+
+注意：
+
+- 授權畫面上顯示的網站是 Apps Script 的網址（script.google.com/…），這是正常的：登入結果由它向教育局伺服器確認。
+- 只有「學生」「教師」「管理員」身分可以登入（家長、志工不行）。老師登入繳交的作業會放在「其他 Other」，可以用來測試。
+- 瀏覽器擋掉彈出視窗時，會改成在同一頁登入；登入完按「回到作業」即可（作品存在瀏覽器裡，不會不見）。
+- 要關掉，把 `Code.gs` 的 `NTPC_OPENID` 和 `config.js` 的 `ntpcOpenId` 都改回 `false`。和 Google 登入二選一，兩個都開時用新北市 OpenID。
+
 ## Updating the script 之後修改程式
 
 > 新增 Scratch 單元後，`Code.gs` 多了 `scratch` 單元。之前部署過的人要貼上新版 `Code.gs`（記得改回自己的 `TEACHER_KEY`），再部署新版本，學生才能從 Scratch Lab 繳交。
