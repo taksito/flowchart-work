@@ -110,6 +110,7 @@ function doPost(e) {
     if (req.action === 'rename') return json_(rename_(req));
     if (req.action === 'save') return json_(save_(req));
     if (req.action === 'class_set') return json_(classSet_(req));
+    if (req.action === 'class_import') return json_(classImport_(req));
     return json_({ ok: false, error: 'unknown_action' });
   } catch (err) {
     return json_({ ok: false, error: 'server_error', message: String(err) });
@@ -413,11 +414,11 @@ function mineUnits_(who, subRows, scoreRows, names, manualRows) {
     out[u].total = String(x[5]).trim() === '' ? '' : num_(x[5]); out[u].level = String(x[6] || ''); out[u].fixes = String(x[14] || ''); out[u].comment = String(x[15] || ''); out[u].graded = iso(x[16]);
   }
   /* the auto-graded score: what the Grading Desk wrote back, otherwise the score the page gave when the work was handed in */
-  Object.keys(out).forEach(function (u) { const x = out[u]; x.auto = x.total !== '' ? x.total : (x.submitted ? x.self : ''); x.manual = ''; x.override = ''; });
+  Object.keys(out).forEach(function (u) { const x = out[u]; x.auto = x.total !== '' ? x.total : (x.submitted ? x.self : ''); x.manual = ''; x.override = ''; x.mcomment = ''; });
   (manualRows || []).slice(1).forEach(function (x) {
     const u = byName[String(x[3])];
     if (!u || seatKey(x[0], x[1]) !== me) return;
-    out[u].manual = score_(x[4]); out[u].override = score_(x[5]);
+    out[u].manual = score_(x[4]); out[u].override = score_(x[5]); out[u].mcomment = String(x[8] == null ? '' : x[8]).trim();
   });
   return Object.keys(out).map(function (u) { return Object.assign(out[u], finalOf_(out[u])); });
 }
@@ -436,11 +437,11 @@ function finalOf_(x) {
 }
 
 /* ---------- 成績登錄 Gradebook page: one teacher enters 學習吧 scores and changes final scores ---------- */
-const MANUAL_HEAD = ['班級 Class', '座號 No.', '姓名 Name', '單元 Unit', '學習吧分數 Manual', '老師修改 Override', '更新時間 Updated', '更新者 By'];
+const MANUAL_HEAD = ['班級 Class', '座號 No.', '姓名 Name', '單元 Unit', '學習吧分數 Manual', '老師修改 Override', '更新時間 Updated', '更新者 By', '評語 Comment'];
 function manualTab_() {
   const ss = sheet_();
   let sh = ss.getSheetByName(CONFIG.MANUAL_TAB);
-  if (sh) return sh;
+  if (sh) { if (String(sh.getRange(1, 9).getValue()) !== MANUAL_HEAD[8]) sh.getRange(1, 9).setValue(MANUAL_HEAD[8]).setFontWeight('bold'); return sh; }
   sh = ss.insertSheet(CONFIG.MANUAL_TAB);
   sh.getRange(1, 1, 1, MANUAL_HEAD.length).setValues([MANUAL_HEAD]).setFontWeight('bold');
   sh.setFrozenRows(1);
@@ -505,11 +506,14 @@ function classTable_(cls, d) {
   return Object.keys(seats).sort(function (a, b) { return Number(a) - Number(b) || a.localeCompare(b); }).map(function (k) {
     const who = { cls: cls, seat: k, name: seats[k] };
     return { cls: cls, seat: k, name: seats[k], units: mineUnits_(who, d.sub, d.sc, d.names, d.man).map(function (x) {
-      return { unit: x.unit, submitted: x.submitted, auto: x.auto, total: x.total, manual: x.manual, override: x.override, final: x.final, source: x.source };
+      return unitView_(x);
     }) };
   });
 }
-/* write one student's 學習吧 score and/or changed score for one unit ('' clears it) */
+/* what the Gradebook page needs to know about one unit of one student */
+function unitView_(x) { return { unit: x.unit, submitted: x.submitted, auto: x.auto, total: x.total, manual: x.manual, override: x.override, mcomment: x.mcomment || '', final: x.final, source: x.source }; }
+const clip_ = function (t) { return String(t == null ? '' : t).replace(/[\r\n\t]+/g, ' ').trim().slice(0, 300); };
+/* write one student's 學習吧 score, changed score and comment for one unit ('' clears it) */
 function classSet_(req) {
   const a = teacherAuth_(req);
   if (a.error) return { ok: false, error: a.error, email: a.email || '' };
@@ -517,7 +521,7 @@ function classSet_(req) {
   const cls = clean_(req.cls), seat = String(Number(req.seat) || ''), name = clean_(req.name);
   if (!u || !/^\d+$/.test(cls) || !seat) return { ok: false, error: 'bad_request' };
   const val = function (v) { const t = String(v == null ? '' : v).trim(); if (t === '') return ''; const n = Number(t); return isFinite(n) && n >= 0 && n <= 100 ? Math.round(n * 10) / 10 : null; };
-  const man = val(req.manual), ovr = val(req.override);
+  const man = val(req.manual), ovr = val(req.override), com = clip_(req.comment);
   if (man === null || ovr === null) return { ok: false, error: 'bad_score' };
   const sh = manualTab_(), rows = sh.getDataRange().getValues();
   let at = 0;
@@ -525,15 +529,39 @@ function classSet_(req) {
     if (String(rows[r][0]).trim() === cls && String(Number(rows[r][1])) === seat && String(rows[r][3]) === UNITS[u]) { at = r + 1; break; }
   }
   const keepName = name || (at ? String(rows[at - 1][2] || '') : '');
-  if (man === '' && ovr === '') { if (at) sh.deleteRow(at); }
+  if (man === '' && ovr === '' && com === '') { if (at) sh.deleteRow(at); }
   else {
-    const row = [cls, seat, keepName, UNITS[u], man, ovr, new Date(), a.email];
+    const row = [cls, seat, keepName, UNITS[u], man, ovr, new Date(), a.email, com];
     if (at) sh.getRange(at, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
   }
   const ss = sheet_(), sc = ss.getSheetByName('成績 Scores');
   const x = mineUnits_({ cls: cls, seat: seat, name: keepName }, subRows_(), sc ? sc.getDataRange().getValues() : [], function (v) { return workNames_(v); }, manualRows_())
     .filter(function (y) { return y.unit === u; })[0];
-  return { ok: true, unit: { unit: u, submitted: x.submitted, auto: x.auto, total: x.total, manual: x.manual, override: x.override, final: x.final, source: x.source } };
+  return { ok: true, unit: unitView_(x) };
+}
+/* many 學習吧 scores at once: rows of {cls, seat, name, unit, manual, comment}; existing rows are updated, the changed score is kept */
+function classImport_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const list = Array.isArray(req.rows) ? req.rows.slice(0, 1000) : [];
+  if (!list.length) return { ok: false, error: 'bad_request' };
+  const sh = manualTab_(), data = sh.getDataRange().getValues(), now = new Date();
+  while (data.length && data[0].length < MANUAL_HEAD.length) data[0].push('');
+  data.forEach(function (r) { while (r.length < MANUAL_HEAD.length) r.push(''); });
+  const index = {};
+  for (let r = 1; r < data.length; r++) index[[String(data[r][0]).trim(), String(Number(data[r][1])), String(data[r][3])].join('|')] = r;
+  let added = 0, updated = 0; const skipped = [];
+  list.forEach(function (x, i) {
+    const u = UNITS[x.unit] ? x.unit : null, cls = clean_(x.cls), seat = String(Number(x.seat) || ''), t = String(x.manual == null ? '' : x.manual).trim(), n = Number(t);
+    if (!u || !/^\d+$/.test(cls) || !seat || (t !== '' && !(isFinite(n) && n >= 0 && n <= 100))) { skipped.push(i + 1); return; }
+    const man = t === '' ? '' : Math.round(n * 10) / 10, com = clip_(x.comment), k = [cls, seat, UNITS[u]].join('|');
+    if (man === '' && com === '') { skipped.push(i + 1); return; }
+    if (index[k] !== undefined) { const row = data[index[k]]; row[2] = clean_(x.name) || row[2]; row[4] = man; row[6] = now; row[7] = a.email; row[8] = com; updated++; }
+    else { data.push([cls, seat, clean_(x.name), UNITS[u], man, '', now, a.email, com]); index[k] = data.length - 1; added++; }
+  });
+  sh.getRange(1, 1, data.length, MANUAL_HEAD.length).setValues(data);
+  sh.getRange(1, 1, 1, MANUAL_HEAD.length).setValues([MANUAL_HEAD]).setFontWeight('bold');
+  return { ok: true, added: added, updated: updated, skipped: skipped };
 }
 
 /* ---------- sign-in with 新北市教育局 OpenID (OpenID 2.0) ---------- */

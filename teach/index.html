@@ -47,7 +47,7 @@ thead th small{display:block;color:var(--muted);font-weight:400}
 th.seat,td.seat{position:sticky;left:0;background:var(--panel);z-index:1;width:48px;font-family:"JetBrains Mono",monospace;color:var(--muted)}
 th.name,td.name{position:sticky;left:48px;background:var(--panel);z-index:1;text-align:left;padding:0 12px;border-right:1px solid var(--line);min-width:96px}
 thead th.seat,thead th.name{z-index:3}
-td.c button{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;min-width:92px;height:56px;cursor:pointer;padding:4px}
+td.c button{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;min-width:92px;min-height:56px;cursor:pointer;padding:4px}
 td.c button:hover,td.c button:focus-visible{background:var(--soft)}
 td.c button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 td.c .n{font-family:"JetBrains Mono",monospace;font-size:17px;font-weight:500}
@@ -62,6 +62,9 @@ dialog h2{margin:0;font-size:18px}dialog h2 small{display:block;font-size:13px;c
 .sys{font-size:14px;padding:10px 12px;border-radius:10px;background:var(--soft)}
 .fin{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.fin b{font-family:"JetBrains Mono",monospace;font-size:20px}
 dialog input[type=number]{width:120px}
+dialog textarea{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);width:100%;resize:vertical}
+td.c .cm{font-size:10px;color:var(--muted);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#impText{width:100%;min-height:180px;font-family:"JetBrains Mono",monospace;font-size:12px}
 .hint{font-size:12px;color:var(--muted)}
 .acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:8px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
@@ -90,6 +93,7 @@ dialog input[type=number]{width:120px}
         <div class="counts" id="counts" aria-live="polite"></div>
       </div>
       <div class="row">
+        <button class="btn" type="button" id="bImp">Import 匯入成績</button>
         <button class="btn" type="button" id="bAdd">＋ Add student 新增學生</button>
         <button class="btn" type="button" id="bReload">Refresh 重新整理</button>
       </div>
@@ -113,6 +117,7 @@ dialog input[type=number]{width:120px}
     <label class="f">老師修改分數 Changed score
       <input id="dOvr" type="number" min="0" max="100" step="0.5" inputmode="decimal">
       <span class="hint">Filled in = this is the final score. 有填就以這個為準；留空 = 取系統與學習吧較高的分數。</span></label>
+    <label class="f">評語 Comment（學生看得到）<textarea id="dCom" rows="2" maxlength="300" placeholder="例：broadcast 沒寫 eat"></textarea></label>
     <div class="fin">Final 最後成績 <b id="dFin">–</b><span id="dSrc"></span></div>
     <p class="status" id="dSt"></p>
     <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" id="dSave" value="save">Save 儲存</button></div>
@@ -124,6 +129,16 @@ dialog input[type=number]{width:120px}
     <div class="row"><label class="f">No. 座號<input id="aSeat" type="number" min="1" max="99" required style="width:90px"></label>
     <label class="f">Name 姓名<input id="aName" required style="width:160px"></label></div>
     <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" value="add">Add 新增</button></div>
+  </form>
+</dialog>
+<dialog id="impDlg">
+  <form method="dialog" id="impForm">
+    <h2>Import scores 匯入成績<small>例如學習吧人工批改的分數。已經有的會更新，「老師修改分數」不會被動到。</small></h2>
+    <label class="f">Assignment 作業<select id="impUnit"></select></label>
+    <label class="f">從 Excel 複製貼上：班級、座號、姓名、分數、評語（一行一位，用 Tab 分開；第一行是標題也沒關係）
+      <textarea id="impText" placeholder="705	3	王小明	85	broadcast 沒寫 eat"></textarea></label>
+    <p class="status" id="impSt"></p>
+    <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" id="impGo" value="go">Import 匯入</button></div>
   </form>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
@@ -223,7 +238,7 @@ async function load(cls){
   finally{ busy=false; }
 }
 function cell(s,u){ const x=s.units.find(y=>y.unit===u.unit)||{source:'missing'}; const t=SRC[x.source]||SRC.missing;
-  return `<td class="c" data-seat="${e(s.seat)}" data-unit="${e(u.unit)}"><button type="button" aria-label="${e(s.seat+' '+s.name+' '+u.name)}"><span class="n">${has(x.final)?e(x.final):'—'}</span><span class="chip ${t[1]}">${t[0]}</span></button></td>`; }
+  return `<td class="c" data-seat="${e(s.seat)}" data-unit="${e(u.unit)}"><button type="button" aria-label="${e(s.seat+' '+s.name+' '+u.name)}"><span class="n">${has(x.final)?e(x.final):'—'}</span><span class="chip ${t[1]}">${t[0]}</span>${x.mcomment?`<span class="cm" title="${e(x.mcomment)}">💬 ${e(x.mcomment)}</span>`:''}</button></td>`; }
 function render(){
   const U=data.units, S=data.students;
   $('#th').innerHTML=`<tr><th class="seat">No.<small>座號</small></th><th class="name">Name<small>姓名</small></th>${U.map(u=>`<th>${e((SHORT[u.unit]||[u.name])[0])}<small>${e((SHORT[u.unit]||['',''])[1])}</small></th>`).join('')}</tr>`;
@@ -238,7 +253,7 @@ $('#tb').addEventListener('click',ev=>{ const td=ev.target.closest('td.c'); if(!
   $('#dTitle').innerHTML=`${e(data.cls+'-'+s.seat+' '+(s.name||''))}<small>${e(SHORT[u.unit]?SHORT[u.unit][0]+'（'+SHORT[u.unit][1]+'）':u.name)}</small>`;
   const au=x.auto!==undefined?x.auto:x.total;
   $('#dSys').textContent='系統 flowchart-work：'+(has(au)?`自動批改 ${au} 分`:x.submitted?'已繳交（沒有分數）':'沒有在系統繳交');
-  $('#dMan').value=has(x.manual)?x.manual:''; $('#dOvr').value=has(x.override)?x.override:''; $('#dSt').textContent=''; $('#dSave').disabled=false;
+  $('#dMan').value=has(x.manual)?x.manual:''; $('#dOvr').value=has(x.override)?x.override:''; $('#dCom').value=x.mcomment||''; $('#dSt').textContent=''; $('#dSave').disabled=false;
   preview(); $('#dlg').showModal(); $('#dMan').focus(); });
 function preview(){ if(!cur) return; const f=finalOf({auto:cur.x.auto,total:cur.x.total,submitted:cur.x.submitted,manual:$('#dMan').value.trim(),override:$('#dOvr').value.trim()});
   $('#dFin').textContent=has(f.final)?f.final:'—'; const t=SRC[f.source]; $('#dSrc').innerHTML=`<span class="chip ${t[1]}">${e(SRC_LONG[f.source])}</span>`; }
@@ -246,11 +261,11 @@ $('#dMan').oninput=preview; $('#dOvr').oninput=preview;
 $('#dlgForm').addEventListener('submit',async ev=>{
   if(ev.submitter&&ev.submitter.value==='cancel') return;
   ev.preventDefault(); if(!cur) return;
-  const man=$('#dMan').value.trim(), ovr=$('#dOvr').value.trim();
+  const man=$('#dMan').value.trim(), ovr=$('#dOvr').value.trim(), com=$('#dCom').value.trim();
   if((man!==''&&!(Number(man)>=0&&Number(man)<=100))||(ovr!==''&&!(Number(ovr)>=0&&Number(ovr)<=100))){ $('#dSt').textContent=ERR.bad_score; $('#dSt').classList.add('err'); return; }
   $('#dSave').disabled=true; $('#dSt').classList.remove('err'); $('#dSt').textContent='Saving… 儲存中…';
   const {s,u,td}=cur;
-  try{ const res=await call({action:'class_set',cls:data.cls,seat:s.seat,name:s.name,unit:u.unit,manual:man,override:ovr});
+  try{ const res=await call({action:'class_set',cls:data.cls,seat:s.seat,name:s.name,unit:u.unit,manual:man,override:ovr,comment:com});
     if(!res||!res.ok){ const k=res&&res.error; if(k==='login_expired'||k==='bad_token'){ $('#dlg').close(); LOGIN.expired(); return; }
       $('#dSt').textContent=(ERR[k]||'Could not save. 儲存失敗。')+(k?'（'+k+'）':''); $('#dSt').classList.add('err'); $('#dSave').disabled=false; return; }
     const i=s.units.findIndex(y=>y.unit===u.unit); s.units[i]=res.unit;
@@ -260,6 +275,18 @@ $('#dlgForm').addEventListener('submit',async ev=>{
 });
 $('#dlg').addEventListener('close',()=>{ cur=null; });
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+/* import: paste rows copied from Excel (class, seat, name, score, comment) */
+function impRows(){ return $('#impText').value.split(/\r?\n/).map(l=>l.split('\t').map(x=>x.trim())).filter(c=>c.length>=4&&/^\d{3}$/.test(c[0])&&/^\d+$/.test(c[1]))
+  .map(c=>({cls:c[0],seat:String(Number(c[1])),name:c[2]||'',unit:$('#impUnit').value,manual:c[3]||'',comment:c[4]||''})); }
+$('#bImp').onclick=()=>{ $('#impUnit').innerHTML=data.units.map(u=>`<option value="${e(u.unit)}">${e(SHORT[u.unit]?SHORT[u.unit][0]+'（'+SHORT[u.unit][1]+'）':u.name)}</option>`).join(''); $('#impSt').textContent=''; $('#impGo').disabled=false; $('#impDlg').showModal(); $('#impText').focus(); };
+$('#impText').oninput=()=>{ const n=impRows().length; $('#impSt').classList.remove('err'); $('#impSt').textContent=n?`${n} rows ready 準備匯入 ${n} 筆`:''; };
+$('#impForm').addEventListener('submit',async ev=>{ ev.preventDefault(); const rows=impRows(), st=$('#impSt');
+  if(!rows.length){ st.textContent='No rows found. 找不到資料：每行要有 班級(3位數)、座號、姓名、分數。'; st.classList.add('err'); return; }
+  $('#impGo').disabled=true; st.classList.remove('err'); st.textContent=`Importing ${rows.length}… 匯入中…`;
+  try{ const res=await call({action:'class_import',rows});
+    if(!res||!res.ok){ const k=res&&res.error; st.textContent=(ERR[k]||'Import failed. 匯入失敗。')+(k?'（'+k+'）':''); st.classList.add('err'); $('#impGo').disabled=false; return; }
+    $('#impDlg').close(); toast(`Imported 已匯入：新增 ${res.added}、更新 ${res.updated}${res.skipped&&res.skipped.length?`、略過 ${res.skipped.length}`:''}`); load($('#cls').value);
+  }catch(err){ st.textContent='Cannot reach Google Drive. 連不上雲端。'; st.classList.add('err'); $('#impGo').disabled=false; } });
 $('#keyForm').onsubmit=ev=>{ ev.preventDefault(); key=$('#key').value; $('#keySt').textContent=''; $('#keySt').classList.remove('err'); load(); };
 $('#cls').onchange=()=>load($('#cls').value);
 $('#bReload').onclick=()=>load($('#cls').value);

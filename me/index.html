@@ -223,7 +223,8 @@ function show(res){
       if(x.time) meta.push('<span>Handed in 繳交 '+e(when(x.time))+'</span>');
       if(x.self!==''&&x.self!=null) meta.push('<span>Self-check 自我批改 <span class="score">'+e(x.self)+'</span></span>');
     }
-    const note=x.source==='auto'&&res.scores&&(x.comment||x.fixes)?`<div class="note">${x.comment?'<b>Comment 評語：</b>'+e(x.comment):''}${x.comment&&x.fixes?'<br>':''}${x.fixes?'<b>Fix 需要修正：</b>'+e(x.fixes):''}</div>`:'';
+    const note=x.source==='auto'&&res.scores&&(x.comment||x.fixes)?`<div class="note">${x.comment?'<b>Comment 評語：</b>'+e(x.comment):''}${x.comment&&x.fixes?'<br>':''}${x.fixes?'<b>Fix 需要修正：</b>'+e(x.fixes):''}</div>`
+      :x.mcomment?`<div class="note"><b>Comment 評語：</b>${e(x.mcomment)}</div>`:'';
     const act=x.source!=='missing'?`<a class="btn" href="${href}">Open 打開修改 →</a>`:`<a class="btn warn" href="${href}">Make it up 去補交 →</a>`;
     return `<div class="item${x.source==='missing'?' missing':''}"><h3>${e(P[0])}<small>${e(P[1])}</small></h3><div class="act">${act}</div><div class="meta">${meta.join('')}</div>${note}</div>`;
   }).join('')||'<p class="empty">No assignments yet. 目前沒有作業。</p>';
