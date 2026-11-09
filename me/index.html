@@ -48,6 +48,9 @@ h2 small{font-size:14px;color:var(--muted);font-weight:500;margin-left:8px}
 .tag{font-size:12px;font-weight:500;border-radius:999px;padding:1px 10px;border:1px solid currentColor}
 .tag.miss{color:var(--warn);background:var(--warn-soft)}.tag.ok{color:var(--accent);background:var(--soft)}.tag.wait{color:var(--muted)}
 .score{font-family:"JetBrains Mono",monospace;color:var(--ink)}
+.src{font-size:12px;border-radius:6px;padding:0 8px;background:var(--soft);color:var(--accent)}
+.src-manual{background:rgba(44,100,168,.11);color:#2c64a8}.src-override{background:rgba(122,70,184,.11);color:#7a46b8}
+@media (prefers-color-scheme:dark){.src-manual{color:#7fb0f0}.src-override{color:#c4a1f2}}
 .note{grid-column:1/-1;font-size:13px;background:var(--soft);border-radius:10px;padding:8px 12px;margin-top:4px}
 .note b{font-weight:500}
 .act{grid-row:1/span 2;grid-column:2;align-self:center}
@@ -76,6 +79,7 @@ footer{margin-top:32px;font-size:12px;color:var(--muted)}
       <label>Teacher password 教師密碼<input id="pvKey" type="password" autocomplete="current-password" required></label>
       <button class="btn primary" type="submit">Preview 預覽</button>
     </form>
+    <p style="margin-top:12px"><a class="btn" href="../teach/">Gradebook 成績登錄 →</a></p>
   </section>
   <div id="view" hidden>
     <p class="pvbar" id="pvBar" hidden></p>
@@ -188,9 +192,11 @@ function show(res){
   const by={}; (res.units||[]).forEach(x=>by[x.unit]=x);
   const rows=ORDER.map(u=>Object.assign({unit:u,submitted:false},by[u]||{}));
   const ex=Array.isArray(res.extra)?res.extra:[];
-  const done=rows.filter(x=>x.submitted), miss=rows.filter(x=>!x.submitted), graded=done.filter(x=>x.total!==''&&x.total!=null);
+  /* source: auto = 系統自動批改, manual = 學習吧人工批改, override = 老師修改, waiting, missing (older scripts send only submitted/total) */
+  rows.forEach(x=>{ if(!x.source){ x.source=x.total!==''&&x.total!=null?'auto':x.submitted?'waiting':'missing'; x.final=x.total; } });
+  const done=rows.filter(x=>x.source!=='missing'), miss=rows.filter(x=>x.source==='missing'), graded=done.filter(x=>x.final!==''&&x.final!=null);
   const exDone=ex.filter(x=>x.state==='score'||x.state==='text'), exMiss=ex.filter(x=>x.state==='missing');
-  const nums=(res.scores?graded.map(x=>Number(x.total)):[]).concat(ex.filter(x=>x.state==='score'&&x.value!=='').map(x=>Number(x.value)));
+  const nums=(res.scores?graded.map(x=>Number(x.final)):[]).concat(ex.filter(x=>x.state==='score'&&x.value!=='').map(x=>Number(x.value)));
   $('#nDone').textContent=(done.length+exDone.length)+' / '+(rows.length+ex.length); $('#nMiss').textContent=miss.length+exMiss.length;
   $('#nAvg').textContent=nums.length?Math.round(nums.reduce((a,b)=>a+b,0)/nums.length):'–';
   $('#extraWrap').hidden=!ex.length;
@@ -201,20 +207,25 @@ function show(res){
     const note=x.state==='missing'?'<div class="note">Finish it where your teacher gave it (e.g. 學習吧), then tell your teacher. 請到老師指定的地方（例如學習吧）完成，交了以後告訴老師。</div>':'';
     return `<div class="item${x.state==='missing'?' missing':''}"><h3>${e(x.name)}</h3><div class="meta">${tag}${sc}</div>${note}</div>`;
   }).join('');
-  rows.sort((a,b)=>(a.submitted-b.submitted)||ORDER.indexOf(a.unit)-ORDER.indexOf(b.unit));
+  rows.sort((a,b)=>((a.source!=='missing')-(b.source!=='missing'))||ORDER.indexOf(a.unit)-ORDER.indexOf(b.unit));
   $('#list').innerHTML=rows.map(x=>{
     const P=PAGES[x.unit], href='../'+P[2];
     const meta=[];
-    if(!x.submitted) meta.push('<span class="tag miss">Missing 缺交</span>');
+    const SRC={auto:'系統自動批改 Auto-graded',manual:'人工批改（學習吧）Graded by teacher',override:'老師調整 Changed by teacher'};
+    if(x.source==='missing') meta.push('<span class="tag miss">Missing 缺交</span>');
+    else if(x.source==='waiting') meta.push('<span class="tag wait">Waiting 等待批改</span>');
     else{
-      meta.push(res.scores&&x.total!==''&&x.total!=null?'<span class="tag ok">Graded 已批改</span>':'<span class="tag wait">Waiting 等待批改</span>');
+      meta.push('<span class="tag ok">Graded 已批改</span>');
+      if(res.scores&&x.final!==''&&x.final!=null) meta.push('<span>Score 成績 <b class="score">'+e(x.final)+'</b>'+(x.source==='auto'&&x.level?' · '+e(x.level):'')+'</span>');
+      meta.push('<span class="src src-'+x.source+'">'+SRC[x.source]+'</span>');
+    }
+    if(x.submitted){
       if(x.time) meta.push('<span>Handed in 繳交 '+e(when(x.time))+'</span>');
       if(x.self!==''&&x.self!=null) meta.push('<span>Self-check 自我批改 <span class="score">'+e(x.self)+'</span></span>');
-      if(res.scores&&x.total!==''&&x.total!=null) meta.push('<span>Score 成績 <b class="score">'+e(x.total)+'</b>'+(x.level?' · '+e(x.level):'')+'</span>');
     }
-    const note=x.submitted&&res.scores&&(x.comment||x.fixes)?`<div class="note">${x.comment?'<b>Comment 評語：</b>'+e(x.comment):''}${x.comment&&x.fixes?'<br>':''}${x.fixes?'<b>Fix 需要修正：</b>'+e(x.fixes):''}</div>`:'';
-    const act=x.submitted?`<a class="btn" href="${href}">Open 打開修改 →</a>`:`<a class="btn warn" href="${href}">Make it up 去補交 →</a>`;
-    return `<div class="item${x.submitted?'':' missing'}"><h3>${e(P[0])}<small>${e(P[1])}</small></h3><div class="act">${act}</div><div class="meta">${meta.join('')}</div>${note}</div>`;
+    const note=x.source==='auto'&&res.scores&&(x.comment||x.fixes)?`<div class="note">${x.comment?'<b>Comment 評語：</b>'+e(x.comment):''}${x.comment&&x.fixes?'<br>':''}${x.fixes?'<b>Fix 需要修正：</b>'+e(x.fixes):''}</div>`:'';
+    const act=x.source!=='missing'?`<a class="btn" href="${href}">Open 打開修改 →</a>`:`<a class="btn warn" href="${href}">Make it up 去補交 →</a>`;
+    return `<div class="item${x.source==='missing'?' missing':''}"><h3>${e(P[0])}<small>${e(P[1])}</small></h3><div class="act">${act}</div><div class="meta">${meta.join('')}</div>${note}</div>`;
   }).join('')||'<p class="empty">No assignments yet. 目前沒有作業。</p>';
   st(miss.length?'Finish the missing work, then press Submit 繳交 on that page. 完成缺交的作業後，在作業頁按「Submit 繳交」。':exMiss.length?'Finish the missing work and tell your teacher. 完成缺交的作業後，記得告訴老師。':'All handed in. Great job! 全部都交了，很棒！');
 }

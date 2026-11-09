@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gradebook 成績登錄</title>
+<script>document.write('<script src="../config.js?t='+Date.now()+'"><\/script>')</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#f4f7f5;--panel:#fff;--ink:#1e2a2c;--muted:#5b6b6e;--line:#d3ddd8;--accent:#17795a;--soft:rgba(23,121,90,.10);--warn:#b4441f;--warn-soft:rgba(180,68,31,.10);--man:#2c64a8;--man-soft:rgba(44,100,168,.11);--ovr:#7a46b8;--ovr-soft:rgba(122,70,184,.11);color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#121817;--panel:#1a2220;--ink:#e2ebe7;--muted:#93a39e;--line:#2c3835;--accent:#4cc49a;--soft:rgba(76,196,154,.14);--warn:#f08a64;--warn-soft:rgba(240,138,100,.14);--man:#7fb0f0;--man-soft:rgba(127,176,240,.15);--ovr:#c4a1f2;--ovr-soft:rgba(196,161,242,.15);color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.6;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px;background-position:-1px -1px}
+main{max-width:1180px;margin:0 auto;padding:40px 16px 48px}
+a.home{color:var(--muted);font-size:14px;text-decoration:none}a.home:hover{color:var(--accent)}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:13px;letter-spacing:.2em;color:var(--accent);margin-top:16px}
+h1{font-size:clamp(28px,5vw,38px);margin:6px 0 4px;line-height:1.15}
+h1 small{display:block;font-size:.55em;color:var(--muted);font-weight:500;margin-top:6px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-top:18px}
+.panel>p{margin:0}
+.btn{font:inherit;font-size:14px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}.btn.primary:hover{color:var(--panel);filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:default}
+.status{font-size:13px;color:var(--muted)}.status.err{color:var(--warn)}
+.glogin{display:flex;flex-direction:column;gap:10px}.glogin p{margin:0}.glogin.on{flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap}
+.glogin .gok{color:var(--accent);font-weight:700;font-size:20px}.glogin .gwho{display:flex;flex-direction:column;flex:1;min-width:0}
+.glogin .gwho b{font-size:17px}.glogin .gwho small{color:var(--muted)}
+input,select{font:inherit;font-size:15px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin-top:18px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:12px;color:var(--muted)}
+.chip{font-size:12px;font-weight:500;border-radius:999px;padding:1px 9px;border:1px solid currentColor;white-space:nowrap}
+.s-auto{color:var(--accent);background:var(--soft)}.s-manual{color:var(--man);background:var(--man-soft)}.s-override{color:var(--ovr);background:var(--ovr-soft)}
+.s-waiting{color:var(--muted)}.s-missing{color:var(--warn);background:var(--warn-soft)}
+.counts{font-size:14px}.counts b{font-family:"JetBrains Mono",monospace}
+.wrap{margin-top:12px;overflow:auto;max-height:72vh;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:0;text-align:center;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--panel);z-index:2;font-weight:500;font-size:13px;padding:8px 6px;line-height:1.3}
+thead th small{display:block;color:var(--muted);font-weight:400}
+th.seat,td.seat{position:sticky;left:0;background:var(--panel);z-index:1;width:48px;font-family:"JetBrains Mono",monospace;color:var(--muted)}
+th.name,td.name{position:sticky;left:48px;background:var(--panel);z-index:1;text-align:left;padding:0 12px;border-right:1px solid var(--line);min-width:96px}
+thead th.seat,thead th.name{z-index:3}
+td.c button{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;min-width:92px;height:56px;cursor:pointer;padding:4px}
+td.c button:hover,td.c button:focus-visible{background:var(--soft)}
+td.c button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+td.c .n{font-family:"JetBrains Mono",monospace;font-size:17px;font-weight:500}
+td.c .chip{font-size:11px;padding:0 7px}
+td.c.saved button{animation:flash 1.2s}
+@keyframes flash{from{background:var(--soft)}to{background:transparent}}
+.empty{color:var(--muted);text-align:center;padding:28px}
+dialog{border:1px solid var(--line);border-radius:16px;padding:0;background:var(--panel);color:var(--ink);width:min(440px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+dialog form{padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+dialog h2{margin:0;font-size:18px}dialog h2 small{display:block;font-size:13px;color:var(--muted);font-weight:500}
+.sys{font-size:14px;padding:10px 12px;border-radius:10px;background:var(--soft)}
+.fin{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.fin b{font-family:"JetBrains Mono",monospace;font-size:20px}
+dialog input[type=number]{width:120px}
+.hint{font-size:12px;color:var(--muted)}
+.acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:8px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){td.c.saved button{animation:none}.toast{transition:none}}
+@media (max-width:560px){main{padding-top:28px}.wrap{max-height:none}}
+</style>
+</head>
+<body>
+<main>
+  <a class="home" href="../">← Home 回首頁</a>
+  <div class="eyebrow">GRADEBOOK</div>
+  <h1>Gradebook<small>成績登錄（老師專用）</small></h1>
+  <section class="panel" id="login" aria-label="Sign in 登入"></section>
+  <section class="panel" id="keyBox" hidden>
+    <form class="row" id="keyForm">
+      <label class="f">Teacher password 教師密碼<input id="key" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit" style="align-self:flex-end">Open 進入</button>
+      <span class="status" id="keySt" style="align-self:flex-end"></span>
+    </form>
+  </section>
+  <div id="view" hidden>
+    <div class="bar">
+      <div class="row">
+        <label class="f">Class 班級<select id="cls"></select></label>
+        <div class="counts" id="counts" aria-live="polite"></div>
+      </div>
+      <div class="row">
+        <button class="btn" type="button" id="bAdd">＋ Add student 新增學生</button>
+        <button class="btn" type="button" id="bReload">Refresh 重新整理</button>
+      </div>
+    </div>
+    <div class="legend" style="margin-top:10px">
+      <span class="chip s-auto">自動 Auto-graded</span><span class="chip s-manual">學習吧 Manual</span><span class="chip s-override">修改 Changed</span><span class="chip s-waiting">待批改 Waiting</span><span class="chip s-missing">缺交 Missing</span>
+      <span>Click a cell to enter a score. 點格子輸入成績。</span>
+    </div>
+    <div class="wrap"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+    <p class="status" id="st"></p>
+  </div>
+</main>
+
+<dialog id="dlg">
+  <form method="dialog" id="dlgForm">
+    <h2 id="dTitle"></h2>
+    <div class="sys" id="dSys"></div>
+    <label class="f">學習吧人工批改分數 Score from 學習吧
+      <input id="dMan" type="number" min="0" max="100" step="0.5" inputmode="decimal">
+      <span class="hint">Leave empty if none. 沒有就留空。</span></label>
+    <label class="f">老師修改分數 Changed score
+      <input id="dOvr" type="number" min="0" max="100" step="0.5" inputmode="decimal">
+      <span class="hint">Filled in = this is the final score. 有填就以這個為準；留空 = 取系統與學習吧較高的分數。</span></label>
+    <div class="fin">Final 最後成績 <b id="dFin">–</b><span id="dSrc"></span></div>
+    <p class="status" id="dSt"></p>
+    <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" id="dSave" value="save">Save 儲存</button></div>
+  </form>
+</dialog>
+<dialog id="addDlg">
+  <form method="dialog" id="addForm">
+    <h2>Add student 新增學生<small>For a student who is not on the list yet. 名單上沒有的學生。</small></h2>
+    <div class="row"><label class="f">No. 座號<input id="aSeat" type="number" min="1" max="99" required style="width:90px"></label>
+    <label class="f">Name 姓名<input id="aName" required style="width:160px"></label></div>
+    <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" value="add">Add 新增</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+<script>
+/* ===== Sign in with 新北市教育局 OpenID (校務行政帳號); the Apps Script checks it with the OpenID server ===== */
+function NtpcLogin(o){
+  const SK='ntpc-v1', OP='https://openid.ntpc.edu.tw/OpenId/Provider', ANY='http://specs.openid.net/auth/2.0/identifier_select';
+  const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const MSG={login_off:'Sign-in is not turned on yet. Tell your teacher. 老師的雲端程式還沒開啟登入功能。',
+    login_required:'Sign in first. 請先用校務行政帳號登入。',
+    bad_token:'Sign-in failed. Try again. 登入失敗，請再登入一次。', login_expired:'Sign-in expired. Sign in again. 登入過期了，請再登入一次。',
+    ntpc_cancel:'You cancelled the sign-in. 你取消了登入。',
+    not_school:'This account is not from our school. 這個帳號不是本校的學生或老師。',
+    bad_openid:'Sign-in could not be checked. Try again. 登入驗證失敗，請再登入一次。',
+    ntpc_no_data:'Your name was not shared. Press 同意 on the sign-in page. 沒有收到姓名資料，請在授權畫面按「同意」。',
+    ntpc_no_class:'Your class and seat are missing. Tell your teacher. 校務行政系統裡沒有你的班級座號，請告訴老師。',
+    server_error:'The server had a problem. Try again. 雲端程式出錯了，請再試一次。'};
+  const ok=u=>u&&u.token&&Number(u.exp)*1000>Date.now()+60000?u:null;
+  let user=null, note='';
+  try{ user=ok(JSON.parse(sessionStorage.getItem(SK)||'null')); }catch(err){}
+  /* back from a sign-in in this same window: …#ntpc=… */
+  const h=location.hash.match(/[#&]ntpc=([\w-]+)/);
+  if(h){
+    try{ const d=JSON.parse(decodeURIComponent(escape(atob(h[1].replace(/-/g,'+').replace(/_/g,'/')))));
+      if(d&&d.type==='ntpc-login'){ if(d.ok&&ok(d.user)){ user=d.user; try{ sessionStorage.setItem(SK,JSON.stringify(user)); }catch(err){} } else note=MSG[d.error]||'Sign-in failed. 登入失敗。'; } }catch(err){}
+    try{ history.replaceState(null,'',location.href.split('#')[0]); }catch(err){}
+  }
+  function setUser(u){ user=u; try{ if(u) sessionStorage.setItem(SK,JSON.stringify(u)); else sessionStorage.removeItem(SK); }catch(err){} render(); if(u&&o.onUser) o.onUser(u); if(!u&&o.onOut) o.onOut(); }
+  function status(t,bad){ const s=o.box&&o.box.querySelector('.gst'); if(s){ s.textContent=t||''; s.classList.toggle('err',!!bad); } }
+  function authUrl(){
+    const back=o.url+'?back='+encodeURIComponent(location.href.split('#')[0]);
+    return OP+'?'+new URLSearchParams({'openid.ns':'http://specs.openid.net/auth/2.0','openid.mode':'checkid_setup','openid.claimed_id':ANY,'openid.identity':ANY,
+      'openid.return_to':back,'openid.realm':o.url,'openid.ns.sreg':'http://openid.net/extensions/sreg/1.1','openid.sreg.required':'fullname,email,country,language,timezone'});
+  }
+  function start(){
+    const u=authUrl(), w=window.open(u,'ntpc-login','width=560,height=720');
+    if(!w){ location.href=u; return; }   // pop-ups blocked: sign in in this window and come back
+    status('Sign in in the new window… 請在跳出的視窗登入…');
+  }
+  window.addEventListener('message',ev=>{
+    const d=ev.data; if(!d||d.type!=='ntpc-login') return;
+    if(!/^https:\/\/([\w-]+\.)*(googleusercontent\.com|script\.google\.com)$/.test(ev.origin)) return;
+    if(d.ok&&ok(d.user)) setUser(d.user); else status(MSG[d.error]||('Sign-in failed. 登入失敗。'+(d.error?`（${e(d.error)}）`:'')),true);
+  });
+  function render(){
+    const b=o.box; if(!b) return;
+    if(user){ b.innerHTML=`<div class="glogin on"><span class="gok">✓</span><span class="gwho"><b>${e(user.student||user.name)}</b><small>新北市 OpenID · ${e(user.email)}${user.role&&user.role!=='學生'?' · '+e(user.role):''}</small></span><button type="button" class="btn" data-gout>Sign out 登出</button></div>`;
+      b.querySelector('[data-gout]').onclick=()=>setUser(null); return; }
+    b.innerHTML=`<div class="glogin"><p>Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
+    b.querySelector('[data-gin]').onclick=start;
+    if(note){ status(note,true); note=''; }
+  }
+  if(user&&o.onUser) setTimeout(()=>o.onUser(user),0);
+  return {
+    user:()=>user,
+    token:()=>user&&Number(user.exp)*1000>Date.now()+30000?user.token:null,
+    expired:()=>{ setUser(null); status(MSG.login_expired,true); },
+    message:k=>MSG[k],
+    render
+  };
+}
+(function(){
+const $=s=>document.querySelector(s);
+const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CFG=window.FLOW_CONFIG||{}, URL_=String(CFG.submitUrl||'').trim(), KK='teach-key';
+const SHORT={bmi:['BMI','流程圖'],score:['成績及格','流程圖'],sum:['1 加到 n','流程圖'],scratch:['成績及格','積木'],'scratch-bmi':['BMI','積木'],'scratch-sum':['1 加到 n','積木'],'scratch-pw':['密碼檢查','積木']};
+const SRC={auto:['自動','s-auto'],manual:['學習吧','s-manual'],override:['修改','s-override'],waiting:['待批改','s-waiting'],missing:['缺交','s-missing']};
+const SRC_LONG={auto:'系統自動批改',manual:'人工批改（學習吧）',override:'老師修改',waiting:'已繳交，等待批改',missing:'缺交'};
+const ERR={not_teacher:'This account cannot enter scores. 這個帳號不能登錄成績（只有 Code.gs 的 TEACHERS 帳號可以）。',bad_key:'Wrong teacher password. 教師密碼不對。',
+  key_not_set:'Set TEACHER_KEY in Code.gs first. 請先在 Code.gs 設定 TEACHER_KEY。',bad_score:'Scores are 0–100. 分數要在 0～100 之間。',bad_request:'Something is missing. 資料不完整。',
+  unknown_action:'Update the Google script first. 請先更新雲端程式（Code.gs）並部署新版本。'};
+let data=null, key='', busy=false, cur=null;
+const toast=t=>{ const x=$('#toast'); x.textContent=t; x.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(()=>x.classList.remove('on'),1600); };
+const st=(t,bad)=>{ $('#st').textContent=t||''; $('#st').classList.toggle('err',!!bad); };
+const has=v=>v!==''&&v!=null&&isFinite(Number(v));
+function finalOf(x){ if(has(x.override)) return {final:Number(x.override),source:'override'}; let b=null;
+  if(has(x.total)) b={final:Number(x.total),source:'auto'}; if(has(x.manual)&&(!b||Number(x.manual)>b.final)) b={final:Number(x.manual),source:'manual'};
+  return b||{final:'',source:x.submitted?'waiting':'missing'}; }
+if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(URL_)||!CFG.ntpcOpenId){ $('#login').innerHTML='<p>Sign-in is not turned on in config.js. 還沒開啟新北市 OpenID 登入（config.js 的 ntpcOpenId）。</p>'; return; }
+const LOGIN=NtpcLogin({url:URL_,box:$('#login'),onUser:()=>afterLogin(),onOut:()=>{ $('#keyBox').hidden=true; $('#view').hidden=true; data=null; }});
+LOGIN.render();
+function afterLogin(){ try{ key=sessionStorage.getItem(KK)||''; }catch(err){} if(key) load(); else { $('#keyBox').hidden=false; $('#key').focus(); } }
+async function call(body){ const r=await fetch(URL_,{method:'POST',body:JSON.stringify(Object.assign({idToken:LOGIN.token(),key},body))}); return await r.json(); }
+async function load(cls){
+  if(busy||!LOGIN.token()) return; busy=true; st('Loading… 讀取中…');
+  try{
+    const res=await call({action:'class_get',cls:cls||($('#cls').value||'')});
+    if(!res||!res.ok){ const k=res&&res.error;
+      if(k==='login_expired'||k==='bad_token'){ LOGIN.expired(); return; }
+      if(k==='bad_key'||k==='key_not_set'){ key=''; try{ sessionStorage.removeItem(KK); }catch(err){} $('#view').hidden=true; $('#keyBox').hidden=false; $('#keySt').textContent=ERR[k]; $('#keySt').classList.add('err'); return; }
+      $('#keyBox').hidden=true; $('#view').hidden=true; $('#keySt').textContent=''; $('#login').insertAdjacentHTML('beforeend',`<p class="status err" style="margin-top:10px">${e(ERR[k]||LOGIN.message(k)||'Could not load. 讀取失敗。')}${k?'（'+e(k)+'）':''}${res&&res.email?' · '+e(res.email):''}</p>`); return; }
+    try{ sessionStorage.setItem(KK,key); }catch(err){}
+    data=res; $('#keyBox').hidden=true; $('#view').hidden=false; st('');
+    $('#cls').innerHTML=(res.classes.length?res.classes:[res.cls]).filter(Boolean).map(c=>`<option${c===res.cls?' selected':''}>${e(c)}</option>`).join('')||'<option value="">—</option>';
+    render();
+  }catch(err){ st('Cannot reach Google Drive. 連不上雲端，請再試一次。',true); }
+  finally{ busy=false; }
+}
+function cell(s,u){ const x=s.units.find(y=>y.unit===u.unit)||{source:'missing'}; const t=SRC[x.source]||SRC.missing;
+  return `<td class="c" data-seat="${e(s.seat)}" data-unit="${e(u.unit)}"><button type="button" aria-label="${e(s.seat+' '+s.name+' '+u.name)}"><span class="n">${has(x.final)?e(x.final):'—'}</span><span class="chip ${t[1]}">${t[0]}</span></button></td>`; }
+function render(){
+  const U=data.units, S=data.students;
+  $('#th').innerHTML=`<tr><th class="seat">No.<small>座號</small></th><th class="name">Name<small>姓名</small></th>${U.map(u=>`<th>${e((SHORT[u.unit]||[u.name])[0])}<small>${e((SHORT[u.unit]||['',''])[1])}</small></th>`).join('')}</tr>`;
+  $('#tb').innerHTML=S.length?S.map(s=>`<tr><td class="seat">${e(s.seat)}</td><td class="name">${e(s.name||'—')}</td>${U.map(u=>cell(s,u)).join('')}</tr>`).join(''):`<tr><td colspan="${U.length+2}" class="empty">No students yet. Add a roster (名單 Roster) or press 新增學生. 還沒有學生：請在試算表放「名單 Roster」，或按「新增學生」。</td></tr>`;
+  counts();
+}
+function counts(){ let miss=0,wait=0,done=0; data.students.forEach(s=>s.units.forEach(x=>{ if(x.source==='missing') miss++; else if(x.source==='waiting') wait++; else done++; }));
+  $('#counts').innerHTML=`<b>${data.students.length}</b> students 人 · Done 已完成 <b>${done}</b> · Waiting 待批改 <b>${wait}</b> · <span style="color:var(--warn)">Missing 缺交 <b>${miss}</b></span>`; }
+$('#tb').addEventListener('click',ev=>{ const td=ev.target.closest('td.c'); if(!td) return;
+  const s=data.students.find(x=>x.seat===td.dataset.seat), u=data.units.find(x=>x.unit===td.dataset.unit); if(!s||!u) return;
+  const x=s.units.find(y=>y.unit===u.unit); cur={s,u,x,td};
+  $('#dTitle').innerHTML=`${e(data.cls+'-'+s.seat+' '+(s.name||''))}<small>${e(SHORT[u.unit]?SHORT[u.unit][0]+'（'+SHORT[u.unit][1]+'）':u.name)}</small>`;
+  $('#dSys').textContent='系統 flowchart-work：'+(has(x.total)?`自動批改 ${x.total} 分`:x.submitted?'已繳交，還沒寫回成績（批改台）':'沒有在系統繳交');
+  $('#dMan').value=has(x.manual)?x.manual:''; $('#dOvr').value=has(x.override)?x.override:''; $('#dSt').textContent=''; $('#dSave').disabled=false;
+  preview(); $('#dlg').showModal(); $('#dMan').focus(); });
+function preview(){ if(!cur) return; const f=finalOf({total:cur.x.total,submitted:cur.x.submitted,manual:$('#dMan').value.trim(),override:$('#dOvr').value.trim()});
+  $('#dFin').textContent=has(f.final)?f.final:'—'; const t=SRC[f.source]; $('#dSrc').innerHTML=`<span class="chip ${t[1]}">${e(SRC_LONG[f.source])}</span>`; }
+$('#dMan').oninput=preview; $('#dOvr').oninput=preview;
+$('#dlgForm').addEventListener('submit',async ev=>{
+  if(ev.submitter&&ev.submitter.value==='cancel') return;
+  ev.preventDefault(); if(!cur) return;
+  const man=$('#dMan').value.trim(), ovr=$('#dOvr').value.trim();
+  if((man!==''&&!(Number(man)>=0&&Number(man)<=100))||(ovr!==''&&!(Number(ovr)>=0&&Number(ovr)<=100))){ $('#dSt').textContent=ERR.bad_score; $('#dSt').classList.add('err'); return; }
+  $('#dSave').disabled=true; $('#dSt').classList.remove('err'); $('#dSt').textContent='Saving… 儲存中…';
+  const {s,u,td}=cur;
+  try{ const res=await call({action:'class_set',cls:data.cls,seat:s.seat,name:s.name,unit:u.unit,manual:man,override:ovr});
+    if(!res||!res.ok){ const k=res&&res.error; if(k==='login_expired'||k==='bad_token'){ $('#dlg').close(); LOGIN.expired(); return; }
+      $('#dSt').textContent=(ERR[k]||'Could not save. 儲存失敗。')+(k?'（'+k+'）':''); $('#dSt').classList.add('err'); $('#dSave').disabled=false; return; }
+    const i=s.units.findIndex(y=>y.unit===u.unit); s.units[i]=res.unit;
+    const tmp=document.createElement('tr'); tmp.innerHTML=cell(s,u); const nt=tmp.firstChild; nt.classList.add('saved'); td.replaceWith(nt);
+    counts(); $('#dlg').close(); toast('Saved 已儲存 ✓'); cur=null;
+  }catch(err){ $('#dSt').textContent='Cannot reach Google Drive. 連不上雲端。'; $('#dSt').classList.add('err'); $('#dSave').disabled=false; }
+});
+$('#dlg').addEventListener('close',()=>{ cur=null; });
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$('#keyForm').onsubmit=ev=>{ ev.preventDefault(); key=$('#key').value; $('#keySt').textContent=''; $('#keySt').classList.remove('err'); load(); };
+$('#cls').onchange=()=>load($('#cls').value);
+$('#bReload').onclick=()=>load($('#cls').value);
+$('#bAdd').onclick=()=>{ $('#aSeat').value=''; $('#aName').value=''; $('#addDlg').showModal(); $('#aSeat').focus(); };
+$('#addForm').addEventListener('submit',ev=>{ if(ev.submitter&&ev.submitter.value==='cancel') return;
+  const seat=String(Number($('#aSeat').value)||''), name=$('#aName').value.trim(); if(!seat||!name){ ev.preventDefault(); return; }
+  if(data.students.some(x=>x.seat===seat)){ ev.preventDefault(); toast('Seat '+seat+' is already on the list 這個座號已經在名單上'); return; }
+  data.students.push({cls:data.cls,seat,name,units:data.units.map(u=>({unit:u.unit,submitted:false,total:'',manual:'',override:'',final:'',source:'missing'}))});
+  data.students.sort((a,b)=>Number(a.seat)-Number(b.seat)); render(); toast('Added. Enter a score to save them. 已加入，輸入成績後才會存到試算表。'); });
+if(LOGIN.user()) afterLogin();
+})();
+</script>
+</body>
+</html>
