@@ -27,7 +27,7 @@ const CONFIG = {
   EMAIL_DOMAIN: 'apps.ntpc.edu.tw',   // 只接受這個網域的學校帳號
   ROSTER_TAB: '名單 Roster',           // 名單工作表名稱
   CLASS_PREFIX: '7',                  // 只用這個年級的班級（例如 7 = 七年級）；留空 = 全部班級
-  NTPC_OPENID: false,                 // true = 學生用新北市 OpenID（校務行政帳號）登入後才能繳交
+  NTPC_OPENID: true,                  // true = 學生用新北市 OpenID（校務行政帳號）登入後才能繳交
   NTPC_SITE: 'https://taksito.github.io/flowchart-work/, https://raw.githack.com/taksito/flowchart-work/',  // 作業網站網址（可以用逗號分開好幾個）：登入完成後只會回到這些網站
   SHOW_SCORES: true,                  // true = 學生登入「我的成績」頁可以看到老師批改的分數與評語；false = 只看繳交狀態
   NTPC_WEBAPP: '',                    // （選填）這個網頁應用程式的部署網址 …/exec，填了會更嚴格地確認登入是送給這裡的
