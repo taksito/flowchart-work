@@ -348,8 +348,8 @@ function mine_(req) {
     who = v.who;
     if (!who.cls || !who.seat) return { ok: false, error: 'no_class', who: who };
   }
-  const ss = sheet_(), sub = ss.getSheetByName('繳交紀錄 Submissions'), sc = CONFIG.SHOW_SCORES ? ss.getSheetByName('成績 Scores') : null, gb = ss.getSheetByName(CONFIG.GRADES_TAB);
-  const units = mineUnits_(who, sub ? sub.getDataRange().getValues() : [], sc ? sc.getDataRange().getValues() : [], function (u) { return workNames_(u); }, manualRows_());
+  const ss = sheet_(), sc = CONFIG.SHOW_SCORES ? ss.getSheetByName('成績 Scores') : null, gb = ss.getSheetByName(CONFIG.GRADES_TAB);
+  const units = mineUnits_(who, subRows_(), sc ? sc.getDataRange().getValues() : [], function (u) { return workNames_(u); }, manualRows_());
   units.forEach(function (x) { delete x.manual; delete x.override; if (!CONFIG.SHOW_SCORES) x.final = ''; });
   const extra = extraFor_(who, gb ? gb.getDataRange().getDisplayValues() : [], !!CONFIG.SHOW_SCORES);
   if (!who.name && extra.name) who = who_({ cls: who.cls, seat: who.seat, name: extra.name });
@@ -395,11 +395,17 @@ function mineUnits_(who, subRows, scoreRows, names, manualRows) {
     out[u] = { unit: u, name: UNITS[u], submitted: files.length > 0, time: '', self: '', passed: false, total: '', level: '', comment: '', fixes: '', graded: '' };
   });
   const iso = function (d) { return d instanceof Date ? d.toISOString() : String(d || ''); };
+  const nm = String(who.name || '').trim(), byNameRow = {};
   for (let r = 1; r < subRows.length; r++) {
     const x = subRows[r], u = byName[String(x[1])];
-    if (!u || seatKey(x[2], x[3]) !== me) continue;
-    out[u].time = iso(x[0]); out[u].self = score_(x[6]); out[u].passed = String(x[7]) === 'Yes';
+    if (!u) continue;
+    if (seatKey(x[2], x[3]) === me) { out[u].time = iso(x[0]); out[u].self = score_(x[6]); out[u].passed = String(x[7]) === 'Yes'; }
+    else if (nm && String(x[2]).trim() === String(who.cls).trim() && String(x[4]).trim() === nm) byNameRow[u] = x;   // same class and name, seat fixed later
   }
+  Object.keys(byNameRow).forEach(function (u) {
+    if (out[u].self !== '') return;
+    const x = byNameRow[u]; out[u].time = iso(x[0]); out[u].self = score_(x[6]); out[u].passed = String(x[7]) === 'Yes';
+  });
   for (let r = 1; r < scoreRows.length; r++) {
     const x = scoreRows[r], u = byName[String(x[0])];
     if (!u || seatKey(x[1], x[2]) !== me) continue;
@@ -439,6 +445,14 @@ function manualTab_() {
   sh.setFrozenRows(1);
   return sh;
 }
+/* rows of every submission log, the old renamed ones first, so later rows (newer) win */
+function subRows_() {
+  const all = sheet_().getSheets().filter(function (sh) { return sh.getName().indexOf('繳交紀錄 Submissions') === 0; });
+  all.sort(function (a, b) { return (a.getName() === '繳交紀錄 Submissions') - (b.getName() === '繳交紀錄 Submissions'); });
+  let rows = [['head']];
+  all.forEach(function (sh) { rows = rows.concat(sh.getDataRange().getValues().slice(1)); });
+  return rows;
+}
 function manualRows_() { const sh = sheet_().getSheetByName(CONFIG.MANUAL_TAB); return sh ? sh.getDataRange().getValues() : []; }
 /* signed in with NTPC OpenID as one of TEACHERS, and the teacher password */
 function teacherAuth_(req) {
@@ -454,9 +468,9 @@ function teacherAuth_(req) {
 function classGet_(req) {
   const a = teacherAuth_(req);
   if (a.error) return { ok: false, error: a.error, email: a.email || '' };
-  const ss = sheet_(), sub = ss.getSheetByName('繳交紀錄 Submissions'), sc = ss.getSheetByName('成績 Scores');
+  const ss = sheet_(), sc = ss.getSheetByName('成績 Scores');
   const data = {
-    roster: rosterRows_() || [], sub: sub ? sub.getDataRange().getValues() : [], sc: sc ? sc.getDataRange().getValues() : [], man: manualRows_(),
+    roster: rosterRows_() || [], sub: subRows_(), sc: sc ? sc.getDataRange().getValues() : [], man: manualRows_(),
     names: function (u) { return workNames_(u); }
   };
   const classes = classList_(data);
@@ -515,8 +529,8 @@ function classSet_(req) {
     const row = [cls, seat, keepName, UNITS[u], man, ovr, new Date(), a.email];
     if (at) sh.getRange(at, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
   }
-  const ss = sheet_(), sub = ss.getSheetByName('繳交紀錄 Submissions'), sc = ss.getSheetByName('成績 Scores');
-  const x = mineUnits_({ cls: cls, seat: seat, name: keepName }, sub ? sub.getDataRange().getValues() : [], sc ? sc.getDataRange().getValues() : [], function (v) { return workNames_(v); }, manualRows_())
+  const ss = sheet_(), sc = ss.getSheetByName('成績 Scores');
+  const x = mineUnits_({ cls: cls, seat: seat, name: keepName }, subRows_(), sc ? sc.getDataRange().getValues() : [], function (v) { return workNames_(v); }, manualRows_())
     .filter(function (y) { return y.unit === u; })[0];
   return { ok: true, unit: { unit: u, submitted: x.submitted, auto: x.auto, total: x.total, manual: x.manual, override: x.override, final: x.final, source: x.source } };
 }
