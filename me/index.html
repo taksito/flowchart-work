@@ -143,7 +143,7 @@ function NtpcLogin(o){
     const b=o.box; if(!b) return;
     if(user){ b.innerHTML=`<div class="glogin on"><span class="gok">✓</span><span class="gwho"><b>${e(user.student||user.name)}</b><small>新北市 OpenID · ${e(user.email)}${user.role&&user.role!=='學生'?' · '+e(user.role):''}</small></span><button type="button" class="btn" data-gout>Sign out 登出</button></div>`;
       b.querySelector('[data-gout]').onclick=()=>setUser(null); return; }
-    b.innerHTML=`<div class="glogin"><p>Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
+    b.innerHTML=`<div class="glogin"><p>${o.optional?'Sign in with your school account (you can also skip it and type your name below). 可以用新北市校務行政帳號登入，班級姓名會自動帶入，也能查自己的成績；不登入就在下面填寫班級座號姓名。':'Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。'}</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
     b.querySelector('[data-gin]').onclick=start;
     if(note){ status(note,true); note=''; }
   }
@@ -161,7 +161,7 @@ const $=s=>document.querySelector(s);
 const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CFG=window.FLOW_CONFIG||{}, URL_=String(CFG.submitUrl||'').trim();
 /* every assignment page, in the order of the home page; config.js "assignments" picks which ones count */
-const PAGES={bmi:['BMI Drawing Tool','BMI 流程圖','bmi/'],score:['Pass or Fail Tool','成績及格判斷 流程圖','score/'],sum:['Summation Tool','1 加到 n 流程圖','sum/'],
+const PAGES={dog:['Dog Talk','小狗對話 流程圖','dog/'],score:['Pass or Fail Tool','成績及格判斷 流程圖','score/'],bmi:['BMI Drawing Tool','BMI 流程圖','bmi/'],sum:['Summation Tool','1 加到 n 流程圖','sum/'],
   scratch:['Scratch: Pass or Fail','積木：成績及格判斷','scratch/'],'scratch-bmi':['Scratch: BMI','積木：BMI 判斷','scratch-bmi/'],'scratch-sum':['Scratch: 1 + … + n','積木：1 加到 n','scratch-sum/'],'scratch-pw':['Scratch: Password Check','積木：密碼檢查','scratch-pw/']};
 const ORDER=(Array.isArray(CFG.assignments)&&CFG.assignments.length?CFG.assignments:Object.keys(PAGES)).filter(u=>PAGES[u]);
 const st=(t,bad)=>{ $('#st').textContent=t||''; $('#st').classList.toggle('err',!!bad); };

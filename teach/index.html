@@ -172,7 +172,7 @@ function NtpcLogin(o){
     const b=o.box; if(!b) return;
     if(user){ b.innerHTML=`<div class="glogin on"><span class="gok">✓</span><span class="gwho"><b>${e(user.student||user.name)}</b><small>新北市 OpenID · ${e(user.email)}${user.role&&user.role!=='學生'?' · '+e(user.role):''}</small></span><button type="button" class="btn" data-gout>Sign out 登出</button></div>`;
       b.querySelector('[data-gout]').onclick=()=>setUser(null); return; }
-    b.innerHTML=`<div class="glogin"><p>Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
+    b.innerHTML=`<div class="glogin"><p>${o.optional?'Sign in with your school account (you can also skip it and type your name below). 可以用新北市校務行政帳號登入，班級姓名會自動帶入，也能查自己的成績；不登入就在下面填寫班級座號姓名。':'Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。'}</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
     b.querySelector('[data-gin]').onclick=start;
     if(note){ status(note,true); note=''; }
   }
@@ -189,7 +189,7 @@ function NtpcLogin(o){
 const $=s=>document.querySelector(s);
 const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CFG=window.FLOW_CONFIG||{}, URL_=String(CFG.submitUrl||'').trim(), KK='teach-key';
-const SHORT={bmi:['BMI','流程圖'],score:['成績及格','流程圖'],sum:['1 加到 n','流程圖'],scratch:['成績及格','積木'],'scratch-bmi':['BMI','積木'],'scratch-sum':['1 加到 n','積木'],'scratch-pw':['密碼檢查','積木']};
+const SHORT={dog:['Dog Talk','流程圖'],bmi:['BMI','流程圖'],score:['成績及格','流程圖'],sum:['1 加到 n','流程圖'],scratch:['成績及格','積木'],'scratch-bmi':['BMI','積木'],'scratch-sum':['1 加到 n','積木'],'scratch-pw':['密碼檢查','積木']};
 const SRC={auto:['自動','s-auto'],manual:['學習吧','s-manual'],override:['修改','s-override'],waiting:['待批改','s-waiting'],missing:['缺交','s-missing']};
 const SRC_LONG={auto:'系統自動批改',manual:'人工批改（學習吧）',override:'老師修改',waiting:'已繳交，等待批改',missing:'缺交'};
 const ERR={not_teacher:'This account cannot enter scores. 這個帳號不能登錄成績（只有 Code.gs 的 TEACHERS 帳號可以）。',bad_key:'Wrong teacher password. 教師密碼不對。',

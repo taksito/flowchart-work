@@ -89,7 +89,9 @@ window.FLOW_CONFIG = {
 
 ## Student sign-in with NTPC OpenID 學生用新北市 OpenID 登入（選用）
 
-開啟後，學生繳交前要先用**新北市校務行政系統的帳號密碼**登入（新北市教育局 OpenID），班級、座號、姓名直接用校務行政系統的資料，學生不能自己改，也**不需要名單**。不用向教育局申請，也不需要 Google Cloud 設定。
+開啟後，學生可以用**新北市校務行政系統的帳號密碼**登入（新北市教育局 OpenID）：班級、座號、姓名直接用校務行政系統的資料，學生不能自己改，也**不需要名單**；登入後還能到「我的成績」查成績。不用向教育局申請，也不需要 Google Cloud 設定。
+
+- **登入是選用的**（`Code.gs` 的 `LOGIN_REQUIRED: false`、`config.js` 的 `loginRequired: false`）：不登入的學生照樣自己填班級座號姓名繳交。兩個都改成 `true` 就變成一定要登入才能繳交。
 
 1. **Apps Script**：貼上新版 `Code.gs`，改回自己的 `TEACHER_KEY`，再改 `CONFIG`：
    - `NTPC_OPENID: true`

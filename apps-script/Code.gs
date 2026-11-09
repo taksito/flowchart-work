@@ -30,6 +30,7 @@ const CONFIG = {
   MANUAL_TAB: '人工成績 Manual',       // 成績登錄頁寫入的分數：學習吧人工批改的分數、老師修改的分數
   GRADES_TAB: '其他成績 Grades',       // 其他作業（例如學習吧）的成績簿：班級｜座號｜姓名｜作業1｜作業2…；學生在「我的成績」頁看得到
   CLASS_PREFIX: '7',                  // 只用這個年級的班級（例如 7 = 七年級）；留空 = 全部班級
+  LOGIN_REQUIRED: false,              // false = 不登入也能繳交（自己填班級座號姓名）；有登入就以校務行政資料為準。true = 一定要登入才能繳交
   NTPC_OPENID: true,                  // true = 學生用新北市 OpenID（校務行政帳號）登入後才能繳交
   NTPC_SITE: 'https://taksito.github.io/flowchart-work/, https://raw.githack.com/taksito/flowchart-work/',  // 作業網站網址（可以用逗號分開好幾個）：登入完成後只會回到這些網站
   SHOW_SCORES: true,                  // true = 學生登入「我的成績」頁可以看到老師批改的分數與評語；false = 只看繳交狀態
@@ -37,7 +38,7 @@ const CONFIG = {
   NTPC_SCHOOL: '忠孝國中',             // 只接受這所學校的師生（學校名稱或單位代碼）；留空 = 新北市所有學校
 };
 
-const UNITS = { bmi: 'BMI', score: 'Pass or Fail', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', sum: 'Summation', 'scratch-sum': 'Scratch Summation', 'scratch-pw': 'Scratch Password' };
+const UNITS = { dog: 'Dog Talk', score: 'Pass or Fail', bmi: 'BMI', sum: 'Summation', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', 'scratch-sum': 'Scratch Summation', 'scratch-pw': 'Scratch Password' };
 /* Units added later work without changing this file: any short lowercase name is accepted. */
 function unitName_(u) { return UNITS[u] || (/^[a-z][a-z0-9-]{1,30}$/.test(String(u || '')) ? String(u) : null); }
 const SUB_HEAD = ['繳交時間 Time', '單元 Unit', '班級 Class', '座號 No.', '姓名 Name', '作品 Title', '自我批改分數 Self-check', '達成 Passed', '英文使用率 English %', '檔案 File', 'Email', '電腦代號 Device'];
@@ -123,7 +124,7 @@ function submit_(req) {
   const unit = unitName_(req.unit) ? req.unit : null;
   if (!unit) return { ok: false, error: 'bad_unit' };
   let who = who_(req), email = '';
-  if (loginOn_()) {
+  if (loginOn_() && (req.idToken || CONFIG.LOGIN_REQUIRED)) {   /* signed in: the school records decide who it is */
     const v = verify_(req.idToken);
     if (v.error) return { ok: false, error: v.error, email: v.email || '' };
     who = v.who; email = v.email;

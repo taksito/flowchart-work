@@ -9,6 +9,7 @@ A bilingual (English / 中文) flowchart assignment for junior-high students: dr
 | Page 頁面 | Path 路徑 | For 使用者 |
 |---|---|---|
 | Home 首頁 | `index.html` | Everyone 所有人 |
+| Dog Talk 小狗對話（Classwork L2-1） | `dog/` | Students 學生 |
 | Free Draw 自由繪製 | `free/` | Anyone 任何人 |
 | BMI Drawing Tool BMI 繪製工具 | `bmi/` | Students 學生 |
 | Pass or Fail Tool 成績及格判斷工具 | `score/` | Students 學生 |
@@ -34,6 +35,12 @@ Input height and weight, compute `BMI = weight ÷ height²` (height in metres), 
 | 18.5 ≤ BMI < 24 | normal |
 | 24 ≤ BMI < 27 | overweight |
 | BMI ≥ 27 | obesity |
+
+## Dog Talk 小狗對話（Classwork L2-1）
+
+- `dog/`: two scripts in one chart. CAT: START CAT → go to (-160, 0) → repeat 10 { move 10 steps } → say "eat together?" → broadcast "eat". DOG: START DOG receive "eat" → says "sure!". 貓走 10 步、說話並廣播 eat，狗收到後說 sure!。
+- say / says may be a PROCESS or an OUTPUT (the helper suggests OUTPUT); broadcast may be the last rounded shape, or a PROCESS followed by END. say／says 用處理或輸出都算對。
+- Scoring in three steps: Shapes 60 (rounded × 3, LOOP × 1, PROCESS/OUTPUT × 4) → Text 30 (8 labels) → Lines 10 (connections 4 + run 6). The run follows the chart: the cat goes to (-160, 0) and moves 10 times, then says and broadcasts; the dog hears "eat" and says "sure!". All three runs right = full marks.
 
 ## Free Draw 自由繪製
 

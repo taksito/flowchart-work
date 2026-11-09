@@ -125,7 +125,7 @@ button{font:inherit;color:inherit}
 .ck-tests span.ok{border-color:var(--accent);color:var(--accent)}
 .ck-tests span.no{border-color:var(--danger);color:var(--danger)}
 .ck-cert img{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px}
-.glogin{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;margin:4px 0 8px}.glogin p{margin:0;font-size:13px}.glogin.on{flex-direction:row;align-items:center;gap:10px}.glogin .gok{color:var(--accent);font-weight:700;font-size:18px}.glogin .gwho{display:flex;flex-direction:column;flex:1;min-width:0}.glogin .gwho small{color:var(--muted);overflow:hidden;text-overflow:ellipsis}.glogin .gbtn{min-height:44px}
+.glogin{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;margin:4px 0 8px}.glogin p{margin:0;font-size:13px}.glogin.on{flex-direction:row;align-items:center;gap:10px}.glogin .gok{color:var(--accent);font-weight:700;font-size:18px}.glogin .gwho{display:flex;flex-direction:column;flex:1;min-width:0}.glogin .gwho small{color:var(--muted);overflow:hidden;text-overflow:ellipsis}.glogin .gbtn{min-height:44px}.glogin .gst{flex:none}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);font-size:13px;padding:8px 14px;border-radius:8px;z-index:300;max-width:calc(100% - 32px)}
 .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;text-align:center;padding:20px}
 .blocklyToolboxDiv{font-family:var(--font-body)!important}
@@ -1628,7 +1628,7 @@ function NtpcLogin(o){
     const b=o.box; if(!b) return;
     if(user){ b.innerHTML=`<div class="glogin on"><span class="gok">✓</span><span class="gwho"><b>${e(user.student||user.name)}</b><small>新北市 OpenID · ${e(user.email)}${user.role&&user.role!=='學生'?' · '+e(user.role):''}</small></span><button type="button" class="btn" data-gout>Sign out 登出</button></div>`;
       b.querySelector('[data-gout]').onclick=()=>setUser(null); return; }
-    b.innerHTML=`<div class="glogin"><p>Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
+    b.innerHTML=`<div class="glogin"><p>${o.optional?'Sign in with your school account (you can also skip it and type your name below). 可以用新北市校務行政帳號登入，班級姓名會自動帶入，也能查自己的成績；不登入就在下面填寫班級座號姓名。':'Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。'}</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
     b.querySelector('[data-gin]').onclick=start;
     if(note){ status(note,true); note=''; }
   }
@@ -2261,17 +2261,21 @@ $('#bCheck').onclick=openCheck;
 const CFG=window.FLOW_CONFIG||{}, SUBMIT_URL=String(CFG.submitUrl||'').trim();
 const canSubmit=!window.claude&&/^https:\/\/script\.google(usercontent)?\.com\//.test(SUBMIT_URL);
 const LOGIN=canSubmit&&(CFG.ntpcOpenId||String(CFG.googleClientId||'').trim())?(CFG.ntpcOpenId?NtpcLogin:GLogin)({clientId:String(CFG.googleClientId||'').trim(),domain:CFG.emailDomain,url:SUBMIT_URL,box:$('#sbLogin'),
-  onUser:u=>{ meta.cls=u.cls; meta.seat=u.seat; meta.name=u.name; saveMeta(); fillWho('sb'); $('#sbStatus').textContent=''; $('#sbStatus').classList.remove('err'); }}):null;
-if(LOGIN){ $('#sbLogin').hidden=false; document.querySelector('[data-who="sb"]').hidden=true; }
-function openSubmit(){ const g=gradeFn(exportData()); fillWho('sb'); if(LOGIN) LOGIN.render(); document.querySelectorAll('.devid').forEach(e=>e.textContent=flowDeviceId());
+  optional:!CFG.loginRequired, onOut:()=>whoBox(),
+  onUser:u=>{ meta.cls=u.cls; meta.seat=u.seat; meta.name=u.name; saveMeta(); fillWho('sb'); whoBox(); $('#sbStatus').textContent=''; $('#sbStatus').classList.remove('err'); }}):null;
+/* sign-in is optional unless config.js says loginRequired: signed in = name from the school records, otherwise typed */
+const MUST_LOGIN=!!CFG.loginRequired;
+function whoBox(){ const w=document.querySelector('[data-who="sb"]'); if(w) w.hidden=!!LOGIN&&(MUST_LOGIN||!!LOGIN.token()); }
+if(LOGIN){ $('#sbLogin').hidden=false; whoBox(); }
+function openSubmit(){ const g=gradeFn(exportData()); fillWho('sb'); if(LOGIN){ LOGIN.render(); whoBox(); } document.querySelectorAll('.devid').forEach(e=>e.textContent=flowDeviceId());
   $('#sbSummary').textContent=`Self-check 自我批改：${g.total} / 100 · ${g.passed?'Passed 達成':'Not yet 尚未達成'}`;
   const st=$('#sbStatus'); st.classList.remove('err'); st.textContent=g.passed?'':'You can still submit now, or fix it first. 還沒全對也可以先交，之後再交一次會覆蓋。';
   $('#bDoSubmit').disabled=false; $('#checkModal').hidden=true; $('#submitModal').hidden=false; }
 $('#bDoSubmit').onclick=async()=>{ const st=$('#sbStatus'), btn=$('#bDoSubmit'); st.classList.remove('err');
   const fail=m=>{ st.textContent=m; st.classList.add('err'); btn.disabled=false; };
   const tok=LOGIN?LOGIN.token():null;
-  if(LOGIN&&!tok){ fail('Sign in first. 請先用學校帳號登入。'); LOGIN.render(); return; }
-  if(!LOGIN&&!String(meta.name||'').trim()){ fail('Enter your name first. 請先填寫姓名。'); $('#sbName').focus(); return; }
+  if(LOGIN&&!tok&&MUST_LOGIN){ fail('Sign in first. 請先用學校帳號登入。'); LOGIN.render(); return; }
+  if(!tok&&!String(meta.name||'').trim()){ fail('Enter your name first. 請先填寫姓名。'); $('#sbName').focus(); return; }
   const w=exportData(), g=gradeFn(w); btn.disabled=true; st.textContent='Submitting… 繳交中…';
   try{ const r=await fetch(SUBMIT_URL,{method:'POST',body:JSON.stringify({action:'submit',unit:TC.unit,idToken:tok||'',device:flowDeviceId(),student:w.student,cls:w.cls,seat:w.seat,name:w.name,title:TITLE,work:w,check:{total:g.total,passed:g.passed,english:g.english}})});
     const res=await r.json();

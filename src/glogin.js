@@ -42,7 +42,7 @@ function NtpcLogin(o){
     const b=o.box; if(!b) return;
     if(user){ b.innerHTML=`<div class="glogin on"><span class="gok">✓</span><span class="gwho"><b>${e(user.student||user.name)}</b><small>新北市 OpenID · ${e(user.email)}${user.role&&user.role!=='學生'?' · '+e(user.role):''}</small></span><button type="button" class="btn" data-gout>Sign out 登出</button></div>`;
       b.querySelector('[data-gout]').onclick=()=>setUser(null); return; }
-    b.innerHTML=`<div class="glogin"><p>Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
+    b.innerHTML=`<div class="glogin"><p>${o.optional?'Sign in with your school account (you can also skip it and type your name below). 可以用新北市校務行政帳號登入，班級姓名會自動帶入，也能查自己的成績；不登入就在下面填寫班級座號姓名。':'Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。'}</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
     b.querySelector('[data-gin]').onclick=start;
     if(note){ status(note,true); note=''; }
   }
