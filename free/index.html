@@ -1725,7 +1725,7 @@ const TOOLS=[
   {key:'connector',label:'CONNECTOR',sub:'連接點',type:'connector',w:44,h:44,text:'A',mini:[28,28]},
 ];
 const TOOL=Object.fromEntries(TOOLS.map(t=>[t.key,t]));
-const PH=TASK==='dog'?{input:'',output:'say "eat together?"',process:'go to (-160, 0)',decision:'',loop:'repeat 10'}:TASK==='sum'?{input:'n',output:'sum',process:'i = i + 1',decision:'i <= n',loop:'repeat n'}:TASK==='free'?{}:TASK==='score'?{input:'s1, s2, s3, s4',output:'pass / fail',process:'total = …',decision:'avg >= 60'}:{input:'height / weight',output:'thin / normal …',process:'bmi = …',decision:'BMI < 18.5'};
+const PH=TASK==='dog'?{input:'',output:'say "eat together?"',process:'go to (-160, 0)',decision:'',loop:'repeat 10',terminator:'START CAT / broadcast "eat"'}:TASK==='sum'?{input:'n',output:'sum',process:'i = i + 1',decision:'i <= n',loop:'repeat n'}:TASK==='free'?{}:TASK==='score'?{input:'s1, s2, s3, s4',output:'pass / fail',process:'total = …',decision:'avg >= 60'}:{input:'height / weight',output:'thin / normal …',process:'bmi = …',decision:'BMI < 18.5'};
 const KINDS={
   terminator:{label:'開始／結束',w:120,h:48,text:'START',mini:[64,26]},
   process:{label:'處理',w:140,h:60,text:'',mini:[64,34]},
@@ -1921,7 +1921,7 @@ function redo(){ if(!redoStack.length)return; undoStack.push(snap()); loadStr(re
 function startEdit(kind,id){
   commitEdit();
   const obj=kind==='node'?getNode(id):getEdge(id); if(!obj) return;
-  if(kind==='node'&&obj.type==='terminator'&&/^(start|end)$/i.test(obj.text||'')){ return; }
+  if(kind==='node'&&obj.type==='terminator'&&TASK!=='dog'&&/^(start|end)$/i.test(obj.text||'')){ return; }   /* Dog Talk: START → START CAT, END → broadcast "eat" */
   editing={kind,id,before:snap()};
   if(kind==='node'){ editor.value=obj.role?bodyOf(obj):(obj.text||''); editor.placeholder=PH[obj.role||obj.type]||''; }
   else { editor.value=obj.label||''; editor.placeholder='Yes / No'; }
