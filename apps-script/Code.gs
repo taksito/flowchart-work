@@ -26,6 +26,7 @@ const CONFIG = {
   GOOGLE_CLIENT_ID: '',               // 學生登入用的 OAuth 用戶端 ID（…apps.googleusercontent.com）；留空 = 不用登入
   EMAIL_DOMAIN: 'apps.ntpc.edu.tw',   // 只接受這個網域的學校帳號
   ROSTER_TAB: '名單 Roster',           // 名單工作表名稱
+  GRADES_TAB: '其他成績 Grades',       // 其他作業（例如學習吧）的成績簿：班級｜座號｜姓名｜作業1｜作業2…；學生在「我的成績」頁看得到
   CLASS_PREFIX: '7',                  // 只用這個年級的班級（例如 7 = 七年級）；留空 = 全部班級
   NTPC_OPENID: true,                  // true = 學生用新北市 OpenID（校務行政帳號）登入後才能繳交
   NTPC_SITE: 'https://taksito.github.io/flowchart-work/, https://raw.githack.com/taksito/flowchart-work/',  // 作業網站網址（可以用逗號分開好幾個）：登入完成後只會回到這些網站
@@ -54,8 +55,22 @@ function setup() {
     const map = roster_(true);
     Logger.log(map ? '名單 Roster: ' + Object.keys(map).length + ' 位學生有 Email' : '找不到「' + CONFIG.ROSTER_TAB + '」工作表，請把學生名單匯入成績試算表');
   }
+  gradesTab_();
   Logger.log('資料夾 Folder: ' + folder.getUrl());
   Logger.log('試算表 Sheet: ' + ss.getUrl());
+}
+/* the gradebook for work done elsewhere: made once, with the class list from the roster when there is one */
+function gradesTab_() {
+  const ss = sheet_();
+  let sh = ss.getSheetByName(CONFIG.GRADES_TAB);
+  if (sh) return sh;
+  sh = ss.insertSheet(CONFIG.GRADES_TAB);
+  const rows = [['班級 Class', '座號 No.', '姓名 Name']].concat((rosterRows_() || []).map(function (x) { return [x.cls, x.seat, x.name]; }));
+  sh.getRange(1, 1, rows.length, 3).setValues(rows);
+  sh.getRange(1, 1, 1, 3).setFontWeight('bold');
+  sh.setFrozenRows(1); sh.setFrozenColumns(3);
+  sh.getRange(1, 4).setNote('從這一欄開始，每個作業一欄：第一列寫作業名稱，下面填分數。寫「缺交」= 學生會看到缺交；空白 = 還沒登錄。');
+  return sh;
 }
 
 /* ---------- web app ---------- */
@@ -312,14 +327,45 @@ function roster_(fresh) {
 
 /* ---------- 我的成績 My scores: a signed-in student sees only their own work ---------- */
 function mine_(req) {
-  if (!loginOn_()) return { ok: false, error: 'login_off' };
-  const v = verify_(req.idToken);
-  if (v.error) return { ok: false, error: v.error };
-  const who = v.who;
-  if (!who.cls || !who.seat) return { ok: false, error: 'no_class', who: who };
-  const ss = sheet_(), sub = ss.getSheetByName('繳交紀錄 Submissions'), sc = CONFIG.SHOW_SCORES ? ss.getSheetByName('成績 Scores') : null;
+  let who, preview = false;
+  if (req.key) {   /* teacher preview: see the page as one student sees it */
+    if (String(req.key) !== CONFIG.TEACHER_KEY || CONFIG.TEACHER_KEY === 'change-me-teacher') return { ok: false, error: 'bad_key' };
+    const c = clean_(req.cls), n = clean_(req.seat);
+    if (!c || !n) return { ok: false, error: 'no_class' };
+    const r = (rosterRows_() || []).filter(function (x) { return x.cls === c && Number(x.seat) === Number(n); })[0];
+    who = who_({ cls: c, seat: String(Number(n) || n), name: r ? r.name : '' }); preview = true;
+  } else {
+    if (!loginOn_()) return { ok: false, error: 'login_off' };
+    const v = verify_(req.idToken);
+    if (v.error) return { ok: false, error: v.error };
+    who = v.who;
+    if (!who.cls || !who.seat) return { ok: false, error: 'no_class', who: who };
+  }
+  const ss = sheet_(), sub = ss.getSheetByName('繳交紀錄 Submissions'), sc = CONFIG.SHOW_SCORES ? ss.getSheetByName('成績 Scores') : null, gb = ss.getSheetByName(CONFIG.GRADES_TAB);
   const units = mineUnits_(who, sub ? sub.getDataRange().getValues() : [], sc ? sc.getDataRange().getValues() : [], function (u) { return workNames_(u); });
-  return { ok: true, who: who, scores: !!CONFIG.SHOW_SCORES, units: units };
+  const extra = extraFor_(who, gb ? gb.getDataRange().getDisplayValues() : [], !!CONFIG.SHOW_SCORES);
+  if (!who.name && extra.name) who = who_({ cls: who.cls, seat: who.seat, name: extra.name });
+  return { ok: true, who: who, preview: preview, scores: !!CONFIG.SHOW_SCORES, units: units, extra: extra.items };
+}
+/* Pure: this student's row of the gradebook -> [{name, value, state}] where state is score / missing / text / none */
+function extraFor_(who, rows, showScores) {
+  const out = { name: '', items: [] };
+  if (!rows || rows.length < 1) return out;
+  const head = rows[0].map(function (h) { return String(h || '').trim(); });
+  const key = function (c, s) { const n = Number(s); return String(c || '').trim() + '-' + (String(s).trim() !== '' && isFinite(n) ? String(n) : String(s || '').trim()); };
+  const me = key(who.cls, who.seat);
+  const row = rows.slice(1).filter(function (r) { return key(r[0], r[1]) === me; })[0];
+  out.name = row ? String(row[2] || '').trim() : '';
+  for (let c = 3; c < head.length; c++) {
+    if (!head[c]) continue;
+    const v = row ? String(row[c] == null ? '' : row[c]).trim() : '';
+    let state = 'none';
+    if (/^(缺|缺交|未交|missing)$/i.test(v)) state = 'missing';
+    else if (v !== '' && isFinite(Number(v))) state = 'score';
+    else if (v !== '') state = 'text';
+    out.items.push({ name: head[c], state: state, value: showScores || state === 'missing' ? v : '' });
+  }
+  return out;
 }
 /* names of the work files in one unit folder (cached for a minute, so a whole class can look at once) */
 function workNames_(u) {
