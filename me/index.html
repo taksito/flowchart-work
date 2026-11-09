@@ -161,9 +161,10 @@ const $=s=>document.querySelector(s);
 const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CFG=window.FLOW_CONFIG||{}, URL_=String(CFG.submitUrl||'').trim();
 /* every assignment page, in the order of the home page; config.js "assignments" picks which ones count */
-const PAGES={dog:['Dog Talk','小狗對話 流程圖','dog/'],score:['Pass or Fail Tool','成績及格判斷 流程圖','score/'],bmi:['BMI Drawing Tool','BMI 流程圖','bmi/'],sum:['Summation Tool','1 加到 n 流程圖','sum/'],
+const PAGES={dog:['Dog Talk','小狗對話 流程圖','dog/'],avg:['Average Calculator','平均計算機 流程圖（學習吧）',''],'scratch-avg':['Scratch: Average Calculator','積木：平均計算機（學習吧）',''],score:['Pass or Fail Tool','成績及格判斷 流程圖','score/'],bmi:['BMI Drawing Tool','BMI 流程圖','bmi/'],sum:['Summation Tool','1 加到 n 流程圖','sum/'],
   scratch:['Scratch: Pass or Fail','積木：成績及格判斷','scratch/'],'scratch-bmi':['Scratch: BMI','積木：BMI 判斷','scratch-bmi/'],'scratch-sum':['Scratch: 1 + … + n','積木：1 加到 n','scratch-sum/'],'scratch-pw':['Scratch: Password Check','積木：密碼檢查','scratch-pw/']};
-const ORDER=(Array.isArray(CFG.assignments)&&CFG.assignments.length?CFG.assignments:Object.keys(PAGES)).filter(u=>PAGES[u]);
+const PICK=Array.isArray(CFG.assignments)&&CFG.assignments.length?CFG.assignments:null;
+let ORDER=(PICK||Object.keys(PAGES)).filter(u=>PAGES[u]);
 const st=(t,bad)=>{ $('#st').textContent=t||''; $('#st').classList.toggle('err',!!bad); };
 const when=t=>{ const d=new Date(t); return isNaN(d)?'':d.toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}); };
 if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(URL_)||!CFG.ntpcOpenId){
@@ -190,6 +191,8 @@ function show(res){
   const w=res.who||{};
   $('#pvBar').hidden=!res.preview; if(res.preview) $('#pvBar').textContent=`Teacher preview 教師預覽：${w.student||(w.cls+'-'+w.seat)} sees this 這位學生登入後會看到下面的畫面。`;
   const by={}; (res.units||[]).forEach(x=>by[x.unit]=x);
+  /* the server's list sets the order; assignments without a page here (學習吧 work the teacher added) are shown too */
+  if(res.units&&res.units.length) ORDER=res.units.map(x=>x.unit).filter(u=>!PAGES[u]||!PAGES[u][2]||!PICK||PICK.indexOf(u)>=0);
   const rows=ORDER.map(u=>Object.assign({unit:u,submitted:false},by[u]||{}));
   const ex=Array.isArray(res.extra)?res.extra:[];
   /* source: auto = 系統自動批改, manual = 學習吧人工批改, override = 老師修改, waiting, missing (older scripts send only submitted/total) */
@@ -209,7 +212,7 @@ function show(res){
   }).join('');
   rows.sort((a,b)=>((a.source!=='missing')-(b.source!=='missing'))||ORDER.indexOf(a.unit)-ORDER.indexOf(b.unit));
   $('#list').innerHTML=rows.map(x=>{
-    const P=PAGES[x.unit], href='../'+P[2];
+    const P=PAGES[x.unit]||[x.name||x.unit,'學習吧作業 Classwork',''], href=P[2]?'../'+P[2]:'';
     const meta=[];
     const SRC={auto:'系統自動批改 Auto-graded',manual:'人工批改（學習吧）Graded by teacher',override:'老師調整 Changed by teacher'};
     if(x.source==='missing') meta.push('<span class="tag miss">Missing 缺交</span>');
@@ -225,7 +228,7 @@ function show(res){
     }
     const note=x.source==='auto'&&res.scores&&(x.comment||x.fixes)?`<div class="note">${x.comment?'<b>Comment 評語：</b>'+e(x.comment):''}${x.comment&&x.fixes?'<br>':''}${x.fixes?'<b>Fix 需要修正：</b>'+e(x.fixes):''}</div>`
       :x.mcomment?`<div class="note"><b>Comment 評語：</b>${e(x.mcomment)}</div>`:'';
-    const act=x.source!=='missing'?`<a class="btn" href="${href}">Open 打開修改 →</a>`:`<a class="btn warn" href="${href}">Make it up 去補交 →</a>`;
+    const act=!href?(x.source==='missing'?'<span class="tag wait">到學習吧補交，再告訴老師 Hand it in on 學習吧</span>':''):x.source!=='missing'?`<a class="btn" href="${href}">Open 打開修改 →</a>`:`<a class="btn warn" href="${href}">Make it up 去補交 →</a>`;
     return `<div class="item${x.source==='missing'?' missing':''}"><h3>${e(P[0])}<small>${e(P[1])}</small></h3><div class="act">${act}</div><div class="meta">${meta.join('')}</div>${note}</div>`;
   }).join('')||'<p class="empty">No assignments yet. 目前沒有作業。</p>';
   st(miss.length?'Finish the missing work, then press Submit 繳交 on that page. 完成缺交的作業後，在作業頁按「Submit 繳交」。':exMiss.length?'Finish the missing work and tell your teacher. 完成缺交的作業後，記得告訴老師。':'All handed in. Great job! 全部都交了，很棒！');
