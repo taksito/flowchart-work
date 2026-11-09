@@ -10,7 +10,7 @@
  * 設定步驟請看 GOOGLE-DRIVE.md。
  */
 window.FLOW_CONFIG = {
-  submitUrl: 'https://script.google.com/macros/s/AKfycbxGpXVeRGkgVsynV9LmNhkhcyr-uTm_HO2EBEEoh5pMI8CiLQ36_EUoxbIM3wXHz_Jk/exec',
+  submitUrl: 'https://script.google.com/macros/s/AKfycby7YY7rN7IuE-C9Yx4--0uBNkOb-p77yHbu06Xxyp_D4B0UgbpE4UQ6-gP6PVG4jFl9/exec',
   needCode: false,
   googleClientId: '',
   ntpcOpenId: true,
