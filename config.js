@@ -5,6 +5,7 @@
  * googleClientId：學生用學校 Google 帳號登入的 OAuth 用戶端 ID；留空 = 學生自己填班級座號姓名。
  * ntpcOpenId：true = 學生用新北市 OpenID（校務行政帳號）登入後繳交；Code.gs 的 NTPC_OPENID 也要改成 true。
  * emailDomain：學校帳號的網域。
+ * assignments：「我的成績」頁要列出、計算缺交的作業（順序就是顯示順序）；留空 [] = 全部列出。
  * classPrefix：批改台只顯示這個年級的班級（'7' = 七年級）；留空 = 全部班級。
  * 設定步驟請看 GOOGLE-DRIVE.md。
  */
@@ -14,5 +15,6 @@ window.FLOW_CONFIG = {
   googleClientId: '',
   ntpcOpenId: false,
   emailDomain: 'apps.ntpc.edu.tw',
-  classPrefix: '7'
+  classPrefix: '7',
+  assignments: ['bmi', 'score', 'sum', 'scratch', 'scratch-bmi', 'scratch-sum', 'scratch-pw']
 };

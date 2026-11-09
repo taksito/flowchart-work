@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Scores 我的成績</title>
+<script>document.write('<script src="../config.js?t='+Date.now()+'"><\/script>')</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#f4f7f5;--panel:#fff;--ink:#1e2a2c;--muted:#5b6b6e;--line:#d3ddd8;--accent:#17795a;--soft:rgba(23,121,90,.10);--warn:#b4441f;--warn-soft:rgba(180,68,31,.10);color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#121817;--panel:#1a2220;--ink:#e2ebe7;--muted:#93a39e;--line:#2c3835;--accent:#4cc49a;--soft:rgba(76,196,154,.14);--warn:#f08a64;--warn-soft:rgba(240,138,100,.14);color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.6;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px;background-position:-1px -1px}
+main{max-width:860px;margin:0 auto;padding:48px 16px 48px}
+a.home{color:var(--muted);font-size:14px;text-decoration:none}
+a.home:hover{color:var(--accent)}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:13px;letter-spacing:.2em;color:var(--accent);margin-top:18px}
+h1{font-size:clamp(28px,5vw,40px);margin:6px 0 4px;line-height:1.15}
+h1 small{display:block;font-size:.55em;color:var(--muted);font-weight:500;margin-top:6px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin-top:20px}
+.btn{font:inherit;font-size:14px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.btn.primary:hover{color:var(--panel);filter:brightness(1.08)}
+.btn.warn{background:var(--warn);border-color:var(--warn);color:#fff}
+.btn.warn:hover{color:#fff;filter:brightness(1.08)}
+.status{font-size:13px;color:var(--muted)}.status.err{color:var(--warn)}
+.glogin{display:flex;flex-direction:column;gap:10px}.glogin p{margin:0}.glogin.on{flex-direction:row;align-items:center;gap:12px}
+.glogin .gok{color:var(--accent);font-weight:700;font-size:20px}.glogin .gwho{display:flex;flex-direction:column;flex:1;min-width:0}
+.glogin .gwho b{font-size:18px}.glogin .gwho small{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat b{display:block;font-family:"JetBrains Mono",monospace;font-size:28px;line-height:1.2}
+.stat span{font-size:13px;color:var(--muted)}
+.stat.miss b{color:var(--warn)}.stat.done b{color:var(--accent)}
+h2{font-size:18px;margin:0}
+.head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:28px 0 10px}
+h2 small{font-size:14px;color:var(--muted);font-weight:500;margin-left:8px}
+.list{display:flex;flex-direction:column;gap:12px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;align-items:center}
+.item.missing{border-color:var(--warn);box-shadow:inset 4px 0 0 var(--warn)}
+.item h3{margin:0;font-size:17px}
+.item h3 small{font-size:13px;color:var(--muted);font-weight:500;margin-left:6px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.tag{font-size:12px;font-weight:500;border-radius:999px;padding:1px 10px;border:1px solid currentColor}
+.tag.miss{color:var(--warn);background:var(--warn-soft)}.tag.ok{color:var(--accent);background:var(--soft)}.tag.wait{color:var(--muted)}
+.score{font-family:"JetBrains Mono",monospace;color:var(--ink)}
+.note{grid-column:1/-1;font-size:13px;background:var(--soft);border-radius:10px;padding:8px 12px;margin-top:4px}
+.note b{font-weight:500}
+.act{grid-row:1/span 2;grid-column:2;align-self:center}
+.empty{color:var(--muted);text-align:center;padding:24px}
+footer{margin-top:32px;font-size:12px;color:var(--muted)}
+@media (max-width:560px){.sum{gap:8px}.stat{padding:10px 12px}.stat b{font-size:22px}.item{grid-template-columns:1fr}.act{grid-row:auto;grid-column:1;order:3}.note{order:2}.act .btn{width:100%;justify-content:center}.glogin.on{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<main>
+  <a class="home" href="../">← Home 回首頁</a>
+  <div class="eyebrow">MY SCORES</div>
+  <h1>My Scores<small>我的成績與缺交作業</small></h1>
+  <section class="panel" id="login" aria-label="Sign in 登入"></section>
+  <div id="view" hidden>
+    <div class="sum" aria-live="polite">
+      <div class="stat done"><b id="nDone">0</b><span>Handed in 已繳交</span></div>
+      <div class="stat miss"><b id="nMiss">0</b><span>Missing 缺交</span></div>
+      <div class="stat"><b id="nAvg">–</b><span>Average 平均分數</span></div>
+    </div>
+    <div class="head"><h2>Assignments<small>作業</small></h2><button type="button" class="btn" id="bReload">Refresh 重新整理</button></div>
+    <div class="list" id="list"></div>
+    <p class="status" id="st"></p>
+  </div>
+  <footer>Only you can see this page after signing in. Handing in again replaces your old work. 登入後只看得到自己的成績；重新繳交會取代舊的作業。</footer>
+</main>
+<script>
+/* ===== Sign in with 新北市教育局 OpenID (校務行政帳號); the Apps Script checks it with the OpenID server ===== */
+function NtpcLogin(o){
+  const SK='ntpc-v1', OP='https://openid.ntpc.edu.tw/OpenId/Provider', ANY='http://specs.openid.net/auth/2.0/identifier_select';
+  const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const MSG={login_off:'Sign-in is not turned on yet. Tell your teacher. 老師的雲端程式還沒開啟登入功能。',
+    login_required:'Sign in first. 請先用校務行政帳號登入。',
+    bad_token:'Sign-in failed. Try again. 登入失敗，請再登入一次。', login_expired:'Sign-in expired. Sign in again. 登入過期了，請再登入一次。',
+    ntpc_cancel:'You cancelled the sign-in. 你取消了登入。',
+    not_school:'This account is not from our school. 這個帳號不是本校的學生或老師。',
+    bad_openid:'Sign-in could not be checked. Try again. 登入驗證失敗，請再登入一次。',
+    ntpc_no_data:'Your name was not shared. Press 同意 on the sign-in page. 沒有收到姓名資料，請在授權畫面按「同意」。',
+    ntpc_no_class:'Your class and seat are missing. Tell your teacher. 校務行政系統裡沒有你的班級座號，請告訴老師。',
+    server_error:'The server had a problem. Try again. 雲端程式出錯了，請再試一次。'};
+  const ok=u=>u&&u.token&&Number(u.exp)*1000>Date.now()+60000?u:null;
+  let user=null, note='';
+  try{ user=ok(JSON.parse(sessionStorage.getItem(SK)||'null')); }catch(err){}
+  /* back from a sign-in in this same window: …#ntpc=… */
+  const h=location.hash.match(/[#&]ntpc=([\w-]+)/);
+  if(h){
+    try{ const d=JSON.parse(decodeURIComponent(escape(atob(h[1].replace(/-/g,'+').replace(/_/g,'/')))));
+      if(d&&d.type==='ntpc-login'){ if(d.ok&&ok(d.user)){ user=d.user; try{ sessionStorage.setItem(SK,JSON.stringify(user)); }catch(err){} } else note=MSG[d.error]||'Sign-in failed. 登入失敗。'; } }catch(err){}
+    try{ history.replaceState(null,'',location.href.split('#')[0]); }catch(err){}
+  }
+  function setUser(u){ user=u; try{ if(u) sessionStorage.setItem(SK,JSON.stringify(u)); else sessionStorage.removeItem(SK); }catch(err){} render(); if(u&&o.onUser) o.onUser(u); if(!u&&o.onOut) o.onOut(); }
+  function status(t,bad){ const s=o.box&&o.box.querySelector('.gst'); if(s){ s.textContent=t||''; s.classList.toggle('err',!!bad); } }
+  function authUrl(){
+    const back=o.url+'?back='+encodeURIComponent(location.href.split('#')[0]);
+    return OP+'?'+new URLSearchParams({'openid.ns':'http://specs.openid.net/auth/2.0','openid.mode':'checkid_setup','openid.claimed_id':ANY,'openid.identity':ANY,
+      'openid.return_to':back,'openid.realm':o.url,'openid.ns.sreg':'http://openid.net/extensions/sreg/1.1','openid.sreg.required':'fullname,email,country,language,timezone'});
+  }
+  function start(){
+    const u=authUrl(), w=window.open(u,'ntpc-login','width=560,height=720');
+    if(!w){ location.href=u; return; }   // pop-ups blocked: sign in in this window and come back
+    status('Sign in in the new window… 請在跳出的視窗登入…');
+  }
+  window.addEventListener('message',ev=>{
+    const d=ev.data; if(!d||d.type!=='ntpc-login') return;
+    if(!/^https:\/\/([\w-]+\.)*(googleusercontent\.com|script\.google\.com)$/.test(ev.origin)) return;
+    if(d.ok&&ok(d.user)) setUser(d.user); else status(MSG[d.error]||('Sign-in failed. 登入失敗。'+(d.error?`（${e(d.error)}）`:'')),true);
+  });
+  function render(){
+    const b=o.box; if(!b) return;
+    if(user){ b.innerHTML=`<div class="glogin on"><span class="gok">✓</span><span class="gwho"><b>${e(user.student||user.name)}</b><small>新北市 OpenID · ${e(user.email)}${user.role&&user.role!=='學生'?' · '+e(user.role):''}</small></span><button type="button" class="btn" data-gout>Sign out 登出</button></div>`;
+      b.querySelector('[data-gout]').onclick=()=>setUser(null); return; }
+    b.innerHTML=`<div class="glogin"><p>Sign in with your school account first. 請先用新北市校務行政系統的帳號密碼登入（OpenID）。</p><div class="gbtn"><button type="button" class="btn primary" data-gin>新北市 OpenID 登入 Sign in</button></div><span class="status gst"></span></div>`;
+    b.querySelector('[data-gin]').onclick=start;
+    if(note){ status(note,true); note=''; }
+  }
+  if(user&&o.onUser) setTimeout(()=>o.onUser(user),0);
+  return {
+    user:()=>user,
+    token:()=>user&&Number(user.exp)*1000>Date.now()+30000?user.token:null,
+    expired:()=>{ setUser(null); status(MSG.login_expired,true); },
+    message:k=>MSG[k],
+    render
+  };
+}
+(function(){
+const $=s=>document.querySelector(s);
+const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CFG=window.FLOW_CONFIG||{}, URL_=String(CFG.submitUrl||'').trim();
+/* every assignment page, in the order of the home page; config.js "assignments" picks which ones count */
+const PAGES={bmi:['BMI Drawing Tool','BMI 流程圖','bmi/'],score:['Pass or Fail Tool','成績及格判斷 流程圖','score/'],sum:['Summation Tool','1 加到 n 流程圖','sum/'],
+  scratch:['Scratch: Pass or Fail','積木：成績及格判斷','scratch/'],'scratch-bmi':['Scratch: BMI','積木：BMI 判斷','scratch-bmi/'],'scratch-sum':['Scratch: 1 + … + n','積木：1 加到 n','scratch-sum/'],'scratch-pw':['Scratch: Password Check','積木：密碼檢查','scratch-pw/']};
+const ORDER=(Array.isArray(CFG.assignments)&&CFG.assignments.length?CFG.assignments:Object.keys(PAGES)).filter(u=>PAGES[u]);
+const st=(t,bad)=>{ $('#st').textContent=t||''; $('#st').classList.toggle('err',!!bad); };
+const when=t=>{ const d=new Date(t); return isNaN(d)?'':d.toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}); };
+if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(URL_)||!CFG.ntpcOpenId){
+  $('#login').innerHTML='<p>Sign-in is not turned on yet. 老師還沒開啟登入功能，暫時無法查成績。</p>'; return;
+}
+const LOGIN=NtpcLogin({url:URL_,box:$('#login'),onUser:()=>load(),onOut:()=>{ $('#view').hidden=true; }});
+LOGIN.render();
+let busy=false;
+async function load(){
+  const tok=LOGIN.token(); if(!tok||busy) return; busy=true;
+  $('#view').hidden=false; $('#list').innerHTML='<p class="empty">Loading… 讀取中…</p>'; st('');
+  try{
+    const r=await fetch(URL_,{method:'POST',body:JSON.stringify({action:'mine',idToken:tok})}); const res=await r.json();
+    if(!res||!res.ok){ const k=res&&res.error;
+      if(k==='login_expired'||k==='bad_token'){ LOGIN.expired(); $('#view').hidden=true; return; }
+      $('#list').innerHTML=''; st(k==='no_class'?'This page is for students. Teachers can use the Grading Desk. 這一頁給學生查成績，老師請用批改台。':k==='bad_unit'||k==='unknown_action'?'Your teacher needs to update the Google script. 老師的雲端程式需要更新。':(LOGIN.message(k)||'Could not load. 讀取失敗。')+(k?`（${e(k)}）`:''),true); return; }
+    show(res);
+  }catch(err){ $('#list').innerHTML=''; st('Cannot reach Google Drive. Try again. 連不上雲端，請再試一次。',true); }
+  finally{ busy=false; }
+}
+function show(res){
+  const by={}; (res.units||[]).forEach(x=>by[x.unit]=x);
+  const rows=ORDER.map(u=>Object.assign({unit:u,submitted:false},by[u]||{}));
+  const done=rows.filter(x=>x.submitted), miss=rows.filter(x=>!x.submitted), graded=done.filter(x=>x.total!==''&&x.total!=null);
+  $('#nDone').textContent=done.length+' / '+rows.length; $('#nMiss').textContent=miss.length;
+  $('#nAvg').textContent=res.scores&&graded.length?Math.round(graded.reduce((a,x)=>a+Number(x.total),0)/graded.length):'–';
+  rows.sort((a,b)=>(a.submitted-b.submitted)||ORDER.indexOf(a.unit)-ORDER.indexOf(b.unit));
+  $('#list').innerHTML=rows.map(x=>{
+    const P=PAGES[x.unit], href='../'+P[2];
+    const meta=[];
+    if(!x.submitted) meta.push('<span class="tag miss">Missing 缺交</span>');
+    else{
+      meta.push(res.scores&&x.total!==''&&x.total!=null?'<span class="tag ok">Graded 已批改</span>':'<span class="tag wait">Waiting 等待批改</span>');
+      if(x.time) meta.push('<span>Handed in 繳交 '+e(when(x.time))+'</span>');
+      if(x.self!==''&&x.self!=null) meta.push('<span>Self-check 自我批改 <span class="score">'+e(x.self)+'</span></span>');
+      if(res.scores&&x.total!==''&&x.total!=null) meta.push('<span>Score 成績 <b class="score">'+e(x.total)+'</b>'+(x.level?' · '+e(x.level):'')+'</span>');
+    }
+    const note=x.submitted&&res.scores&&(x.comment||x.fixes)?`<div class="note">${x.comment?'<b>Comment 評語：</b>'+e(x.comment):''}${x.comment&&x.fixes?'<br>':''}${x.fixes?'<b>Fix 需要修正：</b>'+e(x.fixes):''}</div>`:'';
+    const act=x.submitted?`<a class="btn" href="${href}">Open 打開修改 →</a>`:`<a class="btn warn" href="${href}">Make it up 去補交 →</a>`;
+    return `<div class="item${x.submitted?'':' missing'}"><h3>${e(P[0])}<small>${e(P[1])}</small></h3><div class="act">${act}</div><div class="meta">${meta.join('')}</div>${note}</div>`;
+  }).join('')||'<p class="empty">No assignments yet. 目前沒有作業。</p>';
+  st(miss.length?'Finish the missing work, then press Submit 繳交 on that page. 完成缺交的作業後，在作業頁按「Submit 繳交」。':'All handed in. Great job! 全部都交了，很棒！');
+}
+$('#bReload').onclick=load;
+if(LOGIN.user()) load();
+})();
+</script>
+</body>
+</html>

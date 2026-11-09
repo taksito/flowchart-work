@@ -15,6 +15,7 @@ A bilingual (English / 中文) flowchart assignment for junior-high students: dr
 | Scratch Lab: Pass or Fail 積木程式 | `scratch/` | Students 學生 |
 | Scratch Lab: BMI 積木程式 | `scratch-bmi/` | Students 學生 |
 | Grading Desk 批改台 | `grader/` | Teachers 教師 |
+| My Scores 我的成績 | `me/` | Students, signed in with 新北市 OpenID 學生（新北市 OpenID 登入） |
 
 Live site 網址：https://taksito.github.io/flowchart-work/
 

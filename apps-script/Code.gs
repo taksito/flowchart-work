@@ -29,6 +29,7 @@ const CONFIG = {
   CLASS_PREFIX: '7',                  // 只用這個年級的班級（例如 7 = 七年級）；留空 = 全部班級
   NTPC_OPENID: false,                 // true = 學生用新北市 OpenID（校務行政帳號）登入後才能繳交
   NTPC_SITE: 'https://taksito.github.io/flowchart-work/',  // 作業網站網址：登入完成後回到這個網站
+  SHOW_SCORES: true,                  // true = 學生登入「我的成績」頁可以看到老師批改的分數與評語；false = 只看繳交狀態
   NTPC_SCHOOL: '忠孝國中',             // 只接受這所學校的師生（學校名稱或單位代碼）；留空 = 新北市所有學校
 };
 
@@ -69,6 +70,9 @@ function doPost(e) {
   /* read-only actions for "Load all": no lock, so several batches can run at once */
   if (req.action === 'index' || req.action === 'fetch') {
     try { return json_(req.action === 'index' ? index_(req) : fetch_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
+  }
+  if (req.action === 'mine') {
+    try { return json_(mine_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
   }
   if (req.action === 'whoami') {
     try { return json_(whoami_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
@@ -303,6 +307,50 @@ function roster_(fresh) {
   }
   try { cache.put('roster', JSON.stringify(map), 600); } catch (err) {}
   return map;
+}
+
+/* ---------- 我的成績 My scores: a signed-in student sees only their own work ---------- */
+function mine_(req) {
+  if (!loginOn_()) return { ok: false, error: 'login_off' };
+  const v = verify_(req.idToken);
+  if (v.error) return { ok: false, error: v.error };
+  const who = v.who;
+  if (!who.cls || !who.seat) return { ok: false, error: 'no_class', who: who };
+  const ss = sheet_(), sub = ss.getSheetByName('繳交紀錄 Submissions'), sc = CONFIG.SHOW_SCORES ? ss.getSheetByName('成績 Scores') : null;
+  const units = mineUnits_(who, sub ? sub.getDataRange().getValues() : [], sc ? sc.getDataRange().getValues() : [], function (u) { return workNames_(u); });
+  return { ok: true, who: who, scores: !!CONFIG.SHOW_SCORES, units: units };
+}
+/* names of the work files in one unit folder (cached for a minute, so a whole class can look at once) */
+function workNames_(u) {
+  const cache = CacheService.getScriptCache(), k = 'names:' + u, c = cache.get(k);
+  if (c) return JSON.parse(c);
+  const it = rootFolder_().getFoldersByName(unitName_(u)), names = [];
+  if (it.hasNext()) { const files = it.next().getFiles(); while (files.hasNext()) { const n = files.next().getName(); if (/\.json$/i.test(n)) names.push(n); } }
+  try { cache.put(k, JSON.stringify(names), 60); } catch (err) {}
+  return names;
+}
+/* Pure: rows of the two sheets + file names -> one entry per unit for this student. Matched by class and seat number. */
+function mineUnits_(who, subRows, scoreRows, names) {
+  const seatKey = function (c, s) { const n = Number(s); return String(c == null ? '' : c).trim() + '-' + (isFinite(n) && String(s).trim() !== '' ? String(n) : String(s == null ? '' : s).trim()); };
+  const me = seatKey(who.cls, who.seat), byName = {};
+  Object.keys(UNITS).forEach(function (u) { byName[UNITS[u]] = u; byName[u] = u; });
+  const out = {};
+  Object.keys(UNITS).forEach(function (u) {
+    const files = (names(u) || []).filter(function (n) { const m = String(n).match(/^(\d+)-(\d+)\s/); return m && seatKey(m[1], m[2]) === me; });
+    out[u] = { unit: u, name: UNITS[u], submitted: files.length > 0, time: '', self: '', passed: false, total: '', level: '', comment: '', fixes: '', graded: '' };
+  });
+  const iso = function (d) { return d instanceof Date ? d.toISOString() : String(d || ''); };
+  for (let r = 1; r < subRows.length; r++) {
+    const x = subRows[r], u = byName[String(x[1])];
+    if (!u || seatKey(x[2], x[3]) !== me) continue;
+    out[u].time = iso(x[0]); out[u].self = num_(x[6]); out[u].passed = String(x[7]) === 'Yes';
+  }
+  for (let r = 1; r < scoreRows.length; r++) {
+    const x = scoreRows[r], u = byName[String(x[0])];
+    if (!u || seatKey(x[1], x[2]) !== me) continue;
+    out[u].total = num_(x[5]); out[u].level = String(x[6] || ''); out[u].fixes = String(x[14] || ''); out[u].comment = String(x[15] || ''); out[u].graded = iso(x[16]);
+  }
+  return Object.keys(out).map(function (u) { return out[u]; });
 }
 
 /* ---------- sign-in with 新北市教育局 OpenID (OpenID 2.0) ---------- */

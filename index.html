@@ -45,6 +45,8 @@ a.card:hover,a.card:focus-visible{border-color:var(--accent);transform:translate
 .card h2 small{display:block;font-size:14px;color:var(--muted);font-weight:500;margin-top:2px}
 .card p{margin:0;color:var(--muted);font-size:14px}
 .card .go{margin-top:auto;padding-top:8px;color:var(--accent);font-weight:500;font-size:14px}
+a.card.mine{flex-direction:row;align-items:center;gap:16px;margin-top:20px}a.card.mine>div{flex:1;min-width:0}a.card.mine .go{margin:0;padding:0;white-space:nowrap}
+@media (max-width:560px){a.card.mine{flex-wrap:wrap}a.card.mine .go{width:100%}}
 ol{padding-left:20px;color:var(--muted);font-size:14px}
 h3{font-size:15px;margin:36px 0 6px}
 footer{margin-top:40px;font-size:12px;color:var(--muted)}
@@ -77,6 +79,13 @@ footer{margin-top:40px;font-size:12px;color:var(--muted)}
       <circle class="dot" cx="110" cy="58" r="3"/><circle class="dot" cx="162" cy="140" r="3"/>
     </svg>
   </section>
+
+  <a class="card mine" href="me/">
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/><path d="M15.5 4.5l1.5 1.5 3-3"/></svg>
+    <div><h2>My Scores<small>我的成績與缺交作業</small></h2>
+    <p>Sign in with your 新北市 school account to see your scores and finish missing work. 用校務行政帳號登入，查自己的成績、補交缺交的作業。</p></div>
+    <span class="go">Sign in 登入查詢 →</span>
+  </a>
 
   <h2 class="choose">What do you want to do?<small>你想做什麼？</small></h2>
   <p class="sub">Choose one to start. 選一個開始。</p>
