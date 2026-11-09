@@ -30,6 +30,7 @@ const CONFIG = {
   NTPC_OPENID: false,                 // true = 學生用新北市 OpenID（校務行政帳號）登入後才能繳交
   NTPC_SITE: 'https://taksito.github.io/flowchart-work/, https://raw.githack.com/taksito/flowchart-work/',  // 作業網站網址（可以用逗號分開好幾個）：登入完成後只會回到這些網站
   SHOW_SCORES: true,                  // true = 學生登入「我的成績」頁可以看到老師批改的分數與評語；false = 只看繳交狀態
+  NTPC_WEBAPP: '',                    // （選填）這個網頁應用程式的部署網址 …/exec，填了會更嚴格地確認登入是送給這裡的
   NTPC_SCHOOL: '忠孝國中',             // 只接受這所學校的師生（學校名稱或單位代碼）；留空 = 新北市所有學校
 };
 
@@ -358,6 +359,14 @@ const NTPC_OP = 'https://openid.ntpc.edu.tw/OpenId/Provider';
 const NTPC_SREG = 'http://openid.net/extensions/sreg/1.1';
 const NTPC_HOURS = 4;   // a sign-in lasts this long
 function ntpcReturn_() { return ScriptApp.getService().getUrl() || ''; }
+/* is this return_to one of our own web app addresses? getUrl() often gives the …/dev address instead of the deployment's …/exec,
+   so the deployment ids in NTPC_WEBAPP (optional) count too; with neither, any script.google.com web app address is accepted */
+function ntpcOwnUrl_(u) {
+  const id = execId_(u);
+  if (!id) return false;
+  const own = [execId_(ntpcReturn_())].concat(String(CONFIG.NTPC_WEBAPP || '').split(/[,\s]+/).map(execId_)).filter(Boolean);
+  return !own.length || own.indexOf(id) >= 0;
+}
 /* the deployment id in …/macros/s/<id>/exec, so the two spellings of the same web app URL match */
 function execId_(u) { const m = String(u || '').split('?')[0].match(/^https:\/\/script\.google\.com\/(?:a\/macros\/[^/]+|macros)\/s\/([\w-]+)\/exec$/); return m ? m[1] : null; }
 function sites_() { return String(CONFIG.NTPC_SITE || '').split(/[,\s]+/).filter(function (x) { return /^https:\/\/[^/]+\//.test(x); }); }
@@ -382,7 +391,7 @@ function ntpcLogin_(q) {
     if (c.get(k)) return false;
     c.put(k, '1', 21600); return true;
   });
-  if (r.error) return { ok: false, error: r.error };
+  if (r.error) return { ok: false, error: r.error, why: r.why || '' };
   const exp = Math.floor(Date.now() / 1000) + NTPC_HOURS * 3600;
   const body = b64_(JSON.stringify({ c: r.who.cls, s: r.who.seat, n: r.who.name, a: r.account, r: r.role, e: exp }));
   return { ok: true, email: r.account, who: r.who, role: r.role, exp: exp, token: 'ntpc.' + body + '.' + sign_(body) };
@@ -390,7 +399,7 @@ function ntpcLogin_(q) {
 /* the small page the student sees after signing in: it passes the result to the work page and closes */
 function ntpcPage_(q) {
   let r;
-  try { r = ntpcLogin_(q); } catch (err) { r = { ok: false, error: 'server_error' }; }
+  try { r = ntpcLogin_(q); } catch (err) { r = { ok: false, error: 'server_error', why: String(err && err.message || err).slice(0, 120) }; }
   const sites = sites_();
   let back = String(q.back || '');
   if (!sites.some(function (x) { return back.indexOf(x) === 0; })) back = sites[0] || '';   // only ever go back to our own site
@@ -400,7 +409,7 @@ function ntpcPage_(q) {
   const link = back ? back.split('#')[0] + '#ntpc=' + b64_(JSON.stringify(msg)) : '';
   const esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   const text = r.ok ? '✓ 登入成功 Signed in：' + esc(r.who.student || r.who.name) + '<br><small>這個視窗會自動關閉。This window will close.</small>'
-    : '登入沒有成功 Sign-in failed（' + esc(r.error) + '）<br><small>' + esc(NTPC_MSG[r.error] || '請再試一次，或告訴老師。') + '</small>';
+    : '登入沒有成功 Sign-in failed（' + esc(r.error) + (r.why ? '：' + esc(r.why) : '') + '）<br><small>' + esc(NTPC_MSG[r.error] || '請再試一次，或告訴老師。') + '</small>';
   const html = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<style>body{font:16px/1.6 system-ui,sans-serif;margin:0;padding:32px 20px;text-align:center;color:#1f2933}a{display:inline-block;margin-top:16px;padding:10px 18px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none}small{color:#52606d}</style>' +
     '<p>' + text + '</p>' + (link ? '<a id="back" target="_top" href="' + esc(link) + '">回到作業 Back to my work</a>' : '') +
@@ -430,10 +439,11 @@ function ntpcVerify_(token) {
 function ntpcCheck_(q, post, fresh) {
   const g = function (k) { return q['openid.' + k] == null ? '' : String(q['openid.' + k]); };
   if (g('mode') === 'cancel') return { error: 'ntpc_cancel' };
-  if (g('mode') !== 'id_res' || g('ns') !== 'http://specs.openid.net/auth/2.0') return { error: 'bad_openid' };
-  if (g('op_endpoint') !== NTPC_OP) return { error: 'bad_openid' };
-  if (!execId_(g('return_to')) || execId_(g('return_to')) !== execId_(ntpcReturn_())) return { error: 'bad_openid' };
-  if (!/^https:\/\/openid\.ntpc\.edu\.tw\//.test(g('claimed_id'))) return { error: 'bad_openid' };
+  const bad = function (why) { return { error: 'bad_openid', why: why }; };
+  if (g('mode') !== 'id_res' || g('ns') !== 'http://specs.openid.net/auth/2.0') return bad('mode');
+  if (g('op_endpoint').replace(/\/+$/, '').toLowerCase() !== NTPC_OP.toLowerCase()) return bad('op_endpoint');
+  if (!ntpcOwnUrl_(g('return_to'))) return bad('return_to');
+  if (!/^https?:\/\/openid\.ntpc\.edu\.tw\//i.test(g('claimed_id'))) return bad('claimed_id');
   const m = g('response_nonce').match(/^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)/);
   if (!m || Math.abs(Date.now() - Date.parse(m[1])) > 10 * 60 * 1000) return { error: 'login_expired' };
   /* the sreg alias the server used (usually "sreg") */
@@ -442,14 +452,16 @@ function ntpcCheck_(q, post, fresh) {
   if (!alias) return { error: 'ntpc_no_data' };
   const signed = ',' + g('signed') + ',';
   const need = ['op_endpoint', 'return_to', 'response_nonce', 'assoc_handle', 'claimed_id', 'identity', alias + '.fullname', alias + '.timezone'];
-  if (need.some(function (k) { return signed.indexOf(',' + k + ',') < 0; })) return { error: 'bad_openid' };
-  if (q['openid.' + alias + '.language'] != null && signed.indexOf(',' + alias + '.language,') < 0) return { error: 'bad_openid' };
+  const unsigned = need.filter(function (k) { return signed.indexOf(',' + k + ',') < 0; });
+  if (unsigned.length) return bad('unsigned:' + unsigned.join('+'));
+  if (q['openid.' + alias + '.language'] != null && signed.indexOf(',' + alias + '.language,') < 0) return bad('unsigned:' + alias + '.language');
   /* ask the OpenID server whether it really signed this */
   const body = {};
   Object.keys(q).forEach(function (k) { if (/^openid\./.test(k)) body[k] = String(q[k]); });
   body['openid.mode'] = 'check_authentication';
-  if (!/(^|\n)is_valid:true(\r?\n|$)/.test(String(post(body) || ''))) return { error: 'bad_openid' };
-  if (!fresh(g('response_nonce') + '|' + g('claimed_id'))) return { error: 'bad_openid' };
+  const reply = String(post(body) || '');
+  if (!/(^|\n)is_valid:true(\r?\n|$)/.test(reply)) return bad('is_valid:' + reply.replace(/\s+/g, ' ').trim().slice(0, 80));
+  if (!fresh(g('response_nonce') + '|' + g('claimed_id'))) return bad('nonce_used');
   /* who it is */
   const sr = function (k) { return g(alias + '.' + k).trim(); };
   let places = [];
