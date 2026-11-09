@@ -398,14 +398,15 @@ function mineUnits_(who, subRows, scoreRows, names, manualRows) {
   for (let r = 1; r < subRows.length; r++) {
     const x = subRows[r], u = byName[String(x[1])];
     if (!u || seatKey(x[2], x[3]) !== me) continue;
-    out[u].time = iso(x[0]); out[u].self = num_(x[6]); out[u].passed = String(x[7]) === 'Yes';
+    out[u].time = iso(x[0]); out[u].self = score_(x[6]); out[u].passed = String(x[7]) === 'Yes';
   }
   for (let r = 1; r < scoreRows.length; r++) {
     const x = scoreRows[r], u = byName[String(x[0])];
     if (!u || seatKey(x[1], x[2]) !== me) continue;
     out[u].total = String(x[5]).trim() === '' ? '' : num_(x[5]); out[u].level = String(x[6] || ''); out[u].fixes = String(x[14] || ''); out[u].comment = String(x[15] || ''); out[u].graded = iso(x[16]);
   }
-  Object.keys(out).forEach(function (u) { out[u].manual = ''; out[u].override = ''; });
+  /* the auto-graded score: what the Grading Desk wrote back, otherwise the score the page gave when the work was handed in */
+  Object.keys(out).forEach(function (u) { const x = out[u]; x.auto = x.total !== '' ? x.total : (x.submitted ? x.self : ''); x.manual = ''; x.override = ''; });
   (manualRows || []).slice(1).forEach(function (x) {
     const u = byName[String(x[3])];
     if (!u || seatKey(x[0], x[1]) !== me) return;
@@ -415,12 +416,14 @@ function mineUnits_(who, subRows, scoreRows, names, manualRows) {
 }
 /* a score typed by the teacher: a number, or '' when the cell is empty */
 function score_(v) { const t = String(v == null ? '' : v).trim(); return t !== '' && isFinite(Number(t)) ? Math.round(Number(t) * 10) / 10 : ''; }
-/* the score a unit counts as: the teacher's change if there is one, otherwise the higher of the auto-graded and 學習吧 scores */
+/* the score a unit counts as: the teacher's change if there is one, otherwise the higher of the auto-graded and 學習吧 scores
+   (auto = Grading Desk score, or the score given when the work was handed in) */
 function finalOf_(x) {
   const has = function (v) { return v !== '' && v != null && isFinite(Number(v)); };
   if (has(x.override)) return { final: Number(x.override), source: 'override' };
   let best = null;
-  if (has(x.total)) best = { final: Number(x.total), source: 'auto' };
+  const auto = x.auto !== undefined ? x.auto : x.total;
+  if (has(auto)) best = { final: Number(auto), source: 'auto' };
   if (has(x.manual) && (!best || Number(x.manual) > best.final)) best = { final: Number(x.manual), source: 'manual' };
   return best || { final: '', source: x.submitted ? 'waiting' : 'missing' };
 }
@@ -487,7 +490,7 @@ function classTable_(cls, d) {
   return Object.keys(seats).sort(function (a, b) { return Number(a) - Number(b) || a.localeCompare(b); }).map(function (k) {
     const who = { cls: cls, seat: k, name: seats[k] };
     return { cls: cls, seat: k, name: seats[k], units: mineUnits_(who, d.sub, d.sc, d.names, d.man).map(function (x) {
-      return { unit: x.unit, submitted: x.submitted, total: x.total, manual: x.manual, override: x.override, final: x.final, source: x.source };
+      return { unit: x.unit, submitted: x.submitted, auto: x.auto, total: x.total, manual: x.manual, override: x.override, final: x.final, source: x.source };
     }) };
   });
 }
@@ -515,7 +518,7 @@ function classSet_(req) {
   const ss = sheet_(), sub = ss.getSheetByName('繳交紀錄 Submissions'), sc = ss.getSheetByName('成績 Scores');
   const x = mineUnits_({ cls: cls, seat: seat, name: keepName }, sub ? sub.getDataRange().getValues() : [], sc ? sc.getDataRange().getValues() : [], function (v) { return workNames_(v); }, manualRows_())
     .filter(function (y) { return y.unit === u; })[0];
-  return { ok: true, unit: { unit: u, submitted: x.submitted, total: x.total, manual: x.manual, override: x.override, final: x.final, source: x.source } };
+  return { ok: true, unit: { unit: u, submitted: x.submitted, auto: x.auto, total: x.total, manual: x.manual, override: x.override, final: x.final, source: x.source } };
 }
 
 /* ---------- sign-in with 新北市教育局 OpenID (OpenID 2.0) ---------- */
