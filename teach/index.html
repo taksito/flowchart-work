@@ -291,6 +291,7 @@ function NtpcLogin(o){
     token:()=>user&&Number(user.exp)*1000>Date.now()+30000?user.token:null,
     expired:()=>{ setUser(null); status(MSG.login_expired,true); },
     message:k=>MSG[k],
+    start,
     render
   };
 }

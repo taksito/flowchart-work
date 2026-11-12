@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}.cloud{margin:4px 0 14px;padding:12px 14px;border:1px solid var(--line,#ddd);border-radius:12px;background:var(--soft,rgba(31,138,94,.07));display:flex;flex-direction:column;gap:8px}
+.cloud p{margin:0}.cloud .status{min-height:1.2em}
+</style>
 <script>document.write('<script src="../config.js?t='+Date.now()+'"><\/script>')</script>
 <script>window.FLOW_MODE='free';</script>
 </head>
@@ -335,6 +337,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
 <div class="modal" id="importModal" hidden>
   <div class="dialog narrow">
     <h2>開啟作業檔</h2>
+    <div class="cloud" id="cloudLoad" hidden><p><b>從雲端載入</b><span id="mineWho"></span></p><div><button class="btn primary" id="bMine" type="button">載入我上次繳交的作業</button></div><span class="status" id="mineSt"></span></div>
     <p>選擇之前下載的 .json 作業檔。畫布上目前的內容會被取代，需要時可以按「復原」找回。也可以直接把檔案拖到畫布上。</p>
     <label class="drop" id="dropZone"><input type="file" id="fileInput" accept=".json,application/json" hidden><span>點這裡選擇檔案，或把檔案拖進來</span></label>
     <div class="row"><span class="status err" id="importErr"></span><button class="btn" data-close>取消</button></div>
@@ -1547,6 +1550,7 @@ function NtpcLogin(o){
     token:()=>user&&Number(user.exp)*1000>Date.now()+30000?user.token:null,
     expired:()=>{ setUser(null); status(MSG.login_expired,true); },
     message:k=>MSG[k],
+    start,
     render
   };
 }
@@ -2213,7 +2217,7 @@ function readFile(f){
   r.onerror=()=>importError('檔案讀取失敗，請再試一次。');
   r.readAsText(f);
 }
-$('#bImport').onclick=()=>{ $('#importErr').textContent=''; $('#fileInput').value=''; openModal('importModal'); };
+$('#bImport').onclick=()=>{ $('#importErr').textContent=''; $('#fileInput').value=''; if(typeof mineUI==='function') mineUI(); openModal('importModal'); };
 $('#fileInput').addEventListener('change',e=>{ readFile(e.target.files[0]); e.target.value=''; });
 const dz=$('#dropZone');
 [dz,wrap].forEach(el=>{
@@ -2705,12 +2709,33 @@ function computeHelpSum(){
 
 const canSubmit=!FREE&&!window.claude&&/^https:\/\/script\.google(usercontent)?\.com\//.test(SUBMIT_URL);
 const LOGIN=canSubmit&&(CFG.ntpcOpenId||String(CFG.googleClientId||'').trim())?(CFG.ntpcOpenId?NtpcLogin:GLogin)({clientId:String(CFG.googleClientId||'').trim(),domain:CFG.emailDomain,url:SUBMIT_URL,box:$('#sbLogin'),
-  optional:!CFG.loginRequired, onOut:()=>whoBox(),
-  onUser:u=>{ setWho({cls:u.cls,seat:u.seat,name:u.name}); saveMeta(); fillWho('sb'); whoBox(); $('#sbStatus').textContent=''; $('#sbStatus').classList.remove('err'); }}):null;
+  optional:!CFG.loginRequired, onOut:()=>{ whoBox(); mineUI(); },
+  onUser:u=>{ setWho({cls:u.cls,seat:u.seat,name:u.name}); saveMeta(); fillWho('sb'); whoBox(); $('#sbStatus').textContent=''; $('#sbStatus').classList.remove('err'); mineUI(); if(pendingMine){ pendingMine=false; loadMine(false); } }}):null;
 /* sign-in is optional unless config.js says loginRequired: signed in = name from the school records, otherwise typed */
 const MUST_LOGIN=!!CFG.loginRequired;
 function whoBox(){ const w=document.querySelector('#submitModal .who'); if(w) w.hidden=!!LOGIN&&(MUST_LOGIN||!!LOGIN.token()); }
 if(LOGIN){ $('#sbLogin').hidden=false; whoBox(); }
+/* ---------- 載入我上次繳交的作業 Load my last submission (signed in) ---------- */
+let pendingMine=false;
+function mineUI(){ const c=$('#cloudLoad'); if(!c) return; c.hidden=!LOGIN; if(!LOGIN) return; const u=LOGIN.user();
+  $('#bMine').textContent=u?'載入我上次繳交的作業 Load my last submission':'先登入再載入 Sign in to load';
+  $('#mineWho').textContent=u?'（'+(u.student||u.name)+'）':'：用新北市校務行政帳號登入後，可以把你交到雲端的作業拿回來改，換電腦也可以。'; }
+async function loadMine(auto){
+  if(!LOGIN) return; const st=$('#mineSt'), btn=$('#bMine'); st.classList.remove('err');
+  if(!LOGIN.token()){ pendingMine=true; mineUI(); openModal('importModal'); st.textContent='請先登入，登入後會自動載入。 Sign in first.'; if(!auto) LOGIN.start(); return; }
+  btn.disabled=true; st.textContent='正在從雲端讀取… Loading…';
+  try{ const res=await callDrive({action:'mywork',unit:TASK,idToken:LOGIN.token()});
+    if(!res||!res.ok){ const k=res&&res.error; if(k==='login_expired'||k==='bad_token'){ LOGIN.expired(); mineUI(); }
+      st.textContent=k==='none'?'雲端上還沒有你交過的這份作業。 You have not handed this in yet.':k==='unknown_action'?'老師的雲端程式還沒更新，暫時不能載入。':(LOGIN.message(k)||'讀取失敗，請再試一次。 Could not load.')+(k?'（'+k+'）':'');
+      st.classList.add('err'); if(auto) openModal('importModal'); return; }
+    st.textContent=''; loadText(JSON.stringify(res.work),res.file.replace(/\.json$/i,''));
+    toast('已載入你 '+new Date(res.time).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' 交的作業，改好再按繳交（成績取最高的一次）');
+  }catch(err){ st.textContent='連不上雲端，請再試一次。 Cannot reach Google Drive.'; st.classList.add('err'); if(auto) openModal('importModal'); }
+  finally{ btn.disabled=false; } }
+$('#bMine')&&($('#bMine').onclick=()=>loadMine(false));
+mineUI();
+/* from「我的成績」→「打開修改」: ?load=mine */
+if(LOGIN&&/[?&]load=mine\b/.test(location.search)){ try{ history.replaceState(null,'',location.pathname); }catch(e){} setTimeout(()=>loadMine(true),0); }
 async function callDrive(payload){
   const r=await fetch(SUBMIT_URL,{method:'POST',body:JSON.stringify(payload)});
   if(!r.ok) throw new Error('http_'+r.status);

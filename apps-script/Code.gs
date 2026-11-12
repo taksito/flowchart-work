@@ -100,6 +100,9 @@ function doPost(e) {
   if (req.action === 'room_get') {
     try { return json_(roomGet_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
   }
+  if (req.action === 'mywork') {
+    try { return json_(mywork_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
+  }
   if (req.action === 'whoami') {
     try { return json_(whoami_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
   }
@@ -409,11 +412,13 @@ function mineUnits_(who, subRows, scoreRows, names, manualRows) {
   });
   const iso = function (d) { return d instanceof Date ? d.toISOString() : String(d || ''); };
   const nm = String(who.name || '').trim(), byNameRow = {};
+  /* handed in more than once: the highest self-check score counts (a tie goes to the later one) */
+  const better = function (x, cur) { const a = score_(x[6]), b = cur === '' || cur == null ? -1 : Number(cur); return (a === '' ? -1 : Number(a)) >= b; };
   for (let r = 1; r < subRows.length; r++) {
     const x = subRows[r], u = byName[String(x[1])];
     if (!u) continue;
-    if (seatKey(x[2], x[3]) === me) { out[u].time = iso(x[0]); out[u].self = score_(x[6]); out[u].passed = String(x[7]) === 'Yes'; }
-    else if (nm && String(x[2]).trim() === String(who.cls).trim() && String(x[4]).trim() === nm) byNameRow[u] = x;   // same class and name, seat fixed later
+    if (seatKey(x[2], x[3]) === me) { if (out[u].time === '' || better(x, out[u].self)) { out[u].time = iso(x[0]); out[u].self = score_(x[6]); out[u].passed = String(x[7]) === 'Yes'; } }
+    else if (nm && String(x[2]).trim() === String(who.cls).trim() && String(x[4]).trim() === nm && (!byNameRow[u] || better(x, score_(byNameRow[u][6])))) byNameRow[u] = x;   // same class and name, seat fixed later
   }
   Object.keys(byNameRow).forEach(function (u) {
     if (out[u].self !== '') return;
@@ -910,4 +915,31 @@ function roomImport_(req) {
     added = out.length;
   }
   return { ok: true, seats: seatCount, records: added, duplicates: dup, skipped: skipped };
+}
+
+/* ---------- 載入我上次繳交的作業 A signed-in student opens the work they handed in, to fix it and hand it in again ---------- */
+function mywork_(req) {
+  if (!loginOn_()) return { ok: false, error: 'login_off' };
+  const unit = unitName_(req.unit) ? req.unit : null;
+  if (!unit) return { ok: false, error: 'bad_unit' };
+  const v = verify_(req.idToken);
+  if (v.error) return { ok: false, error: v.error, email: v.email || '' };
+  const pick = myFiles_(v.who, workNames_(unit));
+  if (!pick.length) return { ok: false, error: 'none' };
+  let best = null;
+  pick.forEach(function (name) {
+    const it = unitFolder_(unit).getFilesByName(name);
+    while (it.hasNext()) { const f = it.next(); if (!best || f.getLastUpdated() > best.getLastUpdated()) best = f; }
+  });
+  if (!best) return { ok: false, error: 'none' };
+  let work;
+  try { work = JSON.parse(best.getBlob().getDataAsString('UTF-8')); } catch (err) { return { ok: false, error: 'bad_file' }; }
+  return { ok: true, unit: unit, file: best.getName(), time: best.getLastUpdated().toISOString(), work: work };
+}
+/* Pure: this student's file names in a unit folder, matched by class and seat number (05 and 5 are the same seat) */
+function myFiles_(who, names) {
+  const key = function (c, s) { return String(c).trim() + '-' + String(Number(s)); };
+  const me = key(who.cls, who.seat);
+  if (!who.cls || !Number(who.seat)) return [];
+  return (names || []).filter(function (n) { const m = String(n).match(/^(\d+)-(\d+)\s/); return m && key(m[1], m[2]) === me; });
 }

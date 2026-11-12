@@ -154,6 +154,7 @@ function NtpcLogin(o){
     token:()=>user&&Number(user.exp)*1000>Date.now()+30000?user.token:null,
     expired:()=>{ setUser(null); status(MSG.login_expired,true); },
     message:k=>MSG[k],
+    start,
     render
   };
 }
@@ -228,7 +229,7 @@ function show(res){
     }
     const note=x.source==='auto'&&res.scores&&(x.comment||x.fixes)?`<div class="note">${x.comment?'<b>Comment 評語：</b>'+e(x.comment):''}${x.comment&&x.fixes?'<br>':''}${x.fixes?'<b>Fix 需要修正：</b>'+e(x.fixes):''}</div>`
       :x.mcomment?`<div class="note"><b>Comment 評語：</b>${e(x.mcomment)}</div>`:'';
-    const act=x.source!=='missing'?`<a class="btn" href="${href}">Open 打開修改 →</a>`:`<a class="btn warn" href="${href}">Make it up 去補交 →</a>`;
+    const act=x.source!=='missing'?`<a class="btn" href="${href}?load=mine" title="打開你上次交的作業來修改">Open 打開修改 →</a>`:`<a class="btn warn" href="${href}">Make it up 去補交 →</a>`;
     return `<div class="item${x.source==='missing'?' missing':''}"><h3>${e(P[0])}<small>${e(P[1])}</small></h3><div class="act">${act}</div><div class="meta">${meta.join('')}</div>${note}</div>`;
   }).join('')||'<p class="empty">No assignments yet. 目前沒有作業。</p>';
   st(miss.length?'Finish the missing work, then press Submit 繳交 on that page. 完成缺交的作業後，在作業頁按「Submit 繳交」。':exMiss.length?'Finish the missing work and tell your teacher. 完成缺交的作業後，記得告訴老師。':'All handed in. Great job! 全部都交了，很棒！');
