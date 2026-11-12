@@ -69,6 +69,39 @@ td.c .cm{font-size:10px;color:var(--muted);max-width:110px;overflow:hidden;text-
 .acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:8px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
+/* tabs */
+.tabs{display:flex;gap:4px;margin-top:16px;border-bottom:1px solid var(--line)}
+.tabs button{font:inherit;font-size:15px;padding:8px 16px;border:1px solid transparent;border-bottom:0;border-radius:10px 10px 0 0;background:none;color:var(--muted);cursor:pointer;margin-bottom:-1px}
+.tabs button[aria-selected=true]{background:var(--panel);border-color:var(--line);color:var(--ink);font-weight:700}
+.tabs button:focus-visible{outline:2px solid var(--accent)}
+td.bn{font-family:"JetBrains Mono",monospace;color:var(--accent);font-weight:700;min-width:56px}
+/* seat map: the computer room, podium at the bottom */
+.mapwrap{overflow:auto;margin-top:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.map{position:relative;height:560px;min-width:820px;background:linear-gradient(90deg,transparent 0 47%,var(--soft) 47% 53%,transparent 53%)}
+.seatbox{position:absolute;transform:translate(-50%,-50%);width:86px;min-height:62px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:4px}
+.seatbox.drop{border-color:var(--accent);background:var(--soft)}
+.seatbox .key{position:absolute;top:-8px;left:6px;font-size:10px;color:var(--muted);background:var(--panel);padding:0 3px;font-family:"JetBrains Mono",monospace}
+.podium{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);padding:8px 26px;border:2px solid var(--ink);border-radius:8px;font-weight:700;background:var(--panel)}
+.stu{all:unset;box-sizing:border-box;width:100%;min-height:50px;border-radius:8px;background:var(--man-soft);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:3px;line-height:1.2;text-align:center;user-select:none}
+.stu b{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--man)}
+.stu span{font-size:13px;font-weight:700}
+.stu small{font-size:11px;font-weight:700}
+.stu:focus-visible{outline:2px solid var(--accent)}
+.stu.pick{outline:3px solid var(--accent);outline-offset:1px}
+.stu.leave{background:var(--warn-soft)}.stu.late{background:rgba(214,160,40,.18)}.stu.plus small{color:var(--accent)}
+.stu.leave small,.stu.late small{color:var(--warn)}
+.hold{margin-top:12px;border:1.5px dashed var(--line);border-radius:14px;padding:10px 12px;min-height:70px;background:var(--panel)}
+.hold.drop{border-color:var(--accent);background:var(--soft)}
+.hold .stu{width:86px;min-height:46px;display:inline-flex;margin:4px}
+.types{display:flex;gap:8px;flex-wrap:wrap}
+.types button{font:inherit;font-size:15px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.types button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--panel);font-weight:700}
+.hist{font-size:14px;display:flex;flex-direction:column;gap:4px}.hist div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:3px 0}
+.linkbtn{all:unset;cursor:pointer;color:var(--warn);font-size:13px}.linkbtn:focus-visible{outline:2px solid var(--accent)}
+.tot{font-size:13px;color:var(--muted)}
+.recs{margin-top:14px}.recs summary{cursor:pointer;font-weight:700}
+.recs table td,.recs table th{padding:6px 8px;text-align:left}
+#oldSeat,#oldAtt{width:100%;min-height:90px;font-family:"JetBrains Mono",monospace;font-size:12px}
 @media (prefers-reduced-motion:reduce){td.c.saved button{animation:none}.toast{transition:none}}
 @media (max-width:560px){main{padding-top:28px}.wrap{max-height:none}}
 </style>
@@ -92,17 +125,42 @@ td.c .cm{font-size:10px;color:var(--muted);max-width:110px;overflow:hidden;text-
         <label class="f">Class 班級<select id="cls"></select></label>
         <div class="counts" id="counts" aria-live="polite"></div>
       </div>
-      <div class="row">
+      <div class="row" id="gBtns">
         <button class="btn" type="button" id="bImp">Import 匯入成績</button>
         <button class="btn" type="button" id="bAdd">＋ Add student 新增學生</button>
         <button class="btn" type="button" id="bReload">Refresh 重新整理</button>
       </div>
     </div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tabG" aria-selected="true" data-tab="g">成績 Grades</button>
+      <button type="button" role="tab" id="tabA" aria-selected="false" data-tab="a">點名 Attendance</button>
+      <button type="button" role="tab" id="tabS" aria-selected="false" data-tab="s">座位 Seating</button>
+    </div>
+    <div id="gView">
     <div class="legend" style="margin-top:10px">
       <span class="chip s-auto">自動 Auto-graded</span><span class="chip s-manual">學習吧 Manual</span><span class="chip s-override">修改 Changed</span><span class="chip s-missing">缺交 Missing</span>
       <span>Click a cell to enter a score. 點格子輸入成績。</span>
     </div>
     <div class="wrap"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+    </div>
+    <div id="aView" hidden>
+      <div class="bar" style="margin-top:12px">
+        <div class="row"><label class="f">Date 點名日期<input type="date" id="aDate"></label><span class="tot" id="aSum"></span></div>
+        <div class="row"><button class="btn" type="button" id="bOld">Import old data 匯入舊資料</button><button class="btn" type="button" id="bRoomReload">Refresh 重新整理</button></div>
+      </div>
+      <p class="hint" style="margin:8px 0 0">Everyone is present unless recorded. Click a student to record leave, late or +1. 預設全部出席；點學生記錄事病假、遲到或加分 +1（每次 +1 分，學生看得到加分次數，看不到請假、遲到）。</p>
+      <div class="mapwrap"><div class="map" id="aMap"></div></div>
+      <div class="hold" id="aHold" hidden></div>
+      <details class="recs" id="aRecs"><summary>All records 全部紀錄</summary><div class="wrap" style="max-height:50vh"><table><thead><tr><th>日期 Date</th><th>座號 No.</th><th>姓名 Name</th><th>類型 Type</th><th>理由 Reason</th><th></th></tr></thead><tbody id="aList"></tbody></table></div></details>
+    </div>
+    <div id="sView" hidden>
+      <div class="bar" style="margin-top:12px">
+        <p class="hint" style="margin:0">Drag a student to a seat (or click a student, then a seat). 把學生拖到座位上，或先點學生再點座位；兩人會互換。</p>
+        <div class="row"><button class="btn" type="button" id="bAuto">Default layout 依座號排</button><button class="btn" type="button" id="bClear">Clear 全部移到暫存區</button><button class="btn primary" type="button" id="bSeatSave" disabled>Save 儲存座位</button></div>
+      </div>
+      <div class="mapwrap"><div class="map" id="sMap"></div></div>
+      <div class="hold" id="sHold" data-hold><b>暫存區 Not seated</b> <span class="hint">（還沒有座位的學生；拖到這裡就取消座位）</span><div id="sHoldIn"></div></div>
+    </div>
     <p class="status" id="st"></p>
   </div>
 </main>
@@ -139,6 +197,30 @@ td.c .cm{font-size:10px;color:var(--muted);max-width:110px;overflow:hidden;text-
       <textarea id="impText" placeholder="705	3	王小明	85	broadcast 沒寫 eat"></textarea></label>
     <p class="status" id="impSt"></p>
     <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" id="impGo" value="go">Import 匯入</button></div>
+  </form>
+</dialog>
+<dialog id="attDlg">
+  <form method="dialog" id="attForm">
+    <h2 id="atTitle"></h2>
+    <div class="types" role="group" aria-label="Type 類型">
+      <button type="button" data-type="leave" aria-pressed="false">事病假 Leave</button>
+      <button type="button" data-type="late" aria-pressed="false">遲到 Late</button>
+      <button type="button" data-type="bonus" aria-pressed="false">加分 +1</button>
+    </div>
+    <label class="f">理由 Reason（可不填）<textarea id="atReason" rows="2" maxlength="300"></textarea></label>
+    <div class="hist" id="atHist"></div>
+    <p class="tot" id="atTot"></p>
+    <p class="status" id="atSt"></p>
+    <div class="acts"><button class="btn" type="button" data-close>Close 關閉</button><button class="btn primary" id="atGo" value="go" disabled>Record 確認登記</button></div>
+  </form>
+</dialog>
+<dialog id="oldDlg" style="width:min(640px,calc(100vw - 32px))">
+  <form method="dialog" id="oldForm">
+    <h2>Import old data 匯入舊資料<small>從舊系統（Supabase）匯出的 CSV：可以選檔案，或打開 CSV 全選複製貼上。相同的紀錄不會重複匯入；座位表會取代該班現有的座位。</small></h2>
+    <label class="f">座位表 Seating CSV（cls, subject, seat_key, seat_number, full_name）<input type="file" accept=".csv,text/csv" data-into="oldSeat"><textarea id="oldSeat"></textarea></label>
+    <label class="f">點名紀錄 Attendance CSV（record_date, cls, seat_number, full_name, record_type, reason, created_at）<input type="file" accept=".csv,text/csv" data-into="oldAtt"><textarea id="oldAtt"></textarea></label>
+    <p class="status" id="oldSt"></p>
+    <div class="acts"><button class="btn" type="button" data-close>Cancel 取消</button><button class="btn primary" id="oldGo" value="go">Import 匯入</button></div>
   </form>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
@@ -233,7 +315,7 @@ async function load(cls){
     try{ sessionStorage.setItem(KK,key); }catch(err){}
     data=res; $('#keyBox').hidden=true; $('#view').hidden=false; st('');
     $('#cls').innerHTML=(res.classes.length?res.classes:[res.cls]).filter(Boolean).map(c=>`<option${c===res.cls?' selected':''}>${e(c)}</option>`).join('')||'<option value="">—</option>';
-    render();
+    render(); if(room&&room.cls!==data.cls) room=null;
   }catch(err){ st('Cannot reach Google Drive. 連不上雲端，請再試一次。',true); }
   finally{ busy=false; }
 }
@@ -241,8 +323,8 @@ function cell(s,u){ const x=s.units.find(y=>y.unit===u.unit)||{source:'missing'}
   return `<td class="c" data-seat="${e(s.seat)}" data-unit="${e(u.unit)}"><button type="button" aria-label="${e(s.seat+' '+s.name+' '+u.name)}"><span class="n">${has(x.final)?e(x.final):'—'}</span><span class="chip ${t[1]}">${t[0]}</span>${x.mcomment?`<span class="cm" title="${e(x.mcomment)}">💬 ${e(x.mcomment)}</span>`:''}</button></td>`; }
 function render(){
   const U=data.units, S=data.students;
-  $('#th').innerHTML=`<tr><th class="seat">No.<small>座號</small></th><th class="name">Name<small>姓名</small></th>${U.map(u=>`<th>${e((SHORT[u.unit]||[u.name])[0])}<small>${e((SHORT[u.unit]||['',''])[1])}</small></th>`).join('')}</tr>`;
-  $('#tb').innerHTML=S.length?S.map(s=>`<tr><td class="seat">${e(s.seat)}</td><td class="name">${e(s.name||'—')}</td>${U.map(u=>cell(s,u)).join('')}</tr>`).join(''):`<tr><td colspan="${U.length+2}" class="empty">No students yet. Add a roster (名單 Roster) or press 新增學生. 還沒有學生：請在試算表放「名單 Roster」，或按「新增學生」。</td></tr>`;
+  $('#th').innerHTML=`<tr><th class="seat">No.<small>座號</small></th><th class="name">Name<small>姓名</small></th><th>加分<small>+1 次數</small></th>${U.map(u=>`<th>${e((SHORT[u.unit]||[u.name])[0])}<small>${e((SHORT[u.unit]||['',''])[1])}</small></th>`).join('')}</tr>`;
+  $('#tb').innerHTML=S.length?S.map(s=>`<tr><td class="seat">${e(s.seat)}</td><td class="name">${e(s.name||'—')}</td><td class="bn">${s.bonus?'+'+e(s.bonus):''}</td>${U.map(u=>cell(s,u)).join('')}</tr>`).join(''):`<tr><td colspan="${U.length+3}" class="empty">No students yet. Add a roster (名單 Roster) or press 新增學生. 還沒有學生：請在試算表放「名單 Roster」，或按「新增學生」。</td></tr>`;
   counts();
 }
 function counts(){ let miss=0,wait=0,done=0; data.students.forEach(s=>s.units.forEach(x=>{ if(x.source==='missing') miss++; else if(x.source==='waiting') wait++; else done++; }));
@@ -288,14 +370,142 @@ $('#impForm').addEventListener('submit',async ev=>{ ev.preventDefault(); const r
     $('#impDlg').close(); toast(`Imported 已匯入：新增 ${res.added}、更新 ${res.updated}${res.skipped&&res.skipped.length?`、略過 ${res.skipped.length}`:''}`); load($('#cls').value);
   }catch(err){ st.textContent='Cannot reach Google Drive. 連不上雲端。'; st.classList.add('err'); $('#impGo').disabled=false; } });
 $('#keyForm').onsubmit=ev=>{ ev.preventDefault(); key=$('#key').value; $('#keySt').textContent=''; $('#keySt').classList.remove('err'); load(); };
-$('#cls').onchange=()=>load($('#cls').value);
+$('#cls').onchange=()=>{ room=null; load($('#cls').value).then(()=>{ if(tab!=='g') loadRoom(); }); };
 $('#bReload').onclick=()=>load($('#cls').value);
 $('#bAdd').onclick=()=>{ $('#aSeat').value=''; $('#aName').value=''; $('#addDlg').showModal(); $('#aSeat').focus(); };
 $('#addForm').addEventListener('submit',ev=>{ if(ev.submitter&&ev.submitter.value==='cancel') return;
   const seat=String(Number($('#aSeat').value)||''), name=$('#aName').value.trim(); if(!seat||!name){ ev.preventDefault(); return; }
   if(data.students.some(x=>x.seat===seat)){ ev.preventDefault(); toast('Seat '+seat+' is already on the list 這個座號已經在名單上'); return; }
-  data.students.push({cls:data.cls,seat,name,units:data.units.map(u=>({unit:u.unit,submitted:false,total:'',manual:'',override:'',final:'',source:'missing'}))});
+  data.students.push({cls:data.cls,seat,name,bonus:0,units:data.units.map(u=>({unit:u.unit,submitted:false,total:'',manual:'',override:'',final:'',source:'missing'}))});
   data.students.sort((a,b)=>Number(a.seat)-Number(b.seat)); render(); toast('Added. Enter a score to save them. 已加入，輸入成績後才會存到試算表。'); });
+/* ===== 點名與座位 Attendance and seating ===== */
+/* computer room: [seat, x %, y %, default seat number]; 17 and 18 sit at the two front seats on the left */
+const SEATS=[['left-13',14,16,null],['left-1',24,16,16],['left-2',34,16,33],['left-3',44,16,12],['left-14',14,34,null],['left-4',24,34,15],['left-5',34,34,31],['left-6',44,34,11],
+ ['left-15',14,52,17],['left-7',24,52,14],['left-8',34,52,30],['left-9',44,52,10],['left-16',14,70,18],['left-10',24,70,13],['left-11',34,70,29],['left-12',44,70,9],
+ ['right-1',56,16,28],['right-2',66,16,8],['right-3',76,16,34],['right-4',86,16,4],['right-5',56,34,27],['right-6',66,34,7],['right-7',76,34,23],['right-8',86,34,3],
+ ['right-9',56,52,26],['right-10',66,52,6],['right-11',76,52,22],['right-12',86,52,2],['right-13',56,70,25],['right-14',66,70,5],['right-15',76,70,21],['right-16',86,70,1]];
+const TYPE={leave:'事病假',late:'遲到',bonus:'加分 +1'};
+let tab='g', room=null, roomBusy=false, plan=null, picked=null, atStu=null, atType=null;
+const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+$('#aDate').value=today();
+document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>show(b.dataset.tab));
+function show(t){
+  if(t!=='s'&&plan&&plan.dirty&&!confirm('座位還沒儲存，確定離開？ Leave without saving the seats?')) return;
+  if(t!=='s') plan=null;
+  tab=t; document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  $('#gView').hidden=t!=='g'; $('#aView').hidden=t!=='a'; $('#sView').hidden=t!=='s'; $('#gBtns').hidden=t!=='g';
+  if(t!=='g') loadRoom(); }
+async function loadRoom(force){
+  if(!data||roomBusy) return; if(room&&room.cls===data.cls&&!force){ drawRoom(); return; }
+  roomBusy=true; st('Loading… 讀取中…');
+  try{ const res=await call({action:'room_get',cls:data.cls});
+    if(!res||!res.ok){ const k=res&&res.error; if(k==='login_expired'||k==='bad_token'){ LOGIN.expired(); return; }
+      st((ERR[k]||'Could not load. 讀取失敗。')+(k?'（'+k+'）':''),true); return; }
+    room=res; plan=null; st(''); drawRoom();
+  }catch(err){ st('Cannot reach Google Drive. 連不上雲端，請再試一次。',true); }
+  finally{ roomBusy=false; } }
+function nameOf(n){ const x=room.students.find(s=>s.seat===n); return x?x.name:''; }
+function drawRoom(){ if(tab==='a') drawAtt(); else if(tab==='s') drawSeat(); }
+function seatHtml(k,x,y,inner){ return `<div class="seatbox" data-key="${k}" style="left:${x}%;top:${y}%"><span class="key">${e(k.replace('left-','L').replace('right-','R'))}</span>${inner}</div>`; }
+/* ---- attendance ---- */
+function dayRecs(n){ return room.records.filter(r=>r.date===$('#aDate').value&&(n==null||r.seat===n)); }
+function badge(n){ const rs=dayRecs(n), lv=rs.filter(r=>r.type==='leave').length, lt=rs.filter(r=>r.type==='late').length, b=rs.filter(r=>r.type==='bonus').length;
+  return {cls:(lv?' leave':lt?' late':'')+(b?' plus':''), text:[lv?'事病假':'',lt?'遲到':'',b?'+'+b:''].filter(Boolean).join(' ')}; }
+function attBtn(n){ const b=badge(n); return `<button type="button" class="stu${b.cls}" data-seat="${e(n)}"><b>${e(n)}號</b><span>${e(nameOf(n)||'—')}</span>${b.text?`<small>${e(b.text)}</small>`:''}</button>`; }
+function drawAtt(){
+  const seated=new Set(Object.values(room.seats));
+  $('#aMap').innerHTML=SEATS.map(([k,x,y])=>seatHtml(k,x,y,room.seats[k]?attBtn(room.seats[k]):'')).join('')+'<div class="podium">講台 Podium</div>';
+  const rest=room.students.filter(s=>!seated.has(s.seat));
+  $('#aHold').hidden=!rest.length; $('#aHold').innerHTML=rest.length?`<b>沒有座位的學生 Not seated</b><div>${rest.map(s=>attBtn(s.seat)).join('')}</div>`:'';
+  const rs=dayRecs(); $('#aSum').textContent=rs.length?`本日 ${rs.filter(r=>r.type==='leave').length} 假 · ${rs.filter(r=>r.type==='late').length} 遲到 · ${rs.filter(r=>r.type==='bonus').length} 次加分`:'本日沒有紀錄（全部出席）';
+  $('#aList').innerHTML=room.records.length?room.records.map(r=>`<tr><td>${e(r.date)}</td><td>${e(r.seat)}</td><td>${e(r.name||nameOf(r.seat))}</td><td>${e(TYPE[r.type])}</td><td>${e(r.reason)}</td><td><button type="button" class="linkbtn" data-del="${e(r.id)}">移除 Remove</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No records yet. 還沒有紀錄。</td></tr>';
+}
+$('#aDate').onchange=()=>{ if(room) drawAtt(); };
+$('#bRoomReload').onclick=()=>loadRoom(true);
+function openAtt(n){ atStu=n; atType=null; $('#atTitle').innerHTML=`${e(data.cls+'-'+n+' '+nameOf(n))}<small>${e($('#aDate').value)}</small>`;
+  $('#atReason').value=''; $('#atSt').textContent=''; $('#atGo').disabled=true; document.querySelectorAll('#attDlg [data-type]').forEach(b=>b.setAttribute('aria-pressed','false'));
+  histAtt(); $('#attDlg').showModal(); }
+function histAtt(){ const rs=dayRecs(atStu); $('#atHist').innerHTML=rs.length?rs.map(r=>`<div><span>${e(TYPE[r.type])}${r.reason?'：'+e(r.reason):''}</span><button type="button" class="linkbtn" data-del="${e(r.id)}">移除</button></div>`).join(''):'<div><span>本日沒有紀錄（出席）</span></div>';
+  const all=room.records.filter(r=>r.seat===atStu); $('#atTot').textContent=`這學期：事病假 ${all.filter(r=>r.type==='leave').length} 次 · 遲到 ${all.filter(r=>r.type==='late').length} 次 · 加分 ${all.filter(r=>r.type==='bonus').length} 次`; }
+$('#aView').addEventListener('click',ev=>{ const b=ev.target.closest('.stu'); if(b) openAtt(b.dataset.seat); });
+document.querySelectorAll('#attDlg [data-type]').forEach(b=>b.onclick=()=>{ atType=b.dataset.type; document.querySelectorAll('#attDlg [data-type]').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); $('#atGo').disabled=false; });
+$('#attForm').addEventListener('submit',async ev=>{ ev.preventDefault(); if(!atStu||!atType) return; const s=$('#atSt');
+  $('#atGo').disabled=true; s.classList.remove('err'); s.textContent='Saving… 儲存中…';
+  try{ const res=await call({action:'att_add',cls:data.cls,seat:atStu,name:nameOf(atStu),type:atType,reason:$('#atReason').value.trim(),date:$('#aDate').value});
+    if(!res||!res.ok){ const k=res&&res.error; s.textContent=(ERR[k]||'Could not save. 儲存失敗。')+(k?'（'+k+'）':''); s.classList.add('err'); $('#atGo').disabled=false; return; }
+    room.records.unshift(res.record); bump(atStu, res.record.type==='bonus'?1:0); $('#attDlg').close(); drawAtt(); toast(`${TYPE[res.record.type]} 已登記 ✓`);
+  }catch(err){ s.textContent='Cannot reach Google Drive. 連不上雲端。'; s.classList.add('err'); $('#atGo').disabled=false; } });
+function bump(n,d){ const x=data&&data.students.find(s=>s.seat===n); if(x&&d){ x.bonus=(x.bonus||0)+d; render(); } }
+document.addEventListener('click',async ev=>{ const b=ev.target.closest('[data-del]'); if(!b||!room) return;
+  const r=room.records.find(x=>x.id===b.dataset.del); if(!r||!confirm(`移除這筆紀錄？ ${r.date} ${r.seat}號 ${TYPE[r.type]}`)) return;
+  b.disabled=true;
+  try{ const res=await call({action:'att_del',id:r.id});
+    if(!res||!res.ok){ b.disabled=false; toast('Could not remove 移除失敗'+(res&&res.error?'（'+res.error+'）':'')); return; }
+    room.records=room.records.filter(x=>x.id!==r.id); bump(r.seat, r.type==='bonus'?-1:0); if($('#attDlg').open) histAtt(); drawAtt(); toast('Removed 已移除');
+  }catch(err){ b.disabled=false; toast('Cannot reach Google Drive. 連不上雲端。'); } });
+/* ---- seating ---- */
+/* a div, not a button: dragging buttons does not work in every browser */
+function seatBtn(n){ return `<div class="stu${picked===n?' pick':''}" role="button" tabindex="0" draggable="true" aria-pressed="${picked===n}" data-seat="${e(n)}"><b>${e(n)}號</b><span>${e(nameOf(n)||'—')}</span></div>`; }
+function drawSeat(){
+  if(!plan) plan={map:Object.assign({},room.seats),dirty:false};
+  const seated=new Set(Object.values(plan.map));
+  $('#sMap').innerHTML=SEATS.map(([k,x,y])=>seatHtml(k,x,y,plan.map[k]?seatBtn(plan.map[k]):'')).join('')+'<div class="podium">講台 Podium</div>';
+  const rest=room.students.filter(s=>!seated.has(s.seat));
+  $('#sHoldIn').innerHTML=rest.length?rest.map(s=>seatBtn(s.seat)).join(''):'<span class="hint">暫存區目前沒有學生 Everyone has a seat.</span>';
+  $('#bSeatSave').disabled=!plan.dirty; }
+function keyOf(n){ return Object.keys(plan.map).find(k=>plan.map[k]===n); }
+function place(n,target){   /* target: a seat key, or null for the holding area */
+  const from=keyOf(n); if(from===target) return;
+  if(target){ const other=plan.map[target]; if(from){ if(other) plan.map[from]=other; else delete plan.map[from]; } plan.map[target]=n; }
+  else if(from) delete plan.map[from];
+  plan.dirty=true; picked=null; drawSeat(); }
+let drag=null;
+$('#sView').addEventListener('keydown',ev=>{ if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches('.stu')){ ev.preventDefault(); ev.target.click(); } });
+$('#sView').addEventListener('dragstart',ev=>{ const b=ev.target.closest('.stu'); if(!b) return; drag=b.dataset.seat; ev.dataTransfer.setData('text/plain',drag); ev.dataTransfer.effectAllowed='move'; });
+$('#sView').addEventListener('dragover',ev=>{ const t=ev.target.closest('.seatbox,[data-hold]'); if(!t||!drag) return; ev.preventDefault(); document.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop')); t.classList.add('drop'); });
+$('#sView').addEventListener('dragleave',ev=>{ const t=ev.target.closest('.seatbox,[data-hold]'); if(t&&!t.contains(ev.relatedTarget)) t.classList.remove('drop'); });
+$('#sView').addEventListener('drop',ev=>{ const t=ev.target.closest('.seatbox,[data-hold]'); document.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop')); if(!t||!drag) return; ev.preventDefault(); const n=drag; drag=null; place(n,t.dataset.key||null); });
+$('#sView').addEventListener('dragend',()=>{ drag=null; document.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop')); });
+$('#sView').addEventListener('click',ev=>{   /* click a student, then a seat (works on tablets too) */
+  const b=ev.target.closest('.stu'), box=ev.target.closest('.seatbox,[data-hold]'); if(!b&&!box) return;
+  if(picked){ if(b&&b.dataset.seat===picked){ picked=null; drawSeat(); return; }
+    if(box){ place(picked,box.dataset.key||null); return; } }
+  if(b){ picked=b.dataset.seat; drawSeat(); } });
+$('#bAuto').onclick=()=>{ if(!room) return; const have=new Set(room.students.map(s=>s.seat)), m={}, used=new Set();
+  const front=[17,18].map((n,i)=>have.has(String(n))?String(n):have.has(String(33+i))?String(33+i):null);   /* like the old system: 17, 18 (or 33, 34) at the front seats */
+  SEATS.forEach(([k,,,p])=>{ let n=k==='left-15'?front[0]:k==='left-16'?front[1]:(p&&have.has(String(p))?String(p):null);
+    if(n&&!used.has(n)&&(k==='left-15'||k==='left-16'||!front.includes(n))){ m[k]=n; used.add(n); } });
+  plan={map:m,dirty:true}; picked=null; drawSeat(); toast('已依座號排好，記得按儲存 Arranged — press Save'); };
+$('#bClear').onclick=()=>{ if(!plan||!Object.keys(plan.map).length) return; if(!confirm('把所有學生移到暫存區？ Move everyone to the holding area?')) return; plan={map:{},dirty:true}; picked=null; drawSeat(); };
+$('#bSeatSave').onclick=async()=>{ if(!plan) return; const b=$('#bSeatSave'); b.disabled=true; st('Saving… 儲存中…');
+  try{ const res=await call({action:'seat_set',cls:data.cls,seats:plan.map,names:room.students});
+    if(!res||!res.ok){ const k=res&&res.error; st((ERR[k]||'Could not save. 儲存失敗。')+(k?'（'+k+'）':''),true); b.disabled=false; return; }
+    room.seats=Object.assign({},plan.map); plan.dirty=false; st(''); toast(`座位已儲存 ✓（${res.saved} 人）`); drawSeat();
+  }catch(err){ st('Cannot reach Google Drive. 連不上雲端。',true); b.disabled=false; } };
+window.addEventListener('beforeunload',ev=>{ if(plan&&plan.dirty){ ev.preventDefault(); ev.returnValue=''; } });
+/* ---- import from the old system (Supabase CSV) ---- */
+function csv(text){ const rows=[]; let row=[], f='', q=false; text=String(text||'').replace(/^﻿/,'');
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ f+='"'; i++; } else q=false; } else f+=c; }
+    else if(c==='"') q=true; else if(c===','||c==='\t'){ row.push(f); f=''; } else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(f); rows.push(row); row=[]; f=''; } else f+=c; }
+  if(f!==''||row.length){ row.push(f); rows.push(row); }
+  const head=(rows.shift()||[]).map(h=>h.trim().toLowerCase()); const nul=v=>{ v=String(v==null?'':v).trim(); return v==='null'?'':v; };
+  return rows.filter(r=>r.some(x=>x.trim())).map(r=>{ const o={}; head.forEach((h,i)=>o[h]=nul(r[i])); return o; }); }
+function oldRows(){ const seats=csv($('#oldSeat').value).filter(r=>r.cls&&r.seat_key&&r.seat_number).map(r=>({cls:r.cls,key:r.seat_key,seat:r.seat_number,name:r.full_name}));
+  const records=csv($('#oldAtt').value).filter(r=>r.cls&&r.seat_number&&r.record_type).map(r=>({date:r.record_date,cls:r.cls,seat:r.seat_number,name:r.full_name,type:r.record_type,reason:r.reason,created:r.created_at}));
+  return {seats,records}; }
+function oldCount(){ const o=oldRows(), s=$('#oldSt'); s.classList.remove('err'); s.textContent=(o.seats.length||o.records.length)?`座位 ${o.seats.length} 筆 · 點名紀錄 ${o.records.length} 筆`:''; }
+$('#bOld').onclick=()=>{ $('#oldSt').textContent=''; $('#oldGo').disabled=false; $('#oldDlg').showModal(); };
+document.querySelectorAll('#oldDlg input[type=file]').forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; $('#'+inp.dataset.into).value=await f.text(); oldCount(); });
+$('#oldSeat').oninput=oldCount; $('#oldAtt').oninput=oldCount;
+$('#oldForm').addEventListener('submit',async ev=>{ ev.preventDefault(); const o=oldRows(), s=$('#oldSt');
+  if(!o.seats.length&&!o.records.length){ s.textContent='No rows found. 找不到資料，請確認是舊系統匯出的 CSV（第一行要有欄位名稱）。'; s.classList.add('err'); return; }
+  $('#oldGo').disabled=true; s.classList.remove('err'); s.textContent='Importing… 匯入中…';
+  try{ const res=await call({action:'room_import',seats:o.seats,records:o.records});
+    if(!res||!res.ok){ const k=res&&res.error; s.textContent=(ERR[k]||'Import failed. 匯入失敗。')+(k?'（'+k+'）':''); s.classList.add('err'); $('#oldGo').disabled=false; return; }
+    $('#oldDlg').close(); toast(`已匯入：座位 ${res.seats}、紀錄 ${res.records}${res.duplicates?`（${res.duplicates} 筆重複略過）`:''}${res.skipped.length?`、無法辨識 ${res.skipped.length}`:''}`);
+    room=null; await load($('#cls').value); loadRoom(true);
+  }catch(err){ s.textContent='Cannot reach Google Drive. 連不上雲端。'; s.classList.add('err'); $('#oldGo').disabled=false; } });
 if(LOGIN.user()) afterLogin();
 })();
 </script>

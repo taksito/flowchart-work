@@ -31,11 +31,11 @@ h1 small{display:block;font-size:.55em;color:var(--muted);font-weight:500;margin
 .glogin{display:flex;flex-direction:column;gap:10px}.glogin p{margin:0}.glogin.on{flex-direction:row;align-items:center;gap:12px}
 .glogin .gok{color:var(--accent);font-weight:700;font-size:20px}.glogin .gwho{display:flex;flex-direction:column;flex:1;min-width:0}
 .glogin .gwho b{font-size:18px}.glogin .gwho small{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
-.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:20px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .stat b{display:block;font-family:"JetBrains Mono",monospace;font-size:28px;line-height:1.2}
 .stat span{font-size:13px;color:var(--muted)}
-.stat.miss b{color:var(--warn)}.stat.done b{color:var(--accent)}
+.stat.miss b{color:var(--warn)}.stat.done b{color:var(--accent)}.stat.plus b{color:var(--accent)}
 h2{font-size:18px;margin:0}
 .head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:28px 0 10px}
 h2 small{font-size:14px;color:var(--muted);font-weight:500;margin-left:8px}
@@ -87,6 +87,7 @@ footer{margin-top:32px;font-size:12px;color:var(--muted)}
       <div class="stat done"><b id="nDone">0</b><span>Handed in 已繳交</span></div>
       <div class="stat miss"><b id="nMiss">0</b><span>Missing 缺交</span></div>
       <div class="stat"><b id="nAvg">–</b><span>Average 平均分數</span></div>
+      <div class="stat plus" id="bonusBox" hidden><b id="nBonus">0</b><span>Class bonus 課堂加分 +1</span></div>
     </div>
     <div class="head"><h2>Assignments<small>作業</small></h2><button type="button" class="btn" id="bReload">Refresh 重新整理</button></div>
     <div class="list" id="list"></div>
@@ -192,6 +193,8 @@ function show(res){
   const by={}; (res.units||[]).forEach(x=>by[x.unit]=x);
   const rows=ORDER.map(u=>Object.assign({unit:u,submitted:false},by[u]||{}));
   const ex=Array.isArray(res.extra)?res.extra:[];
+  /* +1 class bonus: only the count (leave and late records are never sent) */
+  $('#bonusBox').hidden=res.bonus===undefined; $('#nBonus').textContent=res.bonus?'+'+res.bonus:'0';
   /* source: auto = 系統自動批改, manual = 學習吧人工批改, override = 老師修改, waiting, missing (older scripts send only submitted/total) */
   rows.forEach(x=>{ if(!x.source){ x.source=x.total!==''&&x.total!=null?'auto':x.submitted?'waiting':'missing'; x.final=x.total; } });
   const done=rows.filter(x=>x.source!=='missing'), miss=rows.filter(x=>x.source==='missing'), graded=done.filter(x=>x.final!==''&&x.final!=null);

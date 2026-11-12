@@ -97,6 +97,9 @@ function doPost(e) {
   if (req.action === 'mine') {
     try { return json_(mine_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
   }
+  if (req.action === 'room_get') {
+    try { return json_(roomGet_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
+  }
   if (req.action === 'whoami') {
     try { return json_(whoami_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
   }
@@ -111,6 +114,10 @@ function doPost(e) {
     if (req.action === 'save') return json_(save_(req));
     if (req.action === 'class_set') return json_(classSet_(req));
     if (req.action === 'class_import') return json_(classImport_(req));
+    if (req.action === 'seat_set') return json_(seatSet_(req));
+    if (req.action === 'att_add') return json_(attAdd_(req));
+    if (req.action === 'att_del') return json_(attDel_(req));
+    if (req.action === 'room_import') return json_(roomImport_(req));
     return json_({ ok: false, error: 'unknown_action' });
   } catch (err) {
     return json_({ ok: false, error: 'server_error', message: String(err) });
@@ -355,7 +362,9 @@ function mine_(req) {
   units.forEach(function (x) { delete x.manual; delete x.override; if (!CONFIG.SHOW_SCORES) x.final = ''; });
   const extra = extraFor_(who, gb ? gb.getDataRange().getDisplayValues() : [], !!CONFIG.SHOW_SCORES);
   if (!who.name && extra.name) who = who_({ cls: who.cls, seat: who.seat, name: extra.name });
-  return { ok: true, who: who, preview: preview, scores: !!CONFIG.SHOW_SCORES, units: units, extra: extra.items };
+  /* students see how many +1 they got, never their leave / late records */
+  const bonus = bonusCount_(attRows_())[who.cls + '|' + String(Number(who.seat) || who.seat)] || 0;
+  return { ok: true, who: who, preview: preview, scores: !!CONFIG.SHOW_SCORES, units: units, extra: extra.items, bonus: bonus };
 }
 /* Pure: this student's row of the gradebook -> [{name, value, state}] where state is score / missing / text / none */
 function extraFor_(who, rows, showScores) {
@@ -477,7 +486,9 @@ function classGet_(req) {
   };
   const classes = classList_(data);
   const cls = clean_(req.cls) || classes[0] || '';
-  return { ok: true, email: a.email, classes: classes, cls: cls, units: Object.keys(UNITS).map(function (u) { return { unit: u, name: UNITS[u] }; }), students: cls ? classTable_(cls, data) : [] };
+  const students = cls ? classTable_(cls, data) : [], bonus = bonusCount_(attRows_());
+  students.forEach(function (x) { x.bonus = bonus[cls + '|' + x.seat] || 0; });
+  return { ok: true, email: a.email, classes: classes, cls: cls, units: Object.keys(UNITS).map(function (u) { return { unit: u, name: UNITS[u] }; }), students: students };
 }
 /* Pure: every class seen in the roster, file names, submissions, scores and manual scores */
 function classList_(d) {
@@ -755,4 +766,140 @@ function tab_(name, head) {
     if (first.getName() === '工作表1' || first.getName() === 'Sheet1') { if (first.getLastRow() === 0) ss.deleteSheet(first); }
   }
   return sh;
+}
+
+/* ---------- 座位表與點名 Seating and attendance (teacher only, in the Gradebook) ---------- */
+/* Computer-room layout: [seat, x %, y %]; the podium is at the bottom. */
+const SEAT_KEYS = ['left-13', 'left-1', 'left-2', 'left-3', 'left-14', 'left-4', 'left-5', 'left-6', 'left-15', 'left-7', 'left-8', 'left-9', 'left-16', 'left-10', 'left-11', 'left-12',
+  'right-1', 'right-2', 'right-3', 'right-4', 'right-5', 'right-6', 'right-7', 'right-8', 'right-9', 'right-10', 'right-11', 'right-12', 'right-13', 'right-14', 'right-15', 'right-16'];
+const SEAT_TAB = '座位表 Seating', SEAT_HEAD = ['班級 Class', '座位 Seat', '座號 No.', '姓名 Name', '更新時間 Updated', '更新者 By'];
+const ATT_TAB = '點名紀錄 Attendance', ATT_HEAD = ['編號 ID', '日期 Date', '班級 Class', '座號 No.', '姓名 Name', '類型 Type', '理由 Reason', '加分 Points', '建立時間 Created', '建立者 By'];
+const ATT_TYPES = { leave: '事病假', late: '遲到', bonus: '加分' };
+function attType_(t) { t = String(t == null ? '' : t).trim(); if (ATT_TYPES[t]) return t; for (const k in ATT_TYPES) if (ATT_TYPES[k] === t) return k; return ''; }
+function day_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone() || 'Asia/Taipei', 'yyyy-MM-dd');
+  const m = String(v == null ? '' : v).trim().match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : '';
+}
+function seatRows_() { const sh = sheet_().getSheetByName(SEAT_TAB); return sh ? sh.getDataRange().getValues() : []; }
+function attRows_() { const sh = sheet_().getSheetByName(ATT_TAB); return sh ? sh.getDataRange().getValues() : []; }
+/* Pure: 'cls|seat' -> number of +1 */
+function bonusCount_(rows) {
+  const out = {};
+  (rows || []).slice(1).forEach(function (r) {
+    if (attType_(r[5]) !== 'bonus') return;
+    const k = String(r[2]).trim() + '|' + String(Number(r[3]) || r[3]); out[k] = (out[k] || 0) + (Number(r[7]) || 1);
+  });
+  return out;
+}
+/* Pure: one class's seats, students and records */
+function roomOf_(cls, seatRows, attRows, roster, manRows) {
+  const seats = {}, students = {}, records = [];
+  (seatRows || []).slice(1).forEach(function (r) {
+    if (String(r[0]).trim() !== cls || SEAT_KEYS.indexOf(String(r[1])) < 0) return;
+    const n = String(Number(r[2]) || ''); if (n) { seats[String(r[1])] = n; if (r[3] && !students[n]) students[n] = String(r[3]).trim(); }
+  });
+  (roster || []).forEach(function (x) { if (x.cls === cls) { const n = String(Number(x.seat) || ''); if (n) students[n] = x.name; } });
+  (manRows || []).slice(1).forEach(function (r) { if (String(r[0]).trim() === cls) { const n = String(Number(r[1]) || ''); if (n && !students[n] && r[2]) students[n] = String(r[2]).trim(); } });
+  (attRows || []).slice(1).forEach(function (r) {
+    if (String(r[2]).trim() !== cls) return;
+    const n = String(Number(r[3]) || ''), t = attType_(r[5]); if (!n || !t) return;
+    if (!students[n] && r[4]) students[n] = String(r[4]).trim();
+    records.push({ id: String(r[0]), date: day_(r[1]), seat: n, name: String(r[4] || ''), type: t, reason: String(r[6] || ''), points: Number(r[7]) || 0 });
+  });
+  records.sort(function (a, b) { return b.date.localeCompare(a.date) || Number(a.seat) - Number(b.seat); });
+  return {
+    seats: seats, records: records,
+    students: Object.keys(students).sort(function (a, b) { return Number(a) - Number(b); }).map(function (n) { return { seat: n, name: students[n] }; })
+  };
+}
+function roomGet_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const cls = clean_(req.cls);
+  if (!/^\d+$/.test(cls)) return { ok: false, error: 'bad_request' };
+  const r = roomOf_(cls, seatRows_(), attRows_(), rosterRows_() || [], manualRows_());
+  return { ok: true, cls: cls, seatKeys: SEAT_KEYS, seats: r.seats, students: r.students, records: r.records };
+}
+/* save a class's whole seating chart: seats = {seatKey: seat number} */
+function seatSet_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const cls = clean_(req.cls), map = req.seats && typeof req.seats === 'object' ? req.seats : null;
+  if (!/^\d+$/.test(cls) || !map) return { ok: false, error: 'bad_request' };
+  const names = {}; (Array.isArray(req.names) ? req.names : []).forEach(function (x) { if (x && x.seat) names[String(Number(x.seat))] = clean_(x.name); });
+  const used = {}, rows = [], now = new Date();
+  for (const k in map) {
+    const n = String(Number(map[k]) || '');
+    if (SEAT_KEYS.indexOf(k) < 0 || !n || used[n]) return { ok: false, error: 'bad_seats' };
+    used[n] = 1; rows.push([cls, k, n, names[n] || '', now, a.email]);
+  }
+  writeSeats_({ [cls]: rows });
+  return { ok: true, saved: rows.length };
+}
+function writeSeats_(byCls) {
+  const sh = tab_(SEAT_TAB, SEAT_HEAD), data = sh.getDataRange().getValues();
+  const keep = [SEAT_HEAD].concat(data.slice(1).filter(function (r) { return !byCls[String(r[0]).trim()]; }));
+  Object.keys(byCls).forEach(function (c) { byCls[c].forEach(function (r) { keep.push(r); }); });
+  sh.clearContents();
+  sh.getRange(1, 1, keep.length, SEAT_HEAD.length).setValues(keep);
+  sh.getRange(1, 1, 1, SEAT_HEAD.length).setFontWeight('bold');
+}
+function attAdd_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const cls = clean_(req.cls), seat = String(Number(req.seat) || ''), t = attType_(req.type), date = day_(req.date);
+  if (!/^\d+$/.test(cls) || !seat || !t || !date) return { ok: false, error: 'bad_request' };
+  const id = Utilities.getUuid().slice(0, 8), row = [id, date, cls, seat, clean_(req.name), ATT_TYPES[t], clip_(req.reason), t === 'bonus' ? 1 : 0, new Date(), a.email];
+  const sh = tab_(ATT_TAB, ATT_HEAD);
+  sh.appendRow(row);
+  sh.getRange(sh.getLastRow(), 2).setNumberFormat('@');
+  return { ok: true, record: { id: id, date: date, seat: seat, name: row[4], type: t, reason: row[6], points: row[7] } };
+}
+function attDel_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const id = String(req.id || '');
+  const sh = sheet_().getSheetByName(ATT_TAB);
+  if (!id || !sh) return { ok: false, error: 'not_found' };
+  const v = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
+  for (let r = v.length - 1; r >= 1; r--) if (String(v[r][0]) === id) { sh.deleteRow(r + 1); return { ok: true }; }
+  return { ok: false, error: 'not_found' };
+}
+/* bring in an old seating chart and attendance records; the same record twice is skipped */
+function roomImport_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const seats = Array.isArray(req.seats) ? req.seats.slice(0, 2000) : [], recs = Array.isArray(req.records) ? req.records.slice(0, 5000) : [];
+  const now = new Date(), byCls = {}, used = {}; let seatCount = 0; const skipped = [];
+  seats.forEach(function (x, i) {
+    const cls = clean_(x.cls), k = String(x.key || ''), n = String(Number(x.seat) || '');
+    if (!/^\d+$/.test(cls) || SEAT_KEYS.indexOf(k) < 0 || !n || used[cls + '|' + n] || used[cls + '#' + k]) { skipped.push('seat ' + (i + 1)); return; }
+    used[cls + '|' + n] = used[cls + '#' + k] = 1;
+    (byCls[cls] = byCls[cls] || []).push([cls, k, n, clean_(x.name), now, a.email]); seatCount++;
+  });
+  if (seatCount) writeSeats_(byCls);
+  let added = 0, dup = 0;
+  if (recs.length) {
+    const sh = tab_(ATT_TAB, ATT_HEAD), have = {};
+    sh.getDataRange().getValues().slice(1).forEach(function (r) { have[[day_(r[1]), String(r[2]).trim(), String(Number(r[3])), attType_(r[5]), String(r[8] instanceof Date ? r[8].getTime() : r[8])].join('|')] = 1; });
+    const out = [];
+    recs.forEach(function (x, i) {
+      const cls = clean_(x.cls), n = String(Number(x.seat) || ''), t = attType_(x.type), d = day_(x.date);
+      const when = x.created ? new Date(String(x.created).replace(' ', 'T').replace(/\+00$/, 'Z')) : now;
+      const at = isNaN(when.getTime()) ? now : when;
+      if (!/^\d+$/.test(cls) || !n || !t || !d) { skipped.push('record ' + (i + 1)); return; }
+      const k = [d, cls, n, t, String(at.getTime())].join('|');
+      if (have[k]) { dup++; return; }
+      have[k] = 1;
+      out.push([Utilities.getUuid().slice(0, 8), d, cls, n, clean_(x.name), ATT_TYPES[t], clip_(x.reason === 'null' ? '' : x.reason), t === 'bonus' ? 1 : 0, at, a.email]);
+    });
+    if (out.length) {
+      const start = sh.getLastRow() + 1;
+      sh.getRange(start, 2, out.length, 1).setNumberFormat('@');
+      sh.getRange(start, 1, out.length, ATT_HEAD.length).setValues(out);
+    }
+    added = out.length;
+  }
+  return { ok: true, seats: seatCount, records: added, duplicates: dup, skipped: skipped };
 }
