@@ -102,7 +102,14 @@ td.bn{font-family:"JetBrains Mono",monospace;color:var(--accent);font-weight:700
 .recs{margin-top:14px}.recs summary{cursor:pointer;font-weight:700}
 .recs table td,.recs table th{padding:6px 8px;text-align:left}
 #oldSeat,#oldAtt{width:100%;min-height:90px;font-family:"JetBrains Mono",monospace;font-size:12px}
-@media (prefers-reduced-motion:reduce){td.c.saved button{animation:none}.toast{transition:none}}
+/* loading progress: Google takes several seconds to answer */
+.prog{position:sticky;top:0;z-index:20;margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.prog .pt{font-size:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.prog .pt b{font-family:"JetBrains Mono",monospace;color:var(--accent)}
+.prog .track{height:6px;border-radius:999px;background:var(--soft);overflow:hidden;position:relative}
+.prog .track i{position:absolute;top:0;bottom:0;left:0;border-radius:999px;background:var(--accent);transition:width .4s ease}
+.prog .steps{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.prog .steps span.on{color:var(--ink);font-weight:700}.prog .steps span.done{color:var(--accent)}
+#view.loading .wrap,#view.loading .mapwrap{opacity:.45;pointer-events:none;transition:opacity .2s}
+@media (prefers-reduced-motion:reduce){td.c.saved button{animation:none}.toast{transition:none}.prog .track i{transition:none}}
 @media (max-width:560px){main{padding-top:28px}.wrap{max-height:none}}
 </style>
 </head>
@@ -119,6 +126,11 @@ td.bn{font-family:"JetBrains Mono",monospace;color:var(--accent);font-weight:700
       <span class="status" id="keySt" style="align-self:flex-end"></span>
     </form>
   </section>
+  <div class="prog" id="prog" role="status" aria-live="polite" hidden>
+    <div class="pt"><span id="progT"></span><b id="progS"></b></div>
+    <div class="track"><i id="progI" style="width:0"></i></div>
+    <div class="steps" id="progSteps"></div>
+  </div>
   <div id="view" hidden>
     <div class="bar">
       <div class="row">
@@ -296,6 +308,19 @@ let data=null, key='', busy=false, cur=null;
 const toast=t=>{ const x=$('#toast'); x.textContent=t; x.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(()=>x.classList.remove('on'),1600); };
 const st=(t,bad)=>{ $('#st').textContent=t||''; $('#st').classList.toggle('err',!!bad); };
 const has=v=>v!==''&&v!=null&&isFinite(Number(v));
+/* Progress while waiting for Google. One request cannot report real progress, so the bar follows the elapsed time
+   (it slows down near the end and only reaches 100% when the answer arrives) and the steps say what is happening. */
+const PROG=(()=>{ let t0=0, iv=null, steps=[], typical=8;
+  const draw=()=>{ const sec=(Date.now()-t0)/1000, pct=Math.min(92,100*(1-Math.exp(-sec/typical)));
+    $('#progI').style.width=pct.toFixed(1)+'%'; $('#progS').textContent=Math.floor(sec)+' 秒';
+    const at=Math.min(steps.length-1,Math.floor(pct/100*steps.length*1.08));
+    $('#progSteps').innerHTML=steps.map((x,i)=>`<span class="${i<at?'done':i===at?'on':''}">${i<at?'✓ ':''}${e(x)}</span>`).join('');
+    if(sec>25) $('#progT').textContent='Google 今天比較慢，還在讀取，請再等一下… Still loading, Google is slow today.'; };
+  return {
+    on(text,list,secs){ t0=Date.now(); steps=list||[]; typical=secs||8; $('#progT').textContent=text; $('#prog').hidden=false; $('#view').classList.add('loading'); clearInterval(iv); draw(); iv=setInterval(draw,250); },
+    off(){ clearInterval(iv); iv=null; $('#progI').style.width='100%'; $('#progSteps').innerHTML=steps.map(x=>`<span class="done">✓ ${e(x)}</span>`).join('');
+      setTimeout(()=>{ if(!iv){ $('#prog').hidden=true; $('#progI').style.width='0'; } },350); $('#view').classList.remove('loading'); }
+  }; })();
 function finalOf(x){ if(has(x.override)) return {final:Number(x.override),source:'override'}; let b=null;
   const a=x.auto!==undefined?x.auto:x.total; if(has(a)) b={final:Number(a),source:'auto'}; if(has(x.manual)&&(!b||Number(x.manual)>b.final)) b={final:Number(x.manual),source:'manual'};
   return b||{final:'',source:x.submitted?'waiting':'missing'}; }
@@ -305,7 +330,9 @@ LOGIN.render();
 function afterLogin(){ try{ key=sessionStorage.getItem(KK)||''; }catch(err){} if(key) load(); else { $('#keyBox').hidden=false; $('#key').focus(); } }
 async function call(body){ const r=await fetch(URL_,{method:'POST',body:JSON.stringify(Object.assign({idToken:LOGIN.token(),key},body))}); return await r.json(); }
 async function load(cls){
-  if(busy||!LOGIN.token()) return; busy=true; st('Loading… 讀取中…');
+  if(busy||!LOGIN.token()) return; busy=true; st('');
+  const c0=cls||($('#cls').value||'');
+  PROG.on(`正在從 Google 雲端讀取${c0?' '+c0+' 班的':''}成績… Loading from Google`,['連線到 Google','開啟成績試算表','讀取繳交紀錄與作業檔案','整理每位學生的成績'],7);
   try{
     const res=await call({action:'class_get',cls:cls||($('#cls').value||'')});
     if(!res||!res.ok){ const k=res&&res.error;
@@ -317,7 +344,7 @@ async function load(cls){
     $('#cls').innerHTML=(res.classes.length?res.classes:[res.cls]).filter(Boolean).map(c=>`<option${c===res.cls?' selected':''}>${e(c)}</option>`).join('')||'<option value="">—</option>';
     render(); if(room&&room.cls!==data.cls) room=null;
   }catch(err){ st('Cannot reach Google Drive. 連不上雲端，請再試一次。',true); }
-  finally{ busy=false; }
+  finally{ busy=false; PROG.off(); }
 }
 function cell(s,u){ const x=s.units.find(y=>y.unit===u.unit)||{source:'missing'}; const t=SRC[x.source]||SRC.missing;
   return `<td class="c" data-seat="${e(s.seat)}" data-unit="${e(u.unit)}"><button type="button" aria-label="${e(s.seat+' '+s.name+' '+u.name)}"><span class="n">${has(x.final)?e(x.final):'—'}</span><span class="chip ${t[1]}">${t[0]}</span>${x.mcomment?`<span class="cm" title="${e(x.mcomment)}">💬 ${e(x.mcomment)}</span>`:''}</button></td>`; }
@@ -397,13 +424,13 @@ function show(t){
   if(t!=='g') loadRoom(); }
 async function loadRoom(force){
   if(!data||roomBusy) return; if(room&&room.cls===data.cls&&!force){ drawRoom(); return; }
-  roomBusy=true; st('Loading… 讀取中…');
+  roomBusy=true; st(''); PROG.on(`正在讀取 ${data.cls} 班的座位表與點名紀錄… Loading seats and roll call`,['連線到 Google','讀取座位表','讀取點名紀錄'],4);
   try{ const res=await call({action:'room_get',cls:data.cls});
     if(!res||!res.ok){ const k=res&&res.error; if(k==='login_expired'||k==='bad_token'){ LOGIN.expired(); return; }
       st((ERR[k]||'Could not load. 讀取失敗。')+(k?'（'+k+'）':''),true); return; }
     room=res; plan=null; st(''); drawRoom();
   }catch(err){ st('Cannot reach Google Drive. 連不上雲端，請再試一次。',true); }
-  finally{ roomBusy=false; } }
+  finally{ roomBusy=false; PROG.off(); } }
 function nameOf(n){ const x=room.students.find(s=>s.seat===n); return x?x.name:''; }
 function drawRoom(){ if(tab==='a') drawAtt(); else if(tab==='s') drawSeat(); }
 function seatHtml(k,x,y,inner){ return `<div class="seatbox" data-key="${k}" style="left:${x}%;top:${y}%"><span class="key">${e(k.replace('left-','L').replace('right-','R'))}</span>${inner}</div>`; }

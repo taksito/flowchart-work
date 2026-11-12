@@ -157,7 +157,7 @@ function submit_(req) {
   const file = it.hasNext() ? it.next() : null;
   const content = JSON.stringify(work);
   let f;
-  if (file) { file.setContent(content); f = file; } else { f = folder.createFile(name, content, MimeType.PLAIN_TEXT); }
+  if (file) { file.setContent(content); f = file; } else { f = folder.createFile(name, content, MimeType.PLAIN_TEXT); namesChanged_(unit); }
 
   const ck = req.check || {};
   const sh = tab_('繳交紀錄 Submissions', SUB_HEAD);
@@ -244,6 +244,7 @@ function delete_(req) {
   const f = findWork_(req.unit, req.file);
   if (!f) return { ok: false, error: 'not_found' };
   f.setTrashed(true);
+  namesChanged_(req.unit);
   return { ok: true };
 }
 /* fix the class / seat / name of a submitted file: updates the file and its name */
@@ -258,7 +259,7 @@ function rename_(req) {
   const w = JSON.parse(f.getBlob().getDataAsString('UTF-8'));
   w.student = who.student; w.cls = who.cls; w.seat = who.seat; w.name = who.name;
   f.setContent(JSON.stringify(w));
-  if (name !== f.getName()) f.setName(name);
+  if (name !== f.getName()) { f.setName(name); namesChanged_(req.unit); }
   return { ok: true, file: name };
 }
 /* roster tab rows: class, seat, name */
@@ -392,9 +393,10 @@ function workNames_(u) {
   if (c) return JSON.parse(c);
   const it = rootFolder_().getFoldersByName(unitName_(u)), names = [];
   if (it.hasNext()) { const files = it.next().getFiles(); while (files.hasNext()) { const n = files.next().getName(); if (/\.json$/i.test(n)) names.push(n); } }
-  try { cache.put(k, JSON.stringify(names), 60); } catch (err) {}
+  try { cache.put(k, JSON.stringify(names), 900); } catch (err) {}   /* listing a Drive folder is slow; the list is refreshed whenever a file is added, renamed or deleted */
   return names;
 }
+function namesChanged_(u) { try { CacheService.getScriptCache().remove('names:' + u); } catch (err) {} }
 /* Pure: rows of the two sheets + file names -> one entry per unit for this student. Matched by class and seat number. */
 function mineUnits_(who, subRows, scoreRows, names, manualRows) {
   const seatKey = function (c, s) { const n = Number(s); return String(c == null ? '' : c).trim() + '-' + (isFinite(n) && String(s).trim() !== '' ? String(n) : String(s == null ? '' : s).trim()); };
@@ -741,7 +743,13 @@ function unitFolder_(unit) {
   if (old.hasNext()) { const f = old.next(); f.setName(name); return f; }
   return root.createFolder(name);
 }
+let SS_ = null;   /* opened once per request: opening the spreadsheet is slow */
 function sheet_() {
+  if (SS_) return SS_;
+  SS_ = openSheet_();
+  return SS_;
+}
+function openSheet_() {
   const p = PropertiesService.getScriptProperties();
   const id = p.getProperty('SHEET_ID');
   if (id) { try { return SpreadsheetApp.openById(id); } catch (err) {} }
