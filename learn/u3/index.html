@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Finger &amp; Sum 手指與盒子</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.key{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:center}
+.key .big{font-family:"JetBrains Mono",monospace;font-size:clamp(24px,3.6vw,34px);grid-row:span 2}
+.key .big b{color:var(--accent);font-weight:500}
+.key p{margin:0}
+.setup{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.setup label{display:flex;align-items:center;gap:8px;font-size:17px}
+.setup select,.setup input[type=range]{font:inherit;font-size:17px;padding:6px 8px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.lab{display:grid;grid-template-columns:minmax(260px,.9fr) minmax(0,1.6fr);gap:18px;align-items:start}
+.lab .panel{margin:0}
+/* program listing */
+.prog{list-style:none;margin:6px 0 0;padding:0;font-family:"JetBrains Mono",monospace;font-size:18px}
+.prog li{margin:6px 0}
+.prog button{width:100%;justify-content:flex-start;gap:12px;padding:10px 14px;font-family:inherit;font-size:inherit;text-align:left;border-width:2px}
+.prog button .ln{color:var(--muted);font-size:13px;min-width:16px}
+.prog button.next{border-color:var(--accent);background:var(--soft)}
+.prog button.ran{animation:flash .5s}
+.prog .dia{border-style:dashed}
+.prog small{display:block;font-family:"Noto Sans TC",sans-serif;font-size:13px;color:var(--muted)}
+@keyframes flash{from{background:var(--accent);color:var(--on-accent)}to{}}
+#hint{min-height:3.4em;font-size:17px}
+#hint.warn{background:var(--warn-soft);color:var(--warn);border-left:5px solid var(--warn)}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.ctrl button{font-size:15px;padding:8px 13px}
+/* the world: cards, finger, boxes */
+.world{position:relative}
+.cards{position:relative;display:flex;gap:8px;padding:56px 4px 8px;overflow-x:auto}
+.card{flex:0 0 auto;width:58px;height:70px;border-radius:12px;border:2px solid var(--line);background:var(--bg);display:grid;place-items:center;font-family:"JetBrains Mono",monospace;font-size:28px;transition:background-color .3s,border-color .3s,opacity .3s}
+.card.done{background:var(--soft);border-color:var(--accent);color:var(--accent)}
+.card.out{opacity:.35;border-style:dashed}
+#finger{position:absolute;top:2px;left:0;font-size:40px;line-height:1;transition:transform .45s ease;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+#finger.off{opacity:.55}
+.boxes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.vbox{border:3px solid var(--shape-line);border-radius:16px;padding:12px 16px;background:var(--shape);position:relative}
+.vbox .name{font-family:"JetBrains Mono",monospace;font-size:17px;color:var(--muted)}
+.vbox .val{font-family:"JetBrains Mono",monospace;font-size:52px;line-height:1.1;font-weight:500;transition:transform .2s;transform-origin:left center}
+.vbox .val.pop{transform:scale(1.25);color:var(--accent)}
+.vbox small{display:block;font-size:14px;color:var(--muted)}
+.vbox.sum{border-color:var(--accent)}
+#calc{min-height:58px;margin-top:14px;font-family:"JetBrains Mono",monospace;font-size:clamp(18px,2.6vw,24px);text-align:center;padding:10px;border-radius:12px;background:var(--bg);border:1px dashed var(--line)}
+#calc .r{color:var(--accent)}#calc .l{color:var(--warn)}
+.chip{position:fixed;z-index:30;font-family:"JetBrains Mono",monospace;font-size:26px;background:var(--accent);color:var(--on-accent);border-radius:10px;padding:2px 12px;pointer-events:none;transition:transform .6s cubic-bezier(.3,.7,.3,1),opacity .2s}
+/* trace */
+.trace{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace;font-size:17px;margin-top:8px}
+.trace th{font-family:"Noto Sans TC",sans-serif;font-size:14px;color:var(--muted);font-weight:500;text-align:left;border-bottom:2px solid var(--line);padding:6px 8px}
+.trace td{border-bottom:1px solid var(--line);padding:6px 8px}
+.trace tr.new td{background:var(--soft)}
+.done-box{border:2px solid var(--accent)}
+.done-box .formula{font-size:clamp(18px,2.6vw,26px)}
+@media (max-width:820px){.key{grid-template-columns:1fr}.key .big{grid-row:auto}.lab{grid-template-columns:1fr}.vbox .val{font-size:42px}.card{width:48px;height:60px;font-size:24px}}
+@media (prefers-reduced-motion:reduce){#finger,.chip{transition:none}}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Unit 03 steps 單元步驟">
+  <a class="home" href="../">← Lessons 課程</a>
+  <ol class="steps">
+    <li><a href="./" aria-current="page"><b>01</b>Finger &amp; Sum 手指與盒子</a></li>
+    <li><a href="bugs.html"><b>02</b>Bug Lab 抓蟲實驗室</a></li>
+    <li><a href="flowchart.html"><b>03</b>Flowchart × Scratch 流程圖與積木</a></li>
+  </ol>
+</nav>
+<main>
+  <div class="eyebrow">UNIT 03 · STEP 01</div>
+  <h1>1 + 2 + … + n<small>用一根手指記位置，用一個盒子裝總和</small></h1>
+
+  <section class="panel key" aria-label="Key idea 重點">
+    <div class="big">sum = <b>sum + finger</b></div>
+    <p><strong>= 不是「相等」，是「放進去」。</strong>先算右邊（盒子裡原本的 sum，加上手指指著的數），再把結果放回左邊的 sum 盒子。</p>
+    <p class="muted"><strong>變數裡面可以放變數的值。</strong>👆 finger 記住「現在在第幾個」，🫙 sum 記住「目前加到多少」。程式裡 finger 也常寫成 <code>i</code>（比較短），意思一樣。</p>
+  </section>
+
+  <section class="panel setup" aria-label="Settings 設定">
+    <label>n =
+      <select id="n"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+    <span class="muted" style="font-size:16px">要加到多少？ How far do we add?</span>
+  </section>
+
+  <div class="lab">
+    <section class="panel" aria-labelledby="pt">
+      <h2 id="pt">Program 程式<small>依序點下一行，自己當電腦執行</small></h2>
+      <ol class="prog" id="prog"></ol>
+      <div id="hint" class="notice" aria-live="polite"></div>
+      <div class="ctrl">
+        <button type="button" id="auto">▶ Auto play 自動播放</button>
+        <label class="muted" style="font-size:14px;display:flex;align-items:center;gap:6px">Speed 速度<input type="range" id="speed" min="250" max="1600" step="50" value="900" style="width:110px" aria-label="Speed 速度"></label>
+        <button type="button" id="reset">↺ Restart 重來</button>
+      </div>
+    </section>
+
+    <section class="panel world" aria-labelledby="wt">
+      <h2 id="wt">What the computer remembers<small>電腦記住的東西</small></h2>
+      <div class="cards" id="cards" aria-label="Number cards 數字卡"><span id="finger" aria-hidden="true">👆</span></div>
+      <div class="boxes">
+        <div class="vbox"><span class="name">👆 finger</span><div class="val" id="vFinger">?</div><small>Which card? 現在指第幾個</small></div>
+        <div class="vbox sum"><span class="name">🫙 sum</span><div class="val" id="vSum">?</div><small>Total so far 目前加到多少</small></div>
+      </div>
+      <div id="calc" aria-live="polite">Press line 1 to start. 從第 1 行開始。</div>
+      <table class="trace" aria-label="Trace table 追蹤表">
+        <thead><tr><th>Round 第幾輪</th><th>finger</th><th>sum before 原本</th><th>sum + finger</th><th>sum after 放回去</th></tr></thead>
+        <tbody id="trace"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <section class="panel done-box" id="done" hidden aria-live="polite">
+    <h2>Done! 加完了！</h2>
+    <p id="doneText"></p>
+    <div class="formula" id="gauss"></div>
+    <p class="muted">Try a bigger n, or go and break the program in the Bug Lab. 換一個 n 再試，或到抓蟲實驗室看看寫錯會怎樣。</p>
+    <div class="actions"><button type="button" id="again">↺ Try again 再跑一次</button><a class="btn primary" href="bugs.html">Next: Bug Lab · 下一頁 →</a></div>
+  </section>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* the program, one line per step; next() tells which line the computer runs next */
+const LINES=[
+  {k:'s0',code:'sum = 0',note:'盒子先清空 Empty the box'},
+  {k:'f1',code:'finger = 1',note:'手指放在第 1 張 Point at card 1'},
+  {k:'chk',code:'finger ≤ n ?',note:'是 → 第 4 行；否 → 第 6 行',dia:true},
+  {k:'add',code:'sum = sum + finger',note:'先算右邊，再放回 sum'},
+  {k:'mv',code:'finger = finger + 1',note:'手指往右一格，回到第 3 行'},
+  {k:'out',code:'output sum',note:'說出答案 Show the answer'}];
+let n=5, finger=null, sum=null, expect='s0', round=0, busy=false, timer=null;
+function render(){
+  $('prog').innerHTML=LINES.map((l,i)=>`<li><button type="button" data-k="${l.k}" class="${l.dia?'dia ':''}${expect===l.k?'next':''}" ${expect==='end'?'disabled':''}><span class="ln">${i+1}</span><span>${l.code}${l.k==='chk'?` <span class="muted">(n = ${n})</span>`:''}<small>${l.note}</small></span></button></li>`).join('');
+  $('vFinger').textContent=finger==null?'?':finger; $('vSum').textContent=sum==null?'?':sum;
+  document.querySelectorAll('.card').forEach(c=>{ const v=+c.dataset.v; c.classList.toggle('done',sum!=null&&finger!=null&&v<finger); c.classList.toggle('out',v>n); });
+  placeFinger();
+}
+function buildCards(){
+  const c=$('cards'); c.querySelectorAll('.card').forEach(x=>x.remove());
+  for(let v=1;v<=n+1;v++){ const d=document.createElement('div'); d.className='card'; d.dataset.v=v; d.textContent=v; d.setAttribute('aria-label',v>n?`${v}（超過 n，不加）`:`card ${v}`); c.appendChild(d); }
+}
+function placeFinger(){
+  const f=$('finger'); if(finger==null){ f.style.opacity='0'; return; } f.style.opacity='1';
+  const card=document.querySelector(`.card[data-v="${Math.min(finger,n+1)}"]`); if(!card) return;
+  f.style.transform=`translateX(${card.offsetLeft+card.offsetWidth/2-20}px)`; f.classList.toggle('off',finger>n);
+  card.scrollIntoView({block:'nearest',inline:'nearest',behavior:reduce?'auto':'smooth'});
+}
+function hint(text,warn){ $('hint').innerHTML=text; $('hint').className='notice'+(warn?' warn':''); }
+function pop(id){ const v=$(id); v.classList.remove('pop'); void v.offsetWidth; v.classList.add('pop'); setTimeout(()=>v.classList.remove('pop'),300); }
+/* a number chip flies from the finger's card into the sum box */
+function fly(from,to,label){ return new Promise(res=>{ if(reduce){ res(); return; }
+  const a=from.getBoundingClientRect(), b=to.getBoundingClientRect(), c=document.createElement('div');
+  c.className='chip'; c.textContent=label; c.style.left=(a.left+a.width/2-20)+'px'; c.style.top=(a.top+a.height/2-20)+'px'; document.body.appendChild(c);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ c.style.transform=`translate(${b.left+b.width/2-a.left-a.width/2}px,${b.top+b.height/2-a.top-a.height/2}px)`; }));
+  setTimeout(()=>{ c.remove(); res(); },650); }); }
+const WHY={
+  s0:'第 1 行要先把 <b>sum 盒子清成 0</b>，不然盒子裡可能有舊的數字。',
+  f1:'接著要 <b>把手指放到第 1 張卡</b>（finger = 1），電腦才知道從哪裡開始。',
+  chk:'每一輪開始前，都要先 <b>判斷 finger ≤ n ?</b>：手指還在範圍內，才可以加。',
+  add:'判斷是「是」，所以要 <b>先加：sum = sum + finger</b>。如果先移手指，這一張就被跳過了！',
+  mv:'加完了，要 <b>把手指往右移一格：finger = finger + 1</b>。不移的話會一直加同一張（無窮迴圈）。',
+  out:'手指已經超過 n 了（finger &gt; n），判斷是「否」，所以跳到第 6 行 <b>輸出 sum</b>。'};
+async function run(k){
+  if(busy||expect==='end') return;
+  if(k!==expect){ hint('✕ 還不是這一行喔。 Not yet. '+WHY[expect],true); return; }
+  busy=true; document.querySelector(`[data-k="${k}"]`).classList.add('ran');
+  if(k==='s0'){ sum=0; pop('vSum'); $('calc').innerHTML='sum = <span class="r">0</span>　盒子清空'; hint('sum 盒子現在是 0。接著放手指。 The box is empty.'); expect='f1'; }
+  else if(k==='f1'){ finger=1; pop('vFinger'); $('calc').innerHTML='finger = <span class="r">1</span>　手指指著第 1 張'; hint('手指在第 1 張卡。現在每一輪先判斷。'); expect='chk'; }
+  else if(k==='chk'){ const yes=finger<=n; $('calc').innerHTML=`finger ≤ n ?　→　${finger} ≤ ${n} ?　→　<span class="${yes?'r':'l'}">${yes?'是 Yes':'否 No'}</span>`;
+    if(yes){ expect='add'; hint(`${finger} ≤ ${n}，還在範圍內 → 去第 4 行加起來。`); } else { expect='out'; hint(`${finger} > ${n}，手指已經走出去了 → 跳到第 6 行輸出答案。`); } }
+  else if(k==='add'){ const before=sum, card=document.querySelector(`.card[data-v="${finger}"]`);
+    $('calc').innerHTML=`sum = <span class="l">sum</span> + <span class="l">finger</span>`;
+    await new Promise(r=>setTimeout(r,reduce?0:350));
+    $('calc').innerHTML=`sum = <span class="r">${before}</span> + <span class="r">${finger}</span>　←　先拿出盒子裡的 ${before}，再加手指指的 ${finger}`;
+    await fly(card,$('vSum'),'+'+finger);
+    sum=before+finger; round++; pop('vSum');
+    $('calc').innerHTML=`sum = ${before} + ${finger} = <span class="r">${sum}</span>　→　放回 sum 盒子`;
+    const tr=document.createElement('tr'); tr.className='new'; tr.innerHTML=`<td>${round}</td><td>${finger}</td><td>${before}</td><td>${before} + ${finger}</td><td><b>${sum}</b></td>`;
+    document.querySelectorAll('#trace tr.new').forEach(x=>x.classList.remove('new')); $('trace').appendChild(tr);
+    hint(`盒子原本是 ${before}，加上 ${finger}，變成 ${sum}。<b>右邊先算，再放回左邊。</b>`); expect='mv'; }
+  else if(k==='mv'){ finger=finger+1; pop('vFinger'); $('calc').innerHTML=`finger = ${finger-1} + 1 = <span class="r">${finger}</span>　→　手指往右一格`; hint('手指移好了，回到第 3 行再判斷一次。'); expect='chk'; }
+  else if(k==='out'){ expect='end'; stopAuto(); $('calc').innerHTML=`output sum　→　<span class="r">${sum}</span>`;
+    hint('完成！電腦說出答案。 Done!'); $('done').hidden=false;
+    $('doneText').innerHTML=`1 + 2 + … + ${n} = <b>${sum}</b>。手指走了 ${n} 輪，sum 盒子一層一層疊起來。`;
+    $('gauss').textContent=`Check 驗算：n × (n + 1) ÷ 2 = ${n} × ${n+1} ÷ 2 = ${n*(n+1)/2} ${n*(n+1)/2===sum?'✓':'✗'}`;
+    $('done').scrollIntoView({behavior:reduce?'auto':'smooth',block:'nearest'}); }
+  render(); busy=false;
+}
+function reset(){ stopAuto(); finger=null; sum=null; expect='s0'; round=0; $('trace').innerHTML=''; $('done').hidden=true; buildCards();
+  $('calc').textContent='Press line 1 to start. 從第 1 行開始。'; hint('Click the highlighted line. 點綠框那一行，自己當電腦一步一步執行。'); render(); }
+function stopAuto(){ clearTimeout(timer); timer=null; $('auto').textContent='▶ Auto play 自動播放'; }
+function tick(){ if(expect==='end'){ stopAuto(); return; } run(expect).then(()=>{ if(timer!==null) timer=setTimeout(tick,+$('speed').max-+$('speed').value+250); }); }
+$('auto').onclick=()=>{ if(timer!==null){ stopAuto(); return; } if(expect==='end') reset(); $('auto').textContent='⏸ Pause 暫停'; timer=0; tick(); };
+$('prog').addEventListener('click',e=>{ const b=e.target.closest('[data-k]'); if(b){ if(timer!==null) stopAuto(); run(b.dataset.k); } });
+$('reset').onclick=reset; $('again').onclick=reset;
+$('n').onchange=()=>{ n=+$('n').value; reset(); };
+addEventListener('resize',placeFinger);
+reset();
+</script>
+</body>
+</html>

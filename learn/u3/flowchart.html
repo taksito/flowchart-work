@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Summation Flowchart × Scratch 加總流程圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.pair .panel{margin:0}
+.flow svg{display:block;width:100%;max-width:440px;height:auto;margin:auto}
+.flow .sh{fill:var(--shape);stroke:var(--shape-line);stroke-width:2}
+.flow .dia{fill:var(--c-normal);stroke:var(--shape-line);stroke-width:2}
+.flow .loop{fill:none;stroke:var(--accent);stroke-width:2.5}
+.flow .ln{fill:none;stroke:var(--shape-line);stroke-width:2}
+.flow .ah{fill:var(--shape-line)}.flow .ah2{fill:var(--accent)}
+.flow text{fill:var(--ink);font-family:"JetBrains Mono","Noto Sans TC",monospace;font-size:15px}
+.flow .tf{fill:var(--accent);font-size:13px}
+.flow .tag{fill:var(--muted);font-family:"Noto Sans TC",sans-serif;font-size:12px}
+.flow .hl{fill:var(--accent);font-weight:700}
+/* look-alike Scratch blocks */
+.sb{font-family:"Noto Sans TC",sans-serif;font-size:15px;color:#fff;display:flex;flex-direction:column;gap:3px;max-width:430px;margin:auto}
+.blk{border-radius:6px;padding:7px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
+.blk .slot{background:#fff;color:#333;border-radius:999px;padding:0 9px;font-family:"JetBrains Mono",monospace;font-size:14px}
+.blk .op{background:#59c059;color:#fff;border-radius:999px;padding:1px 9px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.blk .var{background:#ff8c1a;color:#fff;border-radius:999px;padding:0 9px}
+.blk .n{margin-left:auto;background:rgba(255,255,255,.28);border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-family:"JetBrains Mono",monospace;font-size:12px}
+.ev{background:#ffbf00;color:#3a2a00;border-radius:18px 18px 6px 6px}
+.se{background:#5cb1d6}.va{background:#ff8c1a}.lo{background:#9966ff}
+.ctl{background:#ffab19;border-radius:6px;padding:0}
+.ctl .head{padding:7px 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ctl .body{margin-left:18px;padding:3px 0 3px;display:flex;flex-direction:column;gap:3px;background:var(--panel);border-radius:0 0 0 4px}
+.ctl .foot{height:14px}
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;margin-top:6px;font-size:16px}
+.legend div{display:flex;gap:10px;align-items:baseline}
+.legend b{display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:50%;background:var(--soft);color:var(--accent);font-family:"JetBrains Mono",monospace;font-size:13px}
+.check label{display:flex;gap:12px;align-items:flex-start;font-size:18px;margin:10px 0;cursor:pointer}
+.check input{width:22px;height:22px;margin-top:3px;accent-color:var(--accent);flex:0 0 auto}
+.tools{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+@media (max-width:820px){.pair,.legend{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Unit 03 steps 單元步驟">
+  <a class="home" href="../">← Lessons 課程</a>
+  <ol class="steps">
+    <li><a href="./"><b>01</b>Finger &amp; Sum 手指與盒子</a></li>
+    <li><a href="bugs.html"><b>02</b>Bug Lab 抓蟲實驗室</a></li>
+    <li><a href="flowchart.html" aria-current="page"><b>03</b>Flowchart × Scratch 流程圖與積木</a></li>
+  </ol>
+</nav>
+<main>
+  <div class="eyebrow">UNIT 03 · STEP 03</div>
+  <h1>From flowchart to Scratch<small>同一個想法，畫成流程圖，再拼成 Scratch</small></h1>
+  <div class="notice">The numbers ① – ⑦ match on both sides. 左右兩邊的編號 ① – ⑦ 是同一件事。<b>finger 也可以寫成 i</b>，比較短；整個作品用同一個名字就好。</div>
+
+  <div class="pair">
+    <section class="panel flow" aria-labelledby="ft">
+      <h2 id="ft">Flowchart 流程圖</h2>
+      <svg viewBox="0 0 440 760" role="img" aria-label="Summation flowchart: start, input n, sum = 0, finger = 1, decision finger ≤ n, sum = sum + finger, finger = finger + 1, back to decision; no: output sum, end">
+        <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path class="ah" d="M0 0L8 4L0 8"/></marker><marker id="a2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path class="ah2" d="M0 0L8 4L0 8"/></marker></defs>
+        <rect class="sh" x="140" y="10" width="140" height="42" rx="21"/><text x="210" y="37" text-anchor="middle">Start</text>
+        <path class="ln" d="M210 52V74" marker-end="url(#a)"/>
+        <path class="sh" d="M135 76H310L285 120H110Z"/><text x="210" y="104" text-anchor="middle">Input n</text><text class="tag" x="322" y="104">①</text>
+        <path class="ln" d="M210 120V142" marker-end="url(#a)"/>
+        <rect class="sh" x="110" y="144" width="200" height="42" rx="5"/><text x="210" y="171" text-anchor="middle">sum = 0</text><text class="tag" x="322" y="171">②</text>
+        <path class="ln" d="M210 186V208" marker-end="url(#a)"/>
+        <rect class="sh" x="110" y="210" width="200" height="42" rx="5"/><text x="210" y="237" text-anchor="middle">finger = 1</text><text class="tag" x="322" y="237">③</text>
+        <path class="ln" d="M210 252V280" marker-end="url(#a)"/>
+        <path class="dia" d="M210 282L310 334L210 386L110 334Z"/><text x="210" y="339" text-anchor="middle">finger ≤ n ?</text><text class="tag" x="296" y="292">④</text>
+        <path class="ln" d="M210 386V420" marker-end="url(#a)"/><text class="tf" x="218" y="408">True 是</text>
+        <rect class="sh" x="90" y="422" width="240" height="42" rx="5"/><text x="210" y="449" text-anchor="middle" class="hl">sum = sum + finger</text><text class="tag" x="340" y="449">⑤</text>
+        <path class="ln" d="M210 464V488" marker-end="url(#a)"/>
+        <rect class="sh" x="90" y="490" width="240" height="42" rx="5"/><text x="210" y="517" text-anchor="middle">finger = finger + 1</text><text class="tag" x="340" y="517">⑥</text>
+        <path class="loop" d="M90 511H44V334H108" marker-end="url(#a2)"/><text class="tf" x="28" y="430" transform="rotate(-90 28 430)" text-anchor="middle">back 回去再判斷</text>
+        <path class="ln" d="M310 334H395V600H312" marker-end="url(#a)"/><text class="tf" x="330" y="325">False 否</text>
+        <path class="sh" d="M135 580H310L285 624H110Z"/><text x="210" y="608" text-anchor="middle">Output sum</text><text class="tag" x="74" y="608">⑦</text>
+        <path class="ln" d="M210 624V660" marker-end="url(#a)"/>
+        <rect class="sh" x="140" y="662" width="140" height="42" rx="21"/><text x="210" y="689" text-anchor="middle">End</text>
+      </svg>
+    </section>
+
+    <section class="panel" aria-labelledby="st">
+      <h2 id="st">Scratch 積木</h2>
+      <div class="sb" role="img" aria-label="Scratch: when green flag clicked; ask n and wait; set n to answer; set sum to 0; set finger to 1; repeat until finger > n: set sum to sum + finger, change finger by 1; say sum">
+        <div class="blk ev">當 🏁 被點擊 when flag clicked</div>
+        <div class="blk se">詢問 <span class="slot">n?</span> 並等待<span class="n">①</span></div>
+        <div class="blk va">變數 <span class="var">n</span> 設為 <span class="slot" style="background:#5cb1d6;color:#fff">answer</span></div>
+        <div class="blk va">變數 <span class="var">sum</span> 設為 <span class="slot">0</span><span class="n">②</span></div>
+        <div class="blk va">變數 <span class="var">finger</span> 設為 <span class="slot">1</span><span class="n">③</span></div>
+        <div class="ctl"><div class="head">重複直到 repeat until <span class="op">finger &gt; n</span><span class="n" style="background:rgba(0,0,0,.15)">④</span></div>
+          <div class="body">
+            <div class="blk va">變數 <span class="var">sum</span> 設為 <span class="op">sum + finger</span><span class="n">⑤</span></div>
+            <div class="blk va">變數 <span class="var">finger</span> 改變 <span class="slot">1</span><span class="n">⑥</span></div>
+          </div><div class="foot"></div></div>
+        <div class="blk lo">說出 say <span class="var">sum</span><span class="n">⑦</span></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="lt">
+    <h2 id="lt">What changes between the two 兩邊哪裡不一樣<small>想法一樣，寫法有一點點不同</small></h2>
+    <div class="legend">
+      <div><b>④</b><span>Flowchart asks <code>finger ≤ n ?</code> and <b>keeps going while True</b>. Scratch's <code>repeat until finger &gt; n</code> <b>stops when True</b>. 流程圖是「是就繼續」；Scratch 是「直到成立就停」，所以條件要反過來。</span></div>
+      <div><b>⑤</b><span><code>set sum to (sum + finger)</code>：綠色的運算積木裡放 <b>sum 變數</b> 和 <b>finger 變數</b>。變數裡面可以放變數的值！</span></div>
+      <div><b>⑥</b><span><code>change finger by 1</code> 就是 <code>finger = finger + 1</code>，手指往右一格。</span></div>
+      <div><b>↺</b><span>The loop arrow in the flowchart = the C-shaped repeat block in Scratch. 流程圖繞回去的箭頭，就是 Scratch 的 C 形重複積木。</span></div>
+    </div>
+  </section>
+
+  <section class="panel check" aria-labelledby="ct">
+    <h2 id="ct">Before you hand in<small>繳交前，請檢查</small></h2>
+    <label><input type="checkbox"> <span>Start, Input n, Output sum and End are all there. 有 Start、Input n、Output sum、End。</span></label>
+    <label><input type="checkbox"> <span>I set <code>sum = 0</code> and <code>finger = 1</code> before the loop. 迴圈前先設定 sum = 0、finger = 1。</span></label>
+    <label><input type="checkbox"> <span>The diamond says <code>finger ≤ n ?</code> (not &lt;), with True / False on its two arrows. 判斷用 ≤，兩條箭頭標 True／False。</span></label>
+    <label><input type="checkbox"> <span>Inside the loop: <code>sum = sum + finger</code>, then <code>finger = finger + 1</code>. 迴圈裡先加，再移手指。</span></label>
+    <label><input type="checkbox"> <span>The arrow after <code>finger = finger + 1</code> goes <b>back to the diamond</b>. 移完手指的箭頭要接回判斷菱形。</span></label>
+  </section>
+
+  <section class="panel task" aria-labelledby="mt">
+    <h2 id="mt">Your mission<small>最後任務：畫好、寫好、繳交</small></h2>
+    <ol>
+      <li>Draw the flowchart <b>from Start</b> in the 1 加到 n tool. 在「1 加到 n」工具從 Start 開始畫流程圖。</li>
+      <li>Build it in Scratch 1 加到 n, and test n = 5 (answer 15) and n = 10 (answer 55). 拼出 Scratch 程式，測試 n = 5 要得 15、n = 10 要得 55。</li>
+      <li>In each tool press <b>Check 提交批改</b>, fix it, then <b>Submit 繳交</b>. 兩個工具都要先檢查、修改，再繳交。</li>
+    </ol>
+    <div class="tools">
+      <a class="btn primary" href="../../sum/" target="_blank" rel="noopener">1 加到 n flowchart · 流程圖工具 ↗</a>
+      <a class="btn primary" href="../../scratch-sum/" target="_blank" rel="noopener">Scratch 1 加到 n · 積木程式 ↗</a>
+    </div>
+  </section>
+  <div class="actions"><a class="btn" href="bugs.html">← Bug Lab 抓蟲實驗室</a><a class="btn" href="../">Lessons 回課程 →</a></div>
+</main>
+</body>
+</html>

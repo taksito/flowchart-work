@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bug Lab 抓蟲實驗室</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.score{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:17px}
+.score span{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;border:2px dashed var(--line);font-size:20px}
+.score span.got{border:2px solid var(--accent);background:var(--soft)}
+.bugs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.bug{margin:0;display:flex;flex-direction:column;gap:10px}
+.bug h2{display:flex;align-items:center;gap:10px}
+.bug h2 .tag{font-family:"JetBrains Mono",monospace;font-size:13px;border:1px solid var(--warn);color:var(--warn);border-radius:999px;padding:1px 10px}
+.bug.fixed{border:2px solid var(--accent)}
+.bug.fixed h2 .tag{border-color:var(--accent);color:var(--accent)}
+.code{list-style:none;margin:0;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:12px;font-family:"JetBrains Mono",monospace;font-size:16px;counter-reset:l}
+.code li{counter-increment:l;padding:2px 0;white-space:pre-wrap}
+.code li:before{content:counter(l);display:inline-block;width:22px;color:var(--muted);font-size:12px}
+.code li.ghost{color:var(--muted);font-style:italic}
+.bug.fixed .code li.bad{background:var(--warn-soft);border-radius:6px}
+.bug.fixed .code li.fix{background:var(--soft);border-radius:6px}
+.runrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.out{font-family:"JetBrains Mono",monospace;font-size:16px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px dashed var(--line);min-height:44px}
+.out .bad{color:var(--warn);font-weight:700}.out .ok{color:var(--accent);font-weight:700}
+.mini{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace;font-size:14px}
+.mini th{font-family:"Noto Sans TC",sans-serif;font-weight:500;color:var(--muted);text-align:left;border-bottom:1px solid var(--line);padding:3px 6px}
+.mini td{padding:3px 6px;border-bottom:1px solid var(--line)}
+.ask{display:flex;flex-direction:column;gap:6px}
+.ask p{margin:0;font-weight:700}
+.ask button{justify-content:flex-start;text-align:left;font-size:15px;padding:8px 12px}
+.ask button.no{border-color:var(--warn);color:var(--warn)}
+.ask button.yes{border-color:var(--accent);background:var(--soft);font-weight:700}
+.why{font-size:16px}
+.all{border:2px solid var(--accent)}
+@media (max-width:820px){.bugs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Unit 03 steps 單元步驟">
+  <a class="home" href="../">← Lessons 課程</a>
+  <ol class="steps">
+    <li><a href="./"><b>01</b>Finger &amp; Sum 手指與盒子</a></li>
+    <li><a href="bugs.html" aria-current="page"><b>02</b>Bug Lab 抓蟲實驗室</a></li>
+    <li><a href="flowchart.html"><b>03</b>Flowchart × Scratch 流程圖與積木</a></li>
+  </ol>
+</nav>
+<main>
+  <div class="eyebrow">UNIT 03 · STEP 02</div>
+  <h1>Bug Lab<small>抓蟲實驗室：每個程式都想算 1 + 2 + 3 + 4 + 5 = 15，但各有一隻蟲</small></h1>
+  <section class="panel">
+    <p>For each program: <b>Run</b> it, look at the trace, then choose what went wrong. 每個程式先按「執行」，看看追蹤表哪裡怪怪的，再選出錯在哪裡。</p>
+    <div class="score" aria-live="polite"><b>Bugs found 抓到：</b><span id="s0">🐛</span><span id="s1">🐛</span><span id="s2">🐛</span><span id="s3">🐛</span><span id="count" class="muted" style="width:auto;border:0">0 / 4</span></div>
+  </section>
+  <div class="bugs" id="bugs"></div>
+  <section class="panel all" id="all" hidden>
+    <h2>All four bugs caught! 四隻蟲都抓到了！</h2>
+    <p>Remember the four rules · 記住四件事：<b>sum 先清成 0</b>、<b>sum = sum + finger（不要蓋掉）</b>、<b>每一輪 finger 都要 + 1</b>、<b>判斷用 finger ≤ n</b>。</p>
+    <div class="actions"><a class="btn" href="./">← Back 回上一頁</a><a class="btn primary" href="flowchart.html">Next: Flowchart × Scratch · 下一頁 →</a></div>
+  </section>
+</main>
+<script>
+'use strict';
+const N=5, CAUSES=[
+  ['init','忘了把 sum 清成 0 · forgot sum = 0'],
+  ['over','sum 被蓋掉了：寫成 sum = finger · overwrote sum'],
+  ['move','忘了移動手指：沒有 finger = finger + 1 · finger never moves'],
+  ['edge','判斷寫成 finger < n，少加最後一個 · stops one too early']];
+/* each bug: program lines (bad = the wrong line, ghost = a missing line) and how it runs */
+const BUGS=[
+  {cause:'move',title:'Program A',lines:[['sum = 0'],['finger = 1'],['finger ≤ 5 ?'],['sum = sum + finger'],['(沒有這一行)','ghost bad'],['output sum']],fix:'finger = finger + 1',
+   run:{sum:0,f:1,cond:f=>f<=N,add:(s,f)=>s+f,step:f=>f},why:'手指一直停在 1，每一輪都加 1，判斷永遠是「是」，程式停不下來（無窮迴圈）。每一輪一定要 <code>finger = finger + 1</code>。'},
+  {cause:'edge',title:'Program B',lines:[['sum = 0'],['finger = 1'],['finger < 5 ?','bad'],['sum = sum + finger'],['finger = finger + 1'],['output sum']],fix:'finger ≤ 5 ?',
+   run:{sum:0,f:1,cond:f=>f<N,add:(s,f)=>s+f,step:f=>f+1},why:'手指走到 5 時，5 &lt; 5 是「否」，所以最後一張 5 沒有加到，答案少了 5。要用 <code>finger ≤ n</code>（小於等於）。'},
+  {cause:'init',title:'Program C',lines:[['(沒有這一行)','ghost bad'],['finger = 1'],['finger ≤ 5 ?'],['sum = sum + finger'],['finger = finger + 1'],['output sum']],fix:'sum = 0',
+   run:{sum:37,f:1,cond:f=>f<=N,add:(s,f)=>s+f,step:f=>f+1},why:'sum 盒子沒有先清空，裡面還留著上一次的 37，所以答案多了 37。一開始要 <code>sum = 0</code>。'},
+  {cause:'over',title:'Program D',lines:[['sum = 0'],['finger = 1'],['finger ≤ 5 ?'],['sum = finger','bad'],['finger = finger + 1'],['output sum']],fix:'sum = sum + finger',
+   run:{sum:0,f:1,cond:f=>f<=N,add:(s,f)=>f,step:f=>f+1},why:'sum = finger 把盒子裡原本的總和「丟掉」，換成手指的數，所以最後只剩 5。要寫 <code>sum = sum + finger</code>：先拿出原本的 sum，加上 finger，再放回去。'}];
+const $=id=>document.getElementById(id); const found=new Set();
+function simulate(r){ let s=r.sum, f=r.f, rows=[], k=0;
+  while(r.cond(f)&&k<12){ const b=s; s=r.add(s,f); rows.push([k+1,f,b,s]); f=r.step(f); k++; }
+  return {rows,sum:s,stuck:r.cond(f)}; }
+$('bugs').innerHTML=BUGS.map((b,i)=>`<section class="panel bug" id="b${i}" aria-labelledby="h${i}">
+  <h2 id="h${i}">${b.title}<span class="tag">🐛 bug</span></h2>
+  <ol class="code">${b.lines.map(([t,c])=>`<li class="${c||''}">${t}</li>`).join('')}</ol>
+  <div class="runrow"><button type="button" class="primary" data-run="${i}">▶ Run 執行</button><span class="muted" style="font-size:15px">Expected 應該是 15</span></div>
+  <div class="out" id="o${i}" aria-live="polite">—</div>
+  <div class="ask" id="a${i}" hidden><p>What went wrong? 哪裡錯了？</p>${CAUSES.map(([k,t])=>`<button type="button" data-bug="${i}" data-c="${k}">${t}</button>`).join('')}</div>
+  <div class="why notice" id="w${i}" hidden></div></section>`).join('');
+document.addEventListener('click',e=>{
+  const r=e.target.closest('[data-run]');
+  if(r){ const i=+r.dataset.run, res=simulate(BUGS[i].run), o=$('o'+i);
+    o.innerHTML=`<table class="mini"><thead><tr><th>輪</th><th>finger</th><th>sum 原本</th><th>sum 之後</th></tr></thead><tbody>${res.rows.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}</td></tr>`).join('')}</tbody></table>`
+      +(res.stuck?`<p class="bad">⚠ 跑了 12 輪還停不下來！ It never stops.</p>`:`<p>output sum → <span class="${res.sum===15?'ok':'bad'}">${res.sum}</span>　${res.sum===15?'':'✕ 不是 15！'}</p>`);
+    $('a'+i).hidden=false; return; }
+  const c=e.target.closest('[data-c]');
+  if(c){ const i=+c.dataset.bug, b=BUGS[i];
+    if(c.dataset.c!==b.cause){ c.classList.add('no'); c.disabled=true; return; }
+    c.classList.add('yes'); $('a'+i).querySelectorAll('button').forEach(x=>x.disabled=true);
+    const sec=$('b'+i); sec.classList.add('fixed'); sec.querySelector('.tag').textContent='✓ fixed';
+    const bad=sec.querySelector('li.bad'); bad.classList.remove('ghost'); bad.classList.add('fix'); bad.textContent=b.fix+'　← 改好 fixed';
+    $('w'+i).innerHTML=b.why; $('w'+i).hidden=false;
+    found.add(i); [...found].forEach((_,k)=>$('s'+k).classList.add('got')); $('count').textContent=found.size+' / 4';
+    if(found.size===4){ $('all').hidden=false; $('all').scrollIntoView({behavior:'smooth',block:'nearest'}); } }
+});
+</script>
+</body>
+</html>
