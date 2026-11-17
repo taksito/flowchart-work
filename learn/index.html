@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lessons 課程</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="learn.css">
+<style>
+.lead{color:var(--muted);font-size:19px;max-width:62ch}
+.flowline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 0;font-size:15px;color:var(--muted)}
+.flowline span{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 12px}
+.flowline i{font-style:normal;color:var(--accent)}
+.units{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-top:22px}
+a.unit{display:flex;flex-direction:column;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;color:inherit;text-decoration:none;transition:border-color .15s,transform .15s}
+a.unit:hover,a.unit:focus-visible{border-color:var(--accent);transform:translateY(-2px);outline:none}
+.unit .tag{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:1px 10px;align-self:flex-start}
+.unit h2{font-size:24px;margin:0}
+.unit p{margin:0;color:var(--muted);font-size:16px}
+.unit ol{margin:2px 0 0;padding-left:22px;font-size:15px;color:var(--muted)}
+.unit .go{margin-top:auto;padding-top:6px;color:var(--accent);font-weight:700}
+.unit .pics{display:flex;gap:6px}.unit .pics img{width:54px;height:54px;border-radius:50%;object-fit:cover;background:var(--soft);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="topbar"><a class="home" href="../">← Home 回首頁</a></div>
+<main>
+  <div class="eyebrow">LESSONS · 雙語資訊課程</div>
+  <h1>Lessons<small>課程：跟著做、想一想，再畫出自己的流程圖</small></h1>
+  <p class="lead">Each unit teaches the idea step by step. At the end you draw the flowchart and build the Scratch program on this site, then hand them in. 每個單元一步一步帶你理解概念，最後在這個網站畫流程圖、寫 Scratch，直接繳交。</p>
+  <div class="flowline" aria-label="How a unit goes 單元流程"><span>Learn 學概念</span><i>→</i><span>Practise 互動練習</span><i>→</i><span>Draw 畫流程圖</span><i>→</i><span>Scratch 寫程式</span><i>→</i><span>Hand in 繳交</span></div>
+
+  <div class="units">
+    <a class="unit" href="u1/">
+      <span class="tag">UNIT 01</span>
+      <h2>Numbers &amp; Average<small>數字教學：四則運算與平均</small></h2>
+      <p>Say + − × ÷ in English, then input four scores, average them and decide pass or fail. 認識四則運算的英文，輸入四個成績算平均，判斷及格。</p>
+      <ol><li>Operations 四則運算</li><li>Average flowchart 平均流程圖 × Scratch</li></ol>
+      <span class="go">Start Unit 01 開始第一單元 →</span>
+    </a>
+    <a class="unit" href="u2/">
+      <span class="tag">UNIT 02</span>
+      <h2>BMI &amp; Flowchart<small>BMI 流程圖教學</small></h2>
+      <p>From the BMI formula to a full flowchart with If / Else, then a Scratch BMI calculator. 從 BMI 計算、流程圖、If / Else，到 Scratch 程式。</p>
+      <div class="pics" aria-hidden="true"><img src="assets/underweight.webp" alt=""><img src="assets/normal.webp" alt=""><img src="assets/overweight.webp" alt=""><img src="assets/obesity.webp" alt=""></div>
+      <ol><li>Meet BMI 認識 BMI</li><li>Input &amp; calculate 輸入與計算</li><li>If / Else 條件判斷</li><li>Your flowchart 完整流程圖</li><li>Scratch BMI 計算器</li></ol>
+      <span class="go">Start Unit 02 進入第二單元 →</span>
+    </a>
+  </div>
+</main>
+<footer class="foot">Mr.Ho 雙語資訊課程 · Learn by doing</footer>
+</body>
+</html>

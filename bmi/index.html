@@ -694,7 +694,7 @@ const SCORE_CASES=[[70,80,90,60],[60,60,60,60],[59,60,60,60],[100,100,100,0],[40
 const sAvg=a=>(a[0]+a[1]+a[2]+a[3])/4;
 const sExpect=a=>sAvg(a)>=PASS_LINE?'pass':'fail';
 const STOP=new Set(['input','output','print','read','enter','scan','set','let','if','then','and','or','is','the','輸入','輸出','印出','顯示','計算','令','是否','嗎','和','與','及','請']);
-function sCat(text){ const t=String(text||''); if(/fail|不及格|不通過|沒過/i.test(t)) return 'fail'; if(/pass|及格|通過/i.test(t)) return 'pass'; return null; }
+function sCat(text){ const t=String(text||''); if(/fail|not\s*pass|不及格|不通過|沒過|未及格|沒及格/i.test(t)) return 'fail';   /* "Not pass" is a fail */ if(/pass|及格|通過/i.test(t)) return 'pass'; return null; }
 function sNorm(s){
   return norm(s).replace(/([A-Za-z_][A-Za-z0-9_]*)\s*\+\+/g,'$1 = $1 + 1').replace(/([A-Za-z_][A-Za-z0-9_]*)\s*([+\-*/])=(?!=)/g,'$1 = $1 $2 ').replace(/大於或等於|大於等於|不小於|至少/g,'>=').replace(/小於或等於|小於等於|不大於|至多/g,'<=')
     .replace(/大於|超過|高於/g,'>').replace(/小於|低於|未滿/g,'<').replace(/不等於/g,'!=').replace(/等於/g,'==')
@@ -1307,6 +1307,8 @@ const TIER_LINE=/一路走到結束|接上線|兩條路|有線回到前面/;
 function tierFlow(g,work,task){
   const need=TIER_NEED[task]; if(!need||!g||!g.items) return g;
   const have=tierCount(work), totalNeed=need.reduce((s,x)=>s+x[2],0), items=[];
+  /* Pass or Fail: one PROCESS that already works out the average, e.g. avg = (a+b+c+d) ÷ 4, counts as both steps */
+  if(task==='score'&&(have.process||0)<2&&g.items.some(i=>/計算平均/.test(i.label)&&i.got>=i.max)) have.process=2;
   /* 1. shapes: 60 */
   need.forEach(([k,label,n])=>{ const h=Math.min(n,have[k]||0), max=60*n/totalNeed;
     items.push({group:'圖形',label:`${label} × ${n}`,max,got:max*h/n,note:h<n?`已放 ${have[k]||0} 個，需要 ${n} 個`:''}); });

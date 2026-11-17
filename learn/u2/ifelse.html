@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>If / Else Lab 條件判斷</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.axis-panel{position:sticky;top:0;z-index:3;box-shadow:0 6px 18px rgba(0,0,0,.08);padding:16px 20px}
+.axis-panel .head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
+.axis-panel .head small{color:var(--muted);font-size:15px}
+#axis{width:100%;height:auto;display:block;margin-top:6px;color:var(--muted)}
+#range-info{min-height:44px;font-size:17px;padding:9px 13px;background:var(--soft);border-radius:8px}
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:15px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.tools{display:flex;gap:8px}.tools button{font-size:15px;padding:8px 13px}
+.palette{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:16px 0}
+.palette button{flex-direction:column;border-style:dashed;font-family:"JetBrains Mono",monospace;font-size:21px;font-weight:500;background:var(--shape)}
+.palette button:nth-child(n+4){background:var(--c-over)}
+.palette small{display:block;font-family:"Noto Sans TC",sans-serif;font-size:14px;color:var(--muted);margin-top:3px;white-space:normal}
+#chain{max-width:760px;margin:auto;padding:6px 8px 16px;border:2px dashed transparent;border-radius:12px}
+#chain.over{border-color:var(--accent);background:var(--soft)}
+.branch,.else-row{display:grid;grid-template-columns:260px 70px minmax(0,1fr);align-items:center}
+.branch{min-height:130px}
+.decision{position:relative;min-height:128px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;isolation:isolate;cursor:grab}
+.decision:before{content:"";position:absolute;inset:0;background:var(--shape-line);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);z-index:-1;opacity:.45}
+.decision:after{content:"";position:absolute;inset:3px;background:var(--panel);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);z-index:-1}
+.branch.active .decision:before{background:var(--accent);opacity:1}
+.decision small{font-size:13px;color:var(--muted)}
+.expression{font-family:"JetBrains Mono",monospace;font-size:22px}
+.opword{text-align:center;font-size:14px;color:var(--muted);line-height:1.4;padding:2px 0 6px}.opword span{display:block}
+.yes{font-size:14px;color:var(--accent);text-align:center;border-bottom:2px solid var(--shape-line);padding-bottom:6px;position:relative}
+.yes:after{content:'▸';position:absolute;right:-4px;bottom:-12px;font-size:20px;color:var(--shape-line)}
+.output{padding:12px 14px;border-radius:10px;background:var(--color,var(--c-rest));border:2px solid transparent;font-size:18px}
+.output small{display:block;font-size:14px;margin-top:4px;font-family:"JetBrains Mono",monospace}
+.branch.active .output,.else-row.active .output{border-color:var(--accent)}
+.row-actions{display:flex;gap:4px;margin-top:7px}.row-actions button{font-size:13px;padding:3px 9px}
+.warning{color:var(--warn);font-size:14px;margin-top:8px}
+.connector{width:260px;text-align:center;height:40px;font-size:14px;color:var(--muted);line-height:18px}.connector:after{content:'↓';display:block;font-size:20px;color:var(--shape-line)}
+.else-row{padding:10px 0}
+.else-node{border:2px solid var(--shape-line);border-radius:12px;text-align:center;padding:14px;background:var(--shape)}
+.else-row.active .else-node{border-color:var(--accent)}
+.empty{padding:26px 15px;text-align:center;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
+#feedback{font-size:17px}
+.board.invalid{border:2px solid var(--bad)}
+.order{padding:12px 14px;background:var(--bad-soft);border-radius:8px;line-height:2;font-family:"JetBrains Mono",monospace}
+#finished a{font-weight:700}
+@media (max-width:680px){
+  .branch,.else-row{grid-template-columns:150px 38px minmax(0,1fr)}
+  .connector{width:150px}.decision{min-height:108px}.expression{font-size:17px}
+  .palette button{font-size:16px;padding:8px 4px}.palette small{font-size:11px}
+  .output{font-size:15px;padding:8px}.output small,.opword,.yes,.decision small,.connector{font-size:12px}
+  #range-info{font-size:15px}.axis-panel{padding:12px 10px;position:static}
+}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Unit 02 steps 單元步驟">
+  <a class="home" href="../">← Lessons 課程</a>
+  <ol class="steps">
+    <li><a href="./"><b>01</b>Meet BMI 認識 BMI</a></li>
+    <li><a href="process.html"><b>02</b>Input &amp; Calculate 輸入與計算</a></li>
+    <li><a href="ifelse.html" aria-current="page" id="self-link"><b>03</b>If / Else 條件判斷</a></li>
+    <li><span class="locked" id="step4"><b>04</b>Flowchart 完整流程圖</span></li>
+    <li><span class="locked"><b>05</b>Scratch</span></li>
+  </ol>
+</nav>
+<main>
+  <div class="eyebrow">UNIT 02 · STEP 03</div>
+  <div class="hero"><img src="../assets/overweight.webp" alt="" width="104" height="104">
+    <div><h1>Build the decisions<small>拼一個條件，圈一段範圍</small></h1><p>Choose &amp; connect · 點選條件，接成判斷流程。</p></div></div>
+
+  <section class="panel axis-panel" aria-label="BMI number line 數線">
+    <div class="head"><h2>BMI Number line <small style="display:inline">數線</small></h2><small>● 包含邊界　○ 不含邊界</small></div>
+    <svg id="axis" viewBox="0 0 940 112" role="img" aria-label="隨條件改變的 BMI 數線"></svg>
+    <div id="range-info" aria-live="polite"></div>
+    <div class="legend"><span><i style="background:var(--c-under)"></i>過輕 Underweight</span><span><i style="background:var(--c-normal)"></i>正常 Normal</span><span><i style="background:var(--c-over)"></i>過重 Overweight</span><span><i style="background:var(--c-obese)"></i>肥胖 Obesity</span><span><i style="background:var(--c-rest)"></i>尚未分類 Remaining</span></div>
+  </section>
+
+  <section class="panel board">
+    <div class="toolbar"><h2>Build the flow <small style="display:inline">條件拼圖</small></h2>
+      <div class="tools"><button type="button" id="example">Example 完整示範</button><button type="button" id="clear">Restart 重新開始</button></div></div>
+    <div class="palette">
+      <button type="button" draggable="true" data-add="18.5" data-op="&lt;">BMI &lt; 18.5<small>less than 小於</small></button>
+      <button type="button" draggable="true" data-add="24" data-op="&lt;">BMI &lt; 24<small>less than 小於</small></button>
+      <button type="button" draggable="true" data-add="27" data-op="&lt;">BMI &lt; 27<small>less than 小於</small></button>
+      <button type="button" draggable="true" data-add="27" data-op="≥">BMI ≥ 27<small>greater than or equal to 大於等於</small></button>
+      <button type="button" draggable="true" data-add="24" data-op="≥">BMI ≥ 24<small>greater than or equal to 大於等於</small></button>
+      <button type="button" draggable="true" data-add="18.5" data-op="≥">BMI ≥ 18.5<small>greater than or equal to 大於等於</small></button>
+    </div>
+    <div id="chain" aria-label="可互動的判斷流程"></div>
+    <div id="feedback" class="notice" aria-live="polite"></div>
+  </section>
+
+  <section id="finished" class="panel task" hidden>
+    <h2>Complete! <small style="display:inline">條件拼圖完成！</small></h2>
+    <p id="finish-note"></p>
+    <a id="result-link" class="btn primary" href="process.html">View your complete flowchart · 查看完整流程圖 →</a>
+  </section>
+</main>
+<dialog id="mistake" aria-labelledby="mistake-title" aria-describedby="mistake-text">
+  <div class="icon" aria-hidden="true">!</div>
+  <h2 id="mistake-title">Wrong order · 順序錯誤，請重新拼圖</h2>
+  <p id="mistake-text"></p>
+  <p>Two valid orders · 本練習只接受以下兩種順序：</p>
+  <div class="order">&lt; 18.5 → &lt; 24 → &lt; 27 → Else<br>≥ 27 → ≥ 24 → ≥ 18.5 → Else</div>
+  <p>Choose one direction · 先選定一個比較方向，再逐步分出四種範圍。</p>
+  <button type="button" id="acknowledge" autofocus>Got it, try again · 我知道了，重新拼圖</button>
+</dialog>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const limits=[18.5,24,27];
+const operatorWords={'<':['小於','less than'],'>':['大於','more than'],'≥':['大於等於','greater than or equal to']};
+const names=['Underweight 體重過輕','Normal 正常體重','Overweight 體重過重','Obesity 肥胖'];
+const colorVars=['--c-under','--c-normal','--c-over','--c-obese'];
+/* open intervals and exact boundary points make > and ≥ visibly different */
+const atoms=[{lo:0,hi:18.5,lc:false,hc:false,v:10,c:0},{lo:18.5,hi:18.5,lc:true,hc:true,v:18.5,c:1},{lo:18.5,hi:24,lc:false,hc:false,v:20,c:1},{lo:24,hi:24,lc:true,hc:true,v:24,c:2},{lo:24,hi:27,lc:false,hc:false,v:25,c:2},{lo:27,hi:27,lc:true,hc:true,v:27,c:3},{lo:27,hi:Infinity,lc:false,hc:false,v:30,c:3}];
+const inputs=new URLSearchParams(location.search).get('inputs'), validInputs=inputs==='height,weight'||inputs==='weight,height';
+if(validInputs) $('self-link').href='ifelse.html?inputs='+inputs;
+let rules=[],selected=-1,hover=null,drag=null,fault='';
+function orderError(){
+  if(!rules.length) return ''; const op=rules[0].op, expected=op==='<'?[18.5,24,27]:[27,24,18.5];
+  if(rules.some(r=>r.op!==op)) return 'Mixed directions · 你混用了小於 < 與大於等於 ≥。本次練習需維持同一比較方向，請確認後重新拼圖。';
+  const i=rules.findIndex((r,i)=>r.t!==expected[i]);
+  if(i>=0) return `Wrong step · 第 ${i+1} 個條件應該是 BMI ${op} ${expected[i]}，目前卻是 BMI ${rules[i].op} ${rules[i].t}。跳過分界或顛倒順序，會混合分類或讓分支無法到達。`;
+  return '';
+}
+const matches=(v,r)=>r.op==='<'?v<r.t:r.op==='>'?v>r.t:v>=r.t;
+function model(){
+  const groups=Array.from({length:rules.length+1},()=>[]);
+  atoms.forEach(a=>{ const i=rules.findIndex(r=>matches(a.v,r)); groups[i<0?rules.length:i].push(a); });
+  return groups.map((aa,i)=>{ const cats=[...new Set(aa.map(a=>a.c))], segments=[];
+    aa.forEach(a=>{ const last=segments.at(-1); if(last&&last.hi===a.lo&&(last.hc||a.lc)){ last.hi=a.hi; last.hc=a.hc; } else segments.push({...a}); });
+    return {segments,cats,empty:aa.length===0,mixed:cats.length>1,isElse:i===rules.length}; });
+}
+function segmentText(s){ if(s.lo===s.hi) return `BMI = ${s.lo}`; if(s.hi===Infinity) return `BMI ${s.lc?'≥':'>'} ${s.lo}`; return `${s.lo} ${s.lc?'≤':'<'} BMI ${s.hc?'≤':'<'} ${s.hi}`; }
+const rangeText=g=>g.empty?'Empty set ∅（這個分支無法到達）':g.segments.map(segmentText).join(' 或 ');
+const missing=g=>limits.filter(t=>g.segments.some(s=>s.lo<t&&s.hi>t));
+const groupLabel=g=>g.empty?'Unreachable 無法到達':g.mixed?(g.isElse?'Remaining 尚未分類':'Mixed range 分類混合'):names[g.cats[0]];
+const groupVar=g=>g.mixed||g.empty?'--c-rest':colorVars[g.cats[0]];
+function drawAxis(){
+  const groups=model(), focus=hover??selected, x=n=>25+Math.min(n,40)/40*890, acc=css('--accent'), panel=css('--panel');
+  let s=`<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M0 7L7 0" stroke="${css('--warn')}" stroke-width="1"/></pattern></defs>`;
+  groups.forEach((g,i)=>g.segments.forEach(r=>{ const a=x(r.lo), b=x(r.hi), hot=focus===i, op=focus<0||focus==null||hot?1:.35;
+    if(r.lo!==r.hi) s+=`<rect x="${a}" y="30" width="${b-a}" height="30" fill="${css(groupVar(g))}" opacity="${op}"/>`;
+    if(g.mixed&&!g.isElse) s+=`<rect x="${a}" y="30" width="${b-a}" height="30" fill="url(#hatch)"/>`;
+    if(hot){ if(r.lo!==r.hi) s+=`<rect x="${a}" y="26" width="${b-a}" height="38" rx="4" fill="none" stroke="${acc}" stroke-width="2.5"/>`;
+      s+=`<circle cx="${a}" cy="45" r="5" fill="${r.lc?acc:panel}" stroke="${acc}" stroke-width="2"/>`;
+      if(r.hi!==Infinity&&r.hi!==r.lo) s+=`<circle cx="${b}" cy="45" r="5" fill="${r.hc?acc:panel}" stroke="${acc}" stroke-width="2"/>`; } }));
+  [0,10,18.5,24,27,40].forEach(n=>s+=`<path d="M${x(n)} 66v6" stroke="currentColor"/><text x="${x(n)}" y="92" text-anchor="middle" fill="currentColor" font-size="15" font-family="JetBrains Mono, monospace">${n===40?'40 →':n}</text>`);
+  $('axis').innerHTML=s; const g=groups[focus];
+  $('range-info').textContent=g?`${g.isElse?'Else 否則':`${focus?'Else if 否則如果':'If 如果'} BMI ${rules[focus].op} ${rules[focus].t}（${[...operatorWords[rules[focus].op]].reverse().join(' ')}）`}　→　${rangeText(g)}　｜${groupLabel(g)}`:'先加入一個條件，數線就會圈出它的範圍。右側箭頭表示範圍繼續延伸。';
+  document.querySelectorAll('[data-row]').forEach(el=>el.classList.toggle('active',Number(el.dataset.row)===focus));
+}
+function syncCompletion(){
+  const done=rules.length===3&&!orderError(); $('finished').hidden=!done;
+  const step4=$('step4');
+  if(done&&validInputs){ const href='result.html?inputs='+inputs+'&direction='+(rules[0].op==='<'?'asc':'desc');
+    $('finish-note').textContent='Next: see the whole chart, then finish it in the BMI tool. · 下一步：看完整流程圖，再到 BMI 工具把判斷接上 BMI 計算、畫完並繳交。';
+    $('result-link').href=href; $('result-link').textContent='View your complete flowchart · 查看完整流程圖 →';
+    if(step4.tagName==='SPAN'){ const a=document.createElement('a'); a.id='step4'; a.innerHTML=step4.innerHTML; step4.replaceWith(a); } $('step4').href=href; }
+  else if(done){ $('finish-note').textContent='Complete the input activity first. · 請先完成「輸入與計算」，才能產生自己的完整流程圖。'; $('result-link').href='process.html'; $('result-link').textContent='Build the process first · 先完成輸入與計算 →'; }
+}
+function render(){
+  const gs=model();
+  $('chain').innerHTML=(rules.length?rules.map((r,i)=>{ const g=gs[i], warn=g.empty?'前面的條件已接走全部範圍，這裡永遠不會成立。':g.mixed?`這一段跨越 ${missing(g).join('、')} 的分類分界，無法得到單一正確分類。請補上較小的分界條件，或調整比較方向。`:'';
+    return `<div class="branch" data-row="${i}" tabindex="0" aria-label="條件 ${i+1}：BMI ${r.op==='<'?'小於':r.op==='>'?'大於':'大於等於'} ${r.t}"><div><div class="decision" draggable="true" data-drag="${i}"><small>${i?'ELSE IF 否則如果':'IF 如果'}</small><div class="expression">BMI ${r.op==='<'?'&lt;':r.op} ${r.t}</div></div><div class="opword">${operatorWords[r.op][1]}<span>${operatorWords[r.op][0]}</span></div></div><div class="yes">True</div><div class="output" style="--color:var(${groupVar(g)})">${groupLabel(g)}<small>${rangeText(g)}</small><div class="row-actions"><button type="button" data-move="${i},-1" ${i===0?'disabled':''} aria-label="向上移動條件 ${i+1}">↑</button><button type="button" data-move="${i},1" ${i===rules.length-1?'disabled':''} aria-label="向下移動條件 ${i+1}">↓</button><button type="button" data-remove="${i}" aria-label="移除條件 ${i+1}">×</button></div>${warn?`<div class="warning">⚠ ${warn}</div>`:''}</div></div><div class="connector">False</div>`; }).join(''):'<div class="empty">Start with a condition.<br><small>點選上方條件，或把積木拖到這裡。</small></div><div class="connector"></div>')
+   +`<div class="else-row" data-row="${rules.length}" tabindex="0" aria-label="否則，查看剩餘範圍"><div class="else-node"><strong>Else</strong> 否則</div><div class="yes">→</div><div class="output" style="--color:var(${groupVar(gs.at(-1))})">${groupLabel(gs.at(-1))}<small>${rangeText(gs.at(-1))}</small></div></div>`;
+  const errors=gs.slice(0,-1).filter(g=>g.empty||g.mixed), complete=rules.length>0&&!errors.length&&!gs.at(-1).mixed&&!gs.at(-1).empty;
+  $('feedback').className='notice'+(errors.length?' bad':complete?' ok':'');
+  $('feedback').textContent=errors.length?'⚠ 這組條件還不能正確完成四分類。斜線區域混合了不同分類；請依積木旁的提示修正。無法到達的分支也需要調整。':complete?'✓ Complete! · 完成！查看完整流程圖，接回 BMI 計算方塊。':rules.length?'Keep going · 繼續接下一個條件。灰色是剩餘範圍；把滑鼠移到「Else 否則」就能查看。':'Choose one direction · 從 < 18.5 或 ≥ 27 開始，同方向依序拼接。';
+  if(fault){ $('feedback').className='notice bad'; $('feedback').textContent='✕ '+fault; }
+  document.querySelector('.board').classList.toggle('invalid',Boolean(fault));
+  document.querySelectorAll('[data-add]').forEach(b=>b.disabled=rules.some(r=>r.t===Number(b.dataset.add)&&r.op===b.dataset.op));
+  drawAxis(); syncCompletion();
+}
+function changed(i=-1){ selected=i; hover=null; fault=orderError(); render(); if(fault){ $('mistake-text').textContent=fault; if(!$('mistake').open) $('mistake').showModal(); } }
+$('mistake').addEventListener('cancel',e=>e.preventDefault());
+$('acknowledge').addEventListener('click',()=>{ $('mistake').close(); rules=[]; drag=null; changed(); document.querySelector('[data-add]').focus(); });
+function add(t,op){ if(fault||!limits.includes(t)||!['<','≥'].includes(op)||rules.some(r=>r.t===t&&r.op===op)) return; rules.push({t,op}); changed(rules.length-1); }
+$('example').addEventListener('click',()=>{ rules=limits.map(t=>({t,op:'<'})); changed(); });
+$('clear').addEventListener('click',()=>{ rules=[]; changed(); });
+document.querySelectorAll('[data-add]').forEach(b=>{ b.addEventListener('click',()=>add(Number(b.dataset.add),b.dataset.op)); b.addEventListener('dragstart',e=>{ drag={t:Number(b.dataset.add),op:b.dataset.op}; e.dataTransfer.setData('text/plain',b.dataset.add); }); });
+$('chain').addEventListener('click',e=>{ const b=e.target.closest('button');
+  if(b){ if(b.dataset.remove!==undefined){ rules.splice(Number(b.dataset.remove),1); changed(); } else if(b.dataset.move){ const [i,d]=b.dataset.move.split(',').map(Number); [rules[i],rules[i+d]]=[rules[i+d],rules[i]]; changed(i+d); } return; }
+  const row=e.target.closest('[data-row]'); if(row){ selected=Number(row.dataset.row); drawAxis(); } });
+$('chain').addEventListener('mouseover',e=>{ const row=e.target.closest('[data-row]'); if(row){ hover=Number(row.dataset.row); drawAxis(); } });
+$('chain').addEventListener('mouseout',e=>{ const from=e.target.closest('[data-row]'), to=e.relatedTarget?.closest?.('[data-row]'); if(from!==to){ hover=to?Number(to.dataset.row):null; drawAxis(); } });
+$('chain').addEventListener('focusin',e=>{ const row=e.target.closest('[data-row]'); if(row){ selected=Number(row.dataset.row); drawAxis(); } });
+$('chain').addEventListener('keydown',e=>{ if(e.target.matches('[data-row]')&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); selected=Number(e.target.dataset.row); drawAxis(); } });
+$('chain').addEventListener('dragstart',e=>{ const d=e.target.closest('[data-drag]'); if(d){ drag={i:Number(d.dataset.drag)}; e.dataTransfer.setData('text/plain','move'); } });
+$('chain').addEventListener('dragover',e=>{ e.preventDefault(); $('chain').classList.add('over'); });
+$('chain').addEventListener('drop',e=>{ e.preventDefault(); $('chain').classList.remove('over'); if(!drag) return;
+  if(drag.t!==undefined) add(drag.t,drag.op);
+  else{ const row=e.target.closest('[data-row]'), at=row?Math.min(Number(row.dataset.row),rules.length-1):rules.length-1; const [r]=rules.splice(drag.i,1); rules.splice(at,0,r); changed(at); }
+  drag=null; });
+document.addEventListener('dragend',()=>{ drag=null; $('chain').classList.remove('over'); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',drawAxis);
+render();
+</script>
+</body>
+</html>

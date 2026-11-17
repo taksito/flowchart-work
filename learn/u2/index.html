@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meet BMI 認識 BMI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.formula-panel{text-align:left}
+.explorer{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:stretch}
+.explorer .panel{margin:0}
+.readout{display:flex;align-items:baseline;gap:10px;font-size:26px;font-weight:700}
+.readout output{font-family:"JetBrains Mono",monospace;font-size:56px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--accent)}
+#bmi-slider{appearance:none;-webkit-appearance:none;display:block;width:100%;height:22px;border-radius:12px;margin:14px 0 0;cursor:ew-resize;background:var(--track);touch-action:pan-y}
+#bmi-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:28px;height:36px;background:var(--accent);border:4px solid var(--panel);border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.35)}
+#bmi-slider::-moz-range-thumb{width:20px;height:28px;background:var(--accent);border:4px solid var(--panel);border-radius:10px}
+#bmi-ticks{width:calc(100% - 28px);margin:0 14px;display:block;overflow:visible;color:var(--muted)}
+.bounds{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0}
+.bounds span{width:100%;font-size:16px;color:var(--muted)}
+.bounds button{padding:6px 14px;font-family:"JetBrains Mono",monospace;font-size:17px}
+.hint{font-size:16px;color:var(--muted)}
+.calc{border-top:1px solid var(--line);margin-top:20px;padding-top:18px}
+.fields{display:flex;gap:12px;margin:12px 0}
+.fields label{flex:1;font-size:17px}
+.fields strong{display:block;font-size:15px;color:var(--muted);font-weight:500;margin:2px 0 6px}
+.fields input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:22px;font-family:"JetBrains Mono",monospace;background:var(--bg);color:var(--ink)}
+.fields input[aria-invalid=true]{border-color:var(--bad)}
+#calculation{font-size:16px;color:var(--muted);margin-top:10px}
+#calculation.error{color:var(--bad);font-weight:700}
+.character{display:flex;flex-direction:column;align-items:center;text-align:center;background:var(--category-bg,var(--c-normal))!important;transition:background-color .2s}
+.character .num{align-self:flex-start;background:var(--panel);border-radius:10px;padding:6px 14px;font-weight:700;font-size:22px}
+.character .num span{font-family:"JetBrains Mono",monospace;font-weight:500}
+.character img{width:100%;max-width:330px;aspect-ratio:1;object-fit:contain;border-radius:16px;margin:10px 0}
+.character h2{font-size:32px;margin:4px 0}
+.character strong{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:20px}
+.character p{max-width:330px;font-size:19px}
+.small-print{font-size:14px;color:var(--muted)}
+@media (max-width:760px){.explorer{grid-template-columns:1fr}.character img{max-width:240px}.readout output{font-size:46px}}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Unit 02 steps 單元步驟">
+  <a class="home" href="../">← Lessons 課程</a>
+  <ol class="steps">
+    <li><a href="./" aria-current="page"><b>01</b>Meet BMI 認識 BMI</a></li>
+    <li><a href="process.html"><b>02</b>Input &amp; Calculate 輸入與計算</a></li>
+    <li><a href="ifelse.html"><b>03</b>If / Else 條件判斷</a></li>
+    <li><span class="locked"><b>04</b>Flowchart 完整流程圖</span></li>
+    <li><span class="locked"><b>05</b>Scratch</span></li>
+  </ol>
+</nav>
+<main>
+  <div class="eyebrow">UNIT 02 · STEP 01</div>
+  <h1>BMI<small>Body Mass Index · 身體質量指數：用身高與體重計算 BMI，再觀察體態分類。</small></h1>
+
+  <section class="panel formula-panel">
+    <span class="badge">Height: m · 身高用公尺　/　Weight: kg · 體重用公斤</span>
+    <div class="formula">BMI = weight (kg) ÷ height (m)²</div>
+    <p class="hint">Enter height in metres · 身高請直接輸入公尺，例如 1.70 m。</p>
+  </section>
+
+  <div class="explorer">
+    <section class="panel">
+      <h2>01 Drag to explore<small>拖曳滑桿，觀察體態</small></h2>
+      <label for="bmi-slider" class="readout">BMI <output id="bmi-value" for="bmi-slider">20.00</output></label>
+      <input id="bmi-slider" type="range" min="1" max="40" step="any" value="20" aria-describedby="slider-hint">
+      <svg id="bmi-ticks" viewBox="0 0 600 44" aria-hidden="true"></svg>
+      <div class="bounds"><span>Try a boundary · 試試分界</span>
+        <button type="button" data-bmi="18">18</button><button type="button" data-bmi="18.5">18.5</button><button type="button" data-bmi="20">20</button><button type="button" data-bmi="24">24</button><button type="button" data-bmi="27">27</button></div>
+      <p id="slider-hint" class="hint">Slider mode · 滑桿探索模式。</p>
+
+      <div class="calc">
+        <h2>02 Calculate your BMI<small>輸入身高（公尺）與體重（公斤）</small></h2>
+        <form id="bmi-form" novalidate>
+          <div class="fields">
+            <label for="height">Height 身高 <strong>m 公尺</strong><input id="height" type="number" min="0.3" max="3" step="any" inputmode="decimal" placeholder="1.70" required></label>
+            <label for="weight">Weight 體重 <strong>kg 公斤</strong><input id="weight" type="number" min="1" max="1000" step="any" inputmode="decimal" placeholder="60" required></label>
+          </div>
+          <button class="primary" type="submit">Calculate &amp; move · 計算並移動滑桿</button>
+          <p id="calculation" role="status">Example · 1.70 m、60 kg → BMI 約 20.76。</p>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel character" aria-labelledby="category-name">
+      <div class="num">BMI <span id="character-bmi">20.00</span></div>
+      <img id="body-image" src="../assets/normal.webp" alt="Illustrated adult with a medium build" width="330" height="330">
+      <div aria-live="polite">
+        <h2 id="category-name">Normal</h2>
+        <strong id="category-range">18.5 ≤ BMI &lt; 24</strong>
+        <p id="category-explanation" lang="en">In the normal range.</p>
+      </div>
+    </section>
+  </div>
+
+  <p class="small-print">Taiwan adult ranges (衛福部國健署). Pictures are for vocabulary only; you cannot tell BMI from how someone looks. 臺灣成人分類；不適用於兒童及青少年健康判定。圖片只是詞彙示意，不能用外表判斷 BMI。</p>
+  <div class="actions"><span></span><a class="btn primary" href="process.html">Next: build the process · 下一頁 →</a></div>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const categories=[
+  {name:'Underweight (thin)',range:'BMI < 18.5',file:'underweight',alt:'Illustrated adult with a slender build',text:'Below the normal range.',bg:'--c-under'},
+  {name:'Normal',range:'18.5 ≤ BMI < 24',file:'normal',alt:'Illustrated adult with a medium build',text:'In the normal range.',bg:'--c-normal'},
+  {name:'Overweight',range:'24 ≤ BMI < 27',file:'overweight',alt:'Illustrated adult with a rounded build',text:'Above the normal range.',bg:'--c-over'},
+  {name:'Obesity',range:'BMI ≥ 27',file:'obesity',alt:'Illustrated adult with a larger build',text:'In the obesity range.',bg:'--c-obese'}];
+const categoryIndex=b=>b<18.5?0:b<24?1:b<27?2:3;
+let lastValue=20, lastSource='slider';
+function updateScale(value,resize){
+  const s=$('bmi-slider');
+  if(resize){ s.min=String(Math.min(1,value)); s.max=String(Math.max(40,Math.ceil(value/10)*10)); }
+  const min=+s.min,max=+s.max,pct=v=>(v-min)/(max-min)*100;
+  s.style.setProperty('--track',`linear-gradient(to right,${css('--c-under')} 0% ${pct(18.5)}%,${css('--c-normal')} ${pct(18.5)}% ${pct(24)}%,${css('--c-over')} ${pct(24)}% ${pct(27)}%,${css('--c-obese')} ${pct(27)}% 100%)`);
+  const ticks=max<=60?[min,18.5,24,27,max]:[min,max/2,max];
+  $('bmi-ticks').innerHTML=ticks.map(n=>`<path d="M${pct(n)*6} 3v7" stroke="currentColor"/><text x="${pct(n)*6}" y="31" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="15" fill="currentColor">${Number(n.toFixed(2))}</text>`).join('');
+}
+function showBMI(value,source){
+  if(!Number.isFinite(value)||value<=0) return;
+  lastValue=value; lastSource=source;
+  updateScale(value,source==='calculate'); $('bmi-slider').value=String(value);
+  const c=categories[categoryIndex(value)];
+  $('bmi-value').textContent=value.toFixed(2); $('character-bmi').textContent=value.toFixed(2);
+  $('body-image').src=`../assets/${c.file}.webp`; $('body-image').alt=c.alt;
+  $('category-name').textContent=c.name; $('category-range').textContent=c.range; $('category-explanation').textContent=c.text;
+  document.querySelector('.character').style.setProperty('--category-bg',`var(${c.bg})`);
+  $('bmi-slider').setAttribute('aria-valuetext',`${value.toFixed(2)} — ${c.name}`);
+  $('slider-hint').textContent=(source==='calculate'?'Calculated result · 計算結果已同步滑桿。':'Slider mode · 現在顯示滑桿探索值。')+' '+c.range;
+}
+$('bmi-slider').addEventListener('input',e=>{ showBMI(+e.target.value,'slider'); $('calculation').textContent='Slider mode · 拖曳探索中。'; $('calculation').className=''; });
+/* keep a 0.1 keyboard step even with step="any" */
+$('bmi-slider').addEventListener('keydown',e=>{
+  if(!['ArrowLeft','ArrowRight','ArrowDown','ArrowUp'].includes(e.key)) return; e.preventDefault();
+  const sign=['ArrowLeft','ArrowDown'].includes(e.key)?-1:1, t=e.target;
+  t.value=Math.min(+t.max,Math.max(+t.min,Number((+t.value+sign*.1).toFixed(2)))); t.dispatchEvent(new Event('input',{bubbles:true}));
+});
+document.querySelectorAll('[data-bmi]').forEach(b=>b.addEventListener('click',()=>{ showBMI(+b.dataset.bmi,'slider'); $('calculation').textContent='Example · 範例數值。'; $('calculation').className=''; }));
+$('bmi-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const hv=$('height').value.trim(), wv=$('weight').value.trim(), h=+hv, w=+wv;
+  const hOK=hv!==''&&Number.isFinite(h)&&h>=0.3&&h<=3, wOK=wv!==''&&Number.isFinite(w)&&w>=1&&w<=1000;
+  $('height').setAttribute('aria-invalid',String(!hOK)); $('weight').setAttribute('aria-invalid',String(!wOK));
+  if(!hOK||!wOK){ $('calculation').textContent='Check your inputs · 請輸入身高 0.3–3 公尺、體重 1–1000 公斤的有效數字。'+(hOK?'':' 身高要用公尺，例如 1.70。'); $('calculation').className='error'; (!hOK?$('height'):$('weight')).focus(); return; }
+  const bmi=w/h**2; showBMI(bmi,'calculate'); $('calculation').className='';
+  $('calculation').textContent=`${w} ÷ ${h}² = ${Number(bmi.toPrecision(12))}`;
+});
+/* redraw the track colours when the system switches light / dark */
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>updateScale(lastValue,false));
+showBMI(20,'slider');
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Average Flowchart × Scratch 平均成績流程圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.goal{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-family:"JetBrains Mono",monospace;font-size:19px}
+.goal span{font-size:12px;letter-spacing:.18em;color:var(--accent)}
+.symbols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:12px}
+.symbols article{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--bg)}
+.symbols .shape{min-height:76px;display:flex;flex-direction:column;justify-content:center;font-size:18px}
+.symbols .shape small{color:var(--muted);font-weight:400}
+.shape.dia{background:none;border:0;position:relative;isolation:isolate;min-height:96px}
+.shape.dia:before{content:"";position:absolute;inset:0;background:var(--shape-line);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);z-index:-1}
+.shape.dia:after{content:"";position:absolute;inset:2px;background:var(--shape);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);z-index:-1}
+.symbols h3{margin:12px 0 4px;font-size:19px}.symbols p{margin:0;font-size:16px;color:var(--muted)}
+/* virtual builder */
+.qcard{border:2px solid var(--accent);border-radius:16px;padding:16px 18px;background:var(--panel)}
+.qcard .tag{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--accent)}
+.qcard h3{margin:4px 0 12px;font-size:21px}
+.choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.choices button{flex-direction:column;gap:8px;min-height:104px}
+.ico{width:66px;height:36px;background:var(--shape);border:2px solid var(--shape-line);display:block}
+.ico.start{border-radius:999px}.ico.rect{border-radius:4px}
+.ico.para{border:0;clip-path:polygon(16% 0,100% 0,84% 100%,0 100%);box-shadow:inset 0 0 0 2px var(--shape-line)}
+.ico.diamond{width:44px;height:44px;border:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--shape-line)}
+.fb{min-height:1.6em;margin:10px 0 0;font-weight:700}.fb.ok{color:var(--accent)}.fb.no{color:var(--warn)}
+.vflow{max-width:560px;margin:18px auto 0}
+.vflow .shape{font-size:18px;margin:0 auto;max-width:460px}
+.vflow .shape.term{max-width:220px}
+.vflow .shape.dia{max-width:260px;min-height:100px;display:flex;align-items:center;justify-content:center}
+.branches{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.branches>div{text-align:center}.branches b{display:block;color:var(--accent);font-size:15px}
+/* flowchart → scratch */
+.map{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:12px}
+.map article{border:1px solid var(--line);border-radius:16px;padding:16px;background:var(--bg)}
+.map h3{margin:0 0 10px;font-size:20px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:12px;align-items:start}
+.pair>div>span{display:block;font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.12em;color:var(--muted);margin-bottom:6px}
+.pair .shape{font-size:16px;padding:10px 14px;margin:6px 0}
+.pair .shape.dia{min-height:84px;display:flex;align-items:center;justify-content:center}
+.pair img{display:block;max-width:100%;height:auto;background:#fff;border-radius:8px;padding:6px;margin:4px 0 8px}
+.pair p{font-size:15px;margin:4px 0}
+.tf{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:14px;text-align:center}.tf b{color:var(--accent)}
+.mnote{font-size:15px;color:var(--muted);margin:10px 0 0}
+.check label{display:flex;gap:12px;align-items:flex-start;font-size:18px;margin:10px 0;cursor:pointer}
+.check input{width:22px;height:22px;margin-top:3px;accent-color:var(--accent);flex:0 0 auto}
+.tools{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+@media (max-width:760px){.symbols,.map{grid-template-columns:1fr}.choices{grid-template-columns:repeat(2,minmax(0,1fr))}.pair{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Unit 01 steps 單元步驟">
+  <a class="home" href="../">← Lessons 課程</a>
+  <ol class="steps">
+    <li><a href="./"><b>01</b>Operations 四則運算</a></li>
+    <li><a href="flowchart.html" aria-current="page"><b>02</b>Flowchart × Scratch 流程圖與積木</a></li>
+  </ol>
+</nav>
+<main>
+  <div class="eyebrow">UNIT 01 · FLOWCHART &amp; SCRATCH</div>
+  <h1>Input a, b, c, d and average them<small>輸入四個成績，算出平均，再判斷是否及格</small></h1>
+  <section class="panel goal"><span>MISSION</span><strong>Input a, b, c, d → 成績 = (a + b + c + d) ÷ 4 → Pass / Not pass</strong></section>
+
+  <section class="panel" aria-labelledby="s1">
+    <div class="eyebrow">STEP 1 · FLOWCHART SYMBOLS</div>
+    <h2 id="s1">Three shapes you need<small>先認識三種必要圖形</small></h2>
+    <div class="symbols">
+      <article><div class="shape io">Input / Output<small>輸入／輸出</small></div><h3>Parallelogram 平行四邊形</h3><p>Data in or a result out. 輸入 4 個數字時寫 <b>Input a</b>、<b>Input b</b>、<b>Input c</b>、<b>Input d</b>。</p></article>
+      <article><div class="shape proc">Process<small>處理</small></div><h3>Rectangle 長方形</h3><p>Do a calculation. 計算：<b>成績 = (a + b + c + d) ÷ 4</b>。</p></article>
+      <article><div class="shape dia">Decision<small>判斷</small></div><h3>Diamond 菱形</h3><p>A True / False question: <b>成績 ≥ 60?</b> Two arrows go to Pass and Not pass. 兩條箭頭分別前往 Pass 與 Not pass。</p></article>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="s2">
+    <div class="eyebrow">STEP 2 · BUILD IT</div>
+    <h2 id="s2">Pick the right shape<small>選圖示，虛擬建置流程圖</small></h2>
+    <p class="muted">Each right choice adds a step to the chart below. Start at Start and finish at End. 每選對一次，下面的流程圖就多一步。要從 Start 開始，走到 End。</p>
+    <div id="builder" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="s3">
+    <div class="eyebrow">STEP 3 · FLOWCHART → SCRATCH</div>
+    <h2 id="s3">Flowchart on the left, Scratch on the right<small>左邊流程圖，右邊 Scratch</small></h2>
+    <div class="map">
+      <article><h3>① Input a 輸入結構</h3>
+        <div class="pair"><div><span>FLOWCHART</span><div class="shape term">Start</div><div class="down">↓</div><div class="shape io">Input a</div></div>
+          <div><span>SCRATCH</span><img src="../assets/scratch-input-structure.png" alt="Scratch: ask input A and wait, then set A to answer"><p><code>ask [input a?] and wait</code><br><code>set [a] to (answer)</code></p></div></div>
+        <p class="mnote">Repeat for b, c and d. Use <code>set</code> right after each <code>ask</code>, or the next answer replaces it. 依序輸入並儲存 b、c、d；每次詢問後馬上 set，否則下一個 answer 會蓋掉前一個。</p></article>
+      <article><h3>② Process 計算平均</h3>
+        <div class="pair"><div><span>FLOWCHART</span><div class="shape proc">成績 = (a + b + c + d) ÷ 4</div></div>
+          <div><span>SCRATCH</span><img src="../assets/scratch-average-abcd.png" alt="Scratch: set grade to (a + b + c + d) divided by 4"><p>建立 <code>成績</code> 變數，把 a、b、c、d 的總和除以 4。</p></div></div>
+        <p class="mnote"><b>Add first, then divide:</b> <code>(a + b + c + d) ÷ 4</code>. 一定要先全部相加，再除以 4。</p></article>
+      <article><h3>③ If / else 判斷結果</h3>
+        <div class="pair"><div><span>FLOWCHART</span><div class="shape dia">成績 ≥ 60?</div><div class="tf"><div><b>True</b><br>Output: Pass</div><div><b>False</b><br>Output: Not pass</div></div></div>
+          <div><span>SCRATCH</span><img src="../assets/scratch-ifelse-structure.png" alt="Scratch if-then-else block"><p>Scratch has no ≥ block. Put <code>成績 &lt; 60</code> in the hexagon: <b>if</b> → say [Not pass]，<b>else</b> → say [Pass]。</p></div></div>
+        <p class="mnote">「成績 ≥ 60」和「成績 &lt; 60」方向相反，兩種都可以；只要 True／False 的輸出對得上就好。</p></article>
+      <article><h3>④ Output 顯示結果</h3>
+        <div class="pair"><div><span>FLOWCHART</span><div class="shape io">Output: Pass</div><div class="down">or 或</div><div class="shape io">Output: Not pass</div></div>
+          <div><span>SCRATCH</span><img src="../assets/scratch-output-pass.png" alt="Scratch say Pass block"><p>True branch: <code>say [Pass]</code><br>False branch: <code>say [Not pass]</code></p></div></div>
+        <p class="mnote">Always show the result: a parallelogram in the flowchart, a <code>say</code> block in Scratch. 最後一定要有輸出。</p></article>
+    </div>
+  </section>
+
+  <section class="panel check" aria-labelledby="s4">
+    <div class="eyebrow">STEP 4 · CHECK YOUR WORK</div>
+    <h2 id="s4">Before you hand in<small>繳交前，請檢查</small></h2>
+    <label><input type="checkbox"> My flowchart has Start and End. 我的流程圖有 Start 與 End。</label>
+    <label><input type="checkbox"> I used parallelograms to input a, b, c, d. 我用平行四邊形輸入 a、b、c、d。</label>
+    <label><input type="checkbox"> I used a rectangle for 成績 = (a + b + c + d) ÷ 4. 我用長方形算出平均。</label>
+    <label><input type="checkbox"> I used a diamond for 成績 ≥ 60 and labelled True / False. 我用菱形判斷，並標示 True／False。</label>
+    <label><input type="checkbox"> My Scratch program inputs 4 numbers, averages them and says Pass or Not pass. 我的 Scratch 能輸入 4 個數字、算平均並說出結果。</label>
+  </section>
+
+  <section class="panel task" aria-labelledby="s5">
+    <h2 id="s5">Your mission<small>最後任務：畫好、寫好、繳交</small></h2>
+    <ol>
+      <li>Draw the flowchart <b>from Start</b> in the Pass or Fail tool. 在「成績及格」工具從 Start 開始畫流程圖。</li>
+      <li>Build the program in Scratch Pass or Fail. 在「Scratch 成績及格」拼出程式。</li>
+      <li>In each tool press <b>Check 提交批改</b>, fix it, then <b>Submit 繳交</b>. 兩個工具都要先檢查、修改，再繳交。</li>
+    </ol>
+    <div class="tools">
+      <a class="btn primary" href="../../score/" target="_blank" rel="noopener">Pass or Fail flowchart · 成績及格流程圖 ↗</a>
+      <a class="btn primary" href="../../scratch/" target="_blank" rel="noopener">Scratch Pass or Fail · 積木程式 ↗</a>
+    </div>
+  </section>
+  <div class="actions"><a class="btn" href="../">← Back to Lessons 回課程</a><a class="btn" href="../u2/">Next unit: BMI 第二單元 →</a></div>
+</main>
+<script>
+'use strict';
+const steps=[
+  {q:'Where does a flowchart start? 流程圖要從哪裡開始？',a:'start',show:'Start · 開始',k:'term'},
+  {q:'To input 4 numbers a, b, c, d, which shape? 要輸入 a、b、c、d，選哪個圖形？',a:'para',show:'Input a → Input b → Input c → Input d',k:'io'},
+  {q:'To calculate 成績 = (a + b + c + d) ÷ 4, which shape? 要計算平均，選哪個圖形？',a:'rect',show:'成績 = (a + b + c + d) ÷ 4',k:'proc'},
+  {q:'To decide "成績 ≥ 60?", which shape? 要判斷是否及格，選哪個圖形？',a:'diamond',show:'成績 ≥ 60?',k:'dia'},
+  {q:'To show Pass or Not pass, which shape? 要顯示結果，選哪個圖形？',a:'para',show:'',k:'out'},
+  {q:'How does the flowchart end? 流程圖最後用哪個圖形結束？',a:'start',show:'End · 結束',k:'term'}];
+const choices=[['start','Start / End 開始／結束'],['para','Parallelogram 平行四邊形'],['rect','Rectangle 長方形'],['diamond','Diamond 菱形']];
+const box=document.getElementById('builder'); let cur=0;
+function chart(){
+  return '<div class="vflow">'+steps.slice(0,cur).map((s,i)=>{
+    const arrow=i?'<div class="down" aria-hidden="true">↓</div>':'';
+    if(s.k==='out') return arrow+'<div class="branches"><div><b>True</b><div class="shape io">Output: Pass</div></div><div><b>False</b><div class="shape io">Output: Not pass</div></div></div>';
+    return arrow+`<div class="shape ${s.k}">${s.show}</div>`; }).join('')+'</div>';
+}
+function render(msg='',ok=false){
+  if(cur===steps.length){ box.innerHTML=`<div class="qcard"><span class="tag">COMPLETE 完成</span><h3>You built the whole flowchart! 完成虛擬流程圖！</h3><p>Now draw your own version in the Pass or Fail tool (see the mission below), then build it in Scratch. 現在請到「成績及格」工具，從頭畫出自己的版本，再完成 Scratch 作品。</p><button type="button" id="again">Try again 再玩一次</button></div>${chart()}`;
+    document.getElementById('again').onclick=()=>{ cur=0; render(); }; return; }
+  const s=steps[cur];
+  box.innerHTML=`<div class="qcard"><span class="tag">BUILD STEP ${cur+1} / ${steps.length}</span><h3>${s.q}</h3><div class="choices">${choices.map(([t,l])=>`<button type="button" data-c="${t}"><i class="ico ${t}" aria-hidden="true"></i><b>${l}</b></button>`).join('')}</div><p class="fb ${ok?'ok':msg?'no':''}">${msg}</p></div>${chart()}`;
+  box.querySelectorAll('[data-c]').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.c===s.a){ cur++; render('✓ Right! 答對了！正確圖形已加入流程圖。',true); const f=box.querySelector('[data-c]'); if(f) f.focus(); }
+    else render('Think again: what is this step for? 再想想：依照這一步的用途選圖形。'); }));
+}
+render();
+</script>
+</body>
+</html>

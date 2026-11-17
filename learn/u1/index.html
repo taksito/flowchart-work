@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Numbers &amp; Operations 數字教學</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.mission{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:stretch}
+.mission .panel{margin:0}
+.today{display:flex;flex-direction:column;gap:6px;justify-content:center}
+.today strong{font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:500}
+.today .sym{font-family:"JetBrains Mono",monospace;font-size:40px;color:var(--accent);letter-spacing:.2em}
+.ops{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px}
+.op{position:relative;flex-direction:column;align-items:flex-start;justify-content:flex-start;min-height:170px;padding:18px;border-width:2px;border-radius:16px;text-align:left;transition:transform .15s,background-color .15s}
+.op b{font-family:"JetBrains Mono",monospace;font-size:56px;line-height:1;font-weight:500}
+.op .en{font-family:"JetBrains Mono",monospace;font-size:17px;color:var(--accent);opacity:0;transform:translateY(8px);transition:.2s;margin-top:auto}
+.op small{font-weight:700;font-size:18px}
+.op:hover,.op:focus-visible,.op[aria-pressed=true]{background:var(--soft);transform:translateY(-4px)}
+.op:hover .en,.op:focus-visible .en,.op[aria-pressed=true] .en{opacity:1;transform:none}
+.split{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.rule{border:2px solid var(--accent);border-radius:14px;padding:10px 18px;text-align:center}
+.rule b{display:block;font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:500;color:var(--accent)}
+.rule span{font-size:15px;color:var(--muted)}
+.grades{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:end;margin-top:16px}
+.grades label{font-size:16px;color:var(--muted)}
+.grades input{width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-family:"JetBrains Mono",monospace;font-size:22px;background:var(--bg);color:var(--ink)}
+.result{font-size:20px}.result strong{font-family:"JetBrains Mono",monospace;font-size:28px}
+.result.pass{border:2px solid var(--accent)}.result.fail{background:var(--warn-soft);color:var(--warn);border:2px solid var(--warn)}
+.math{font-family:"JetBrains Mono",monospace;color:var(--muted);font-size:17px}
+.plan{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}
+.plan article{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--bg)}
+.plan span{font-family:"JetBrains Mono",monospace;color:var(--accent)}
+.plan h3{margin:4px 0;font-size:19px}.plan p{margin:0;font-size:16px;color:var(--muted)}
+@media (max-width:760px){.mission{grid-template-columns:1fr}.ops{grid-template-columns:repeat(2,minmax(0,1fr))}.grades{grid-template-columns:repeat(2,minmax(0,1fr))}.grades button{grid-column:1/-1}.plan{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Unit 01 steps 單元步驟">
+  <a class="home" href="../">← Lessons 課程</a>
+  <ol class="steps">
+    <li><a href="./" aria-current="page"><b>01</b>Operations 四則運算</a></li>
+    <li><a href="flowchart.html"><b>02</b>Flowchart × Scratch 流程圖與積木</a></li>
+  </ol>
+</nav>
+<main>
+  <div class="eyebrow">UNIT 01 · NUMBERS &amp; OPERATIONS</div>
+  <div class="mission">
+    <div class="panel"><h1>Numbers &amp; Operations<small>數字教學，運算說出來</small></h1>
+      <p class="muted">認識四則運算的雙語說法，再用四個成績完成平均與及格判斷。Learn to say + − × ÷ in English, then average four scores and decide pass or fail.</p></div>
+    <aside class="panel today"><span class="eyebrow">TODAY'S MISSION 今日任務</span><strong>4 scores → average</strong><span class="muted">計算、判斷、說明結果</span><span class="sym" aria-hidden="true">+ − × ÷</span></aside>
+  </div>
+
+  <section class="panel" aria-labelledby="t1">
+    <div class="eyebrow">STEP 1 · VOCABULARY</div>
+    <h2 id="t1">How do you say them in English?<small>四則運算的英文怎麼說？</small></h2>
+    <p class="muted">Point at (or tap) a symbol to see the English. Say it out loud! 把滑鼠移到符號上（或點一下），才會出現英文。試著大聲唸出來！</p>
+    <div class="ops">
+      <button type="button" class="op" aria-pressed="false" aria-label="加號：add 或 plus"><b>+</b><span class="en">Add / Plus</span><small>加</small></button>
+      <button type="button" class="op" aria-pressed="false" aria-label="減號：minus 或 subtract"><b>−</b><span class="en">Minus / Subtract</span><small>減</small></button>
+      <button type="button" class="op" aria-pressed="false" aria-label="乘號：times 或 multiply"><b>× *</b><span class="en">Times / Multiply</span><small>乘</small></button>
+      <button type="button" class="op" aria-pressed="false" aria-label="除號：divide 或 divided by"><b>÷ /</b><span class="en">Divide / Divided by</span><small>除</small></button>
+    </div>
+    <p class="muted" style="font-size:15px">On a computer, × is written <code>*</code> and ÷ is written <code>/</code>. 電腦裡，乘號寫成 <code>*</code>，除號寫成 <code>/</code>。</p>
+  </section>
+
+  <section class="panel" aria-labelledby="t2">
+    <div class="split"><div><div class="eyebrow">STEP 2 · TRY IT</div>
+      <h2 id="t2">Enter four scores<small>輸入四個成績，計算平均</small></h2>
+      <p class="muted">We will calculate the average and tell you whether you pass. 我們會算出平均，告訴你有沒有及格。</p></div>
+      <div class="rule"><b>Pass = 60</b><span>及格線</span></div></div>
+    <form id="grade-form" class="grades" novalidate>
+      <label>Score 1<input type="number" min="0" max="100" placeholder="0–100" inputmode="decimal"></label>
+      <label>Score 2<input type="number" min="0" max="100" placeholder="0–100" inputmode="decimal"></label>
+      <label>Score 3<input type="number" min="0" max="100" placeholder="0–100" inputmode="decimal"></label>
+      <label>Score 4<input type="number" min="0" max="100" placeholder="0–100" inputmode="decimal"></label>
+      <button class="primary" type="submit">Calculate 計算平均</button>
+    </form>
+    <div id="grade-result" class="notice result" aria-live="polite">Ready? Enter four scores from 0 to 100. 準備好了嗎？請輸入四個 0–100 的成績。</div>
+    <p class="math">Average = (score 1 + score 2 + score 3 + score 4) ÷ 4</p>
+  </section>
+
+  <section class="panel task" aria-labelledby="t3">
+    <div class="eyebrow">STEP 3 · FLOWCHART &amp; SCRATCH</div>
+    <h2 id="t3">Flowchart first, then Scratch<small>先畫流程圖，再寫 Scratch</small></h2>
+    <p>The next page takes you step by step: input 4 numbers → average → decide, and matches each step to Scratch blocks. 下一頁會一步一步帶你完成「輸入 4 個數字 → 計算平均 → 判斷結果」，並對應到 Scratch 積木。</p>
+    <div class="plan">
+      <article><span>01</span><h3>Draw a flowchart</h3><p>在「成績及格」工具畫流程圖：四個輸入、平均、判斷及格。</p></article>
+      <article><span>02</span><h3>Build it in Scratch</h3><p>在「Scratch 成績及格」工具拼出能運作的程式。</p></article>
+      <article><span>03</span><h3>Hand in</h3><p>在工具裡按 Check 檢查，再按 Submit 繳交。</p></article>
+    </div>
+    <a class="btn primary" href="flowchart.html">Go to the flowchart lesson · 前往流程圖教學 →</a>
+  </section>
+</main>
+<script>
+'use strict';
+/* tap to show the English on touch screens; hover / focus also shows it */
+document.querySelectorAll('.op').forEach(b=>b.addEventListener('click',()=>b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true'))));
+const form=document.getElementById('grade-form'), out=document.getElementById('grade-result');
+form.addEventListener('submit',e=>{
+  e.preventDefault();
+  const inputs=[...form.querySelectorAll('input')], scores=inputs.map(i=>i.value.trim()===''?NaN:Number(i.value));
+  const bad=scores.findIndex(s=>!Number.isFinite(s)||s<0||s>100);
+  inputs.forEach((i,k)=>i.setAttribute('aria-invalid',String(!Number.isFinite(scores[k])||scores[k]<0||scores[k]>100)));
+  if(bad>=0){ out.className='notice result fail'; out.textContent='Enter four scores from 0 to 100. 請輸入四個 0 到 100 之間的成績。'; inputs[bad].focus(); return; }
+  const avg=scores.reduce((a,b)=>a+b,0)/4, pass=avg>=60;
+  out.className='notice result '+(pass?'pass':'fail');
+  out.innerHTML=`(${scores.join(' + ')}) ÷ 4 = <strong>${Number(avg.toFixed(2))}</strong>　${pass?'Pass! 恭喜及格！':'Not pass yet 未及格，再試一次！'}`;
+});
+</script>
+</body>
+</html>

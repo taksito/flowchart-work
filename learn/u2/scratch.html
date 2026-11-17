@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Build in Scratch 製作 BMI 計算器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.mapping .head{display:flex;gap:14px;align-items:flex-start}
+.mapping .n{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;background:var(--soft);color:var(--accent);border-radius:12px;font-family:"JetBrains Mono",monospace;font-size:18px}
+.mapping .head p{color:var(--muted);margin:2px 0 14px}
+.row{display:grid;grid-template-columns:minmax(200px,.85fr) 44px minmax(230px,1.15fr);align-items:center;gap:12px}
+.cue{min-height:160px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.cue>span{display:block;font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.12em;color:var(--muted);margin-bottom:10px}
+.cue .shape{margin:8px 0;font-size:18px}
+.cue small{display:block;color:var(--muted);margin-top:10px;font-size:15px}
+.arrow{text-align:center;font-size:32px;color:var(--accent)}
+.blocks img{display:block;max-width:100%;height:auto;margin:6px 0 10px;background:#fff;border-radius:8px;padding:6px}
+.help{display:flex;align-items:center;gap:20px;padding:14px 16px;margin-top:16px;background:var(--soft);border-radius:12px}
+.help img{width:110px;height:auto;background:#fff;border-radius:8px;padding:6px;flex:0 0 auto}
+.help p{margin:0}
+.key{background:var(--note);border-left:5px solid var(--note-line);padding:12px 16px;border-radius:8px;margin-top:14px}
+@media (max-width:720px){.row{grid-template-columns:1fr;gap:4px}.arrow{transform:rotate(90deg);font-size:24px}.cue{min-height:0}.help{flex-direction:column;align-items:flex-start;gap:10px}}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Unit 02 steps 單元步驟">
+  <a class="home" href="../">← Lessons 課程</a>
+  <ol class="steps">
+    <li><a href="./"><b>01</b>Meet BMI 認識 BMI</a></li>
+    <li><a href="process.html"><b>02</b>Input &amp; Calculate 輸入與計算</a></li>
+    <li><a id="if-link" href="ifelse.html"><b>03</b>If / Else 條件判斷</a></li>
+    <li><a id="flow-link" href="result.html"><b>04</b>Flowchart 完整流程圖</a></li>
+    <li><a href="#" aria-current="page"><b>05</b>Scratch</a></li>
+  </ol>
+</nav>
+<main>
+  <div class="eyebrow">UNIT 02 · STEP 05 · PROGRAM IT</div>
+  <div class="hero"><img src="../assets/normal.webp" alt="" width="104" height="104">
+    <div><h1>Build your BMI calculator<small>用 Scratch 寫出你的流程圖</small></h1><p>Match each flowchart step with a Scratch block. · 把流程圖的每一步，換成 Scratch 方塊。</p></div></div>
+
+  <div id="learning-order" class="notice" aria-live="polite"></div>
+
+  <section class="panel mapping" aria-labelledby="t1">
+    <div class="head"><span class="n">01</span><div><h2 id="t1">Input<small>輸入資料</small></h2><p>Flowchart parallelograms → Scratch <code>ask</code> + <code>set</code> · 流程圖的輸入框，對應 Scratch 的詢問與設定變數。</p></div></div>
+    <div class="row">
+      <div class="cue" id="input-flow"><span>FLOWCHART · 流程圖</span><div class="shape io" id="flow-weight">Input weight (kg)</div><div class="shape io" id="flow-height">Input height (m)</div></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="cue blocks" id="input-blocks"><span>SCRATCH · 方塊</span><img id="block-weight" src="../assets/scratch-input-weight.png" alt="Scratch: ask input weight and wait; set weight to answer"><img id="block-height" src="../assets/scratch-input-height.png" alt="Scratch: ask input height and wait; set height to answer"></div>
+    </div>
+    <div class="help"><img src="../assets/scratch-variables.png" alt="Scratch variables weight, height and BMI"><p><strong>Create three variables · 建立三個變數：</strong>weight、height、BMI。<br>Save <code>answer</code> right after each <code>ask</code>; the next answer replaces it. · 每次詢問後立刻儲存回答，否則下一次回答會蓋掉它。<br><strong>Height uses metres (m). · 身高輸入公尺。</strong></p></div>
+  </section>
+
+  <section class="panel mapping" aria-labelledby="t2">
+    <div class="head"><span class="n">02</span><div><h2 id="t2">Calculate<small>計算 BMI</small></h2><p>Process rectangle → Scratch operators + <code>set BMI</code> · 計算框對應運算方塊與設定 BMI。</p></div></div>
+    <div class="row">
+      <div class="cue"><span>FLOWCHART · 流程圖</span><div class="shape proc">BMI = weight (kg) ÷ height (m)²</div></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="cue blocks"><span>SCRATCH · 方塊</span><img src="../assets/scratch-operators.png" alt="Scratch + − × ÷ operator blocks"><img src="../assets/scratch-formula.png" alt="Scratch: weight divided by (height times height), placed in set BMI"></div>
+    </div>
+    <p class="key"><strong>Build the bottom part first · 先組合除數：</strong><code>height × height</code>，再放進 <code>weight ÷ (height × height)</code>，最後設定 <code>BMI</code>。</p>
+  </section>
+
+  <section class="panel mapping" aria-labelledby="t3">
+    <div class="head"><span class="n">03</span><div><h2 id="t3">Decide<small>判斷分類</small></h2><p>Diamonds → Scratch <code>if / else</code> · 判斷菱形對應 Scratch 的「如果…那麼…否則」。</p></div></div>
+    <div class="row">
+      <div class="cue"><span>FLOWCHART · 流程圖</span><div class="shape proc" id="decision-example" style="background:var(--c-normal)">BMI &lt; 18.5</div><small>True → one category<br>False → the next decision 下一個判斷</small></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="cue blocks"><span>SCRATCH · 方塊</span><img src="../assets/scratch-ifelse.png" alt="Scratch if-then-else block, less-than block and BMI variable"></div>
+    </div>
+    <p class="key" id="decision-guidance">Put the comparison in the hexagon slot. Nest the next <code>if / else</code> inside <code>else</code> until all four categories have an output. · 把比較條件放進六角形格子；在 else 裡接下一個 if / else，直到四種分類都有結果。</p>
+  </section>
+
+  <section class="panel task" aria-labelledby="t4">
+    <h2 id="t4">Your mission<small>完成 BMI 計算器並繳交</small></h2>
+    <ol>
+      <li>Start with the green flag. · 用「當綠旗被點擊」開始。</li>
+      <li>Ask for weight (kg) and height (m), and store both answers. · 詢問並儲存體重、身高。</li>
+      <li>Calculate and store <code>BMI = weight ÷ (height × height)</code>. · 算出 BMI。</li>
+      <li>Use if / else to say Underweight, Normal, Overweight or Obesity. · 判斷並說出四種分類。</li>
+      <li>Test the boundaries: BMI 18.5, 24 and 27. · 測試三個分界值。</li>
+      <li>Press <b>Check 提交批改</b>, fix it, then <b>Submit 繳交</b>. · 先檢查、修改，再繳交。</li>
+    </ol>
+    <a class="btn primary" href="../../scratch-bmi/" target="_blank" rel="noopener">Open Scratch BMI · 開啟積木程式工具 ↗</a>
+    <p class="muted" style="font-size:15px">The pictures show single blocks. Put them together into your own working program. · 圖片只是方塊提示，請自己拼成能運作的程式。</p>
+  </section>
+  <div class="actions"><a class="btn" href="../">← Back to Lessons 回課程</a><a class="btn" href="../../me/">My scores 我的成績 →</a></div>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const p=new URLSearchParams(location.search), order=p.get('inputs'), dir=p.get('direction');
+if(['height,weight','weight,height'].includes(order)&&['asc','desc'].includes(dir)){
+  $('flow-link').href=`result.html?inputs=${order}&direction=${dir}`; $('if-link').href=`ifelse.html?inputs=${order}`;
+  const first=order.split(',')[0];
+  $('learning-order').textContent=`Your flowchart · 你的流程圖：input ${first==='weight'?'weight → height':'height → weight'}；decisions ${dir==='desc'?'≥ 27 → ≥ 24 → ≥ 18.5':'< 18.5 → < 24 → < 27'}。Scratch 方塊也照這個順序接。`;
+  if(first==='height'){ $('input-flow').insertBefore($('flow-height'),$('flow-weight')); $('input-blocks').insertBefore($('block-height'),$('block-weight')); }
+  if(dir==='desc'){ $('decision-example').textContent='BMI ≥ 27';
+    $('decision-guidance').innerHTML='Scratch has no ≥ block: use <code>not (BMI &lt; 27)</code>, then <code>not (BMI &lt; 24)</code> and <code>not (BMI &lt; 18.5)</code> inside each else. · Scratch 沒有 ≥ 方塊：可以用 not (BMI &lt; 27)，再在各層 else 用 not (BMI &lt; 24)、not (BMI &lt; 18.5)。'; }
+}else{
+  $('learning-order').textContent='Follow your completed flowchart. · 對照你完成的流程圖，把每個步驟換成 Scratch 方塊。';
+}
+</script>
+</body>
+</html>

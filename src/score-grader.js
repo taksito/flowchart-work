@@ -4,7 +4,7 @@ const SCORE_CASES=[[70,80,90,60],[60,60,60,60],[59,60,60,60],[100,100,100,0],[40
 const sAvg=a=>(a[0]+a[1]+a[2]+a[3])/4;
 const sExpect=a=>sAvg(a)>=PASS_LINE?'pass':'fail';
 const STOP=new Set(['input','output','print','read','enter','scan','set','let','if','then','and','or','is','the','輸入','輸出','印出','顯示','計算','令','是否','嗎','和','與','及','請']);
-function sCat(text){ const t=String(text||''); if(/fail|不及格|不通過|沒過/i.test(t)) return 'fail'; if(/pass|及格|通過/i.test(t)) return 'pass'; return null; }
+function sCat(text){ const t=String(text||''); if(/fail|not\s*pass|不及格|不通過|沒過|未及格|沒及格/i.test(t)) return 'fail';   /* "Not pass" is a fail */ if(/pass|及格|通過/i.test(t)) return 'pass'; return null; }
 function sNorm(s){
   return norm(s).replace(/([A-Za-z_][A-Za-z0-9_]*)\s*\+\+/g,'$1 = $1 + 1').replace(/([A-Za-z_][A-Za-z0-9_]*)\s*([+\-*/])=(?!=)/g,'$1 = $1 $2 ').replace(/大於或等於|大於等於|不小於|至少/g,'>=').replace(/小於或等於|小於等於|不大於|至多/g,'<=')
     .replace(/大於|超過|高於/g,'>').replace(/小於|低於|未滿/g,'<').replace(/不等於/g,'!=').replace(/等於/g,'==')
