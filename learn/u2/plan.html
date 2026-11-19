@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lesson Plan 教案：選擇結構-BMI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="../learn.css">
+<style>
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.toolbar .btn{padding:8px 14px;font-size:15px}
+.toc{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin:14px -16px 0;padding:10px 16px}
+.toc ul{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0}
+.toc a{display:inline-block;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);text-decoration:none;font-size:14px;white-space:nowrap}
+.toc a:hover,.toc a.on{border-color:var(--accent);color:var(--ink)}
+.toc a.on{background:var(--accent);color:var(--on-accent);font-weight:700}
+section{scroll-margin-top:70px}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:0}
+.info div{background:var(--soft);border-radius:12px;padding:12px 16px}
+.info dt{font-size:14px;color:var(--muted)}
+.info dd{margin:2px 0 0;font-weight:700;font-size:1.05em}
+.info dd span{display:block;font-weight:500;color:var(--muted);font-size:.9em}
+.en{color:var(--muted)}
+.rows{display:grid;gap:0}
+.row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0;padding-top:4px}
+.row>h3{margin:0;font-size:17px;line-height:1.4}
+.row>h3 small{display:block;font-weight:500;color:var(--muted);font-size:13px}
+.row ol,.row ul{margin:0;padding-left:22px}.row li{margin:3px 0}
+.objectives{counter-reset:o;list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.objectives li{counter-increment:o;display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:start;font-size:1.05em}
+.objectives li::before{content:counter(o);width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:700;font-family:"JetBrains Mono",monospace}
+.formula-box{background:var(--note);border-left:5px solid var(--note-line);border-radius:12px;padding:14px 18px;margin:10px 0}
+.cats{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.cats span{border-radius:10px;padding:6px 12px;font-weight:700;font-size:16px}
+.cats .a{background:var(--c-under)}.cats .b{background:var(--c-normal)}.cats .c{background:var(--c-over)}.cats .d{background:var(--c-obese)}
+.cats small{font-family:"JetBrains Mono",monospace;font-weight:500;margin-left:6px}
+.rubric{display:grid;gap:12px}
+.rubric .r{display:grid;grid-template-columns:90px minmax(0,1fr);gap:14px;align-items:center}
+.rubric .pct{font-family:"JetBrains Mono",monospace;font-size:28px;color:var(--accent);text-align:right}
+.rubric .bar{height:8px;border-radius:4px;background:var(--line);margin-top:6px;overflow:hidden}
+.rubric .bar i{display:block;height:100%;background:var(--accent)}
+.session-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:30px 0 4px}
+.session-head h2{margin:0}
+.session-head .badge{font-size:14px}
+.stage{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin:14px 0}
+.stage .when{border-right:1px solid var(--line);padding-right:16px}
+.stage .when b{display:block;font-size:19px}
+.stage .when .en{font-size:13px;display:block}
+.stage .time{display:inline-block;margin-top:10px;font-family:"JetBrains Mono",monospace;font-size:26px;color:var(--accent);line-height:1}
+.stage .time small{font-size:14px;margin-left:2px}
+.stage .split{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5}
+.stage ol{margin:0;padding-left:24px}.stage li{margin:7px 0}
+.stage li::marker{color:var(--accent);font-weight:700}
+.say{display:inline-block;background:var(--soft);border:1px solid var(--accent);border-radius:999px;padding:1px 12px;margin:2px 2px;font-family:"JetBrains Mono",monospace;font-size:.88em;color:var(--ink);white-space:nowrap}
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:10px 0 4px}
+.map div{background:var(--shape);border:1px solid var(--shape-line);border-radius:10px;padding:8px 12px;font-size:.92em}
+.map b{display:block}
+.endnote{background:var(--soft);border-radius:12px;padding:10px 14px;margin-top:12px;font-size:.95em}
+.endnote strong{color:var(--accent)}
+.lang{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.lang div{background:var(--soft);border-radius:12px;padding:14px 16px}
+.lang h3{margin:0 0 4px;font-size:17px}
+.links a{word-break:break-all}
+/* presenting: bigger type for the projector */
+body.big{font-size:22px}
+body.big main{max-width:1280px}
+body.big .row{grid-template-columns:240px minmax(0,1fr)}
+body.big .row>h3{font-size:20px}
+body.big .stage{grid-template-columns:180px minmax(0,1fr)}
+body.big .toc a{font-size:16px}
+@media (max-width:760px){
+  .row,body.big .row{grid-template-columns:1fr;gap:4px}
+  .stage,body.big .stage{grid-template-columns:1fr}
+  .stage .when{border-right:0;border-bottom:1px solid var(--line);padding:0 0 10px}
+  .lang{grid-template-columns:1fr}
+  section{scroll-margin-top:150px}
+  .say{white-space:normal}
+}
+@media print{
+  body{background:none;font-size:12pt}
+  .topbar,.toc,.toolbar{display:none!important}
+  .panel,.stage{break-inside:avoid;border-color:#bbb}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="home" href="./">← Unit 02 BMI 回第二單元</a>
+  <div class="toolbar">
+    <button type="button" id="big" class="btn" aria-pressed="false">A+ Present 投影大字</button>
+    <a class="btn" href="../assets/BMI-lesson-plan.docx" download>Word 原檔下載</a>
+    <button type="button" class="btn" onclick="window.print()">Print 列印</button>
+  </div>
+</div>
+<main>
+  <div class="eyebrow">LESSON PLAN · 雙語課程教案設計</div>
+  <h1>選擇結構-BMI<small>The Bilingual Lesson Plan · Selection Structure - BMI</small></h1>
+
+  <nav class="toc" aria-label="教案目錄">
+    <ul>
+      <li><a href="#basic">基本資料</a></li>
+      <li><a href="#idea">設計理念與素養</a></li>
+      <li><a href="#focus">學習重點</a></li>
+      <li><a href="#goals">學習目標</a></li>
+      <li><a href="#method">語言與教法</a></li>
+      <li><a href="#s1">第一節</a></li>
+      <li><a href="#s2">第二節</a></li>
+      <li><a href="#assess">評量</a></li>
+      <li><a href="#refs">參考資料</a></li>
+    </ul>
+  </nav>
+
+  <section id="basic" class="panel">
+    <h2>基本資料<small>Basic Information</small></h2>
+    <dl class="info">
+      <div><dt>學校名稱 School</dt><dd>新北市立忠孝國民中學<span>Zhong Xiao Junior High School</span></dd></div>
+      <div><dt>課程／單元 Course / Unit</dt><dd>選擇結構-BMI<span>Selection Structure - BMI</span></dd></div>
+      <div><dt>學科領域 Subject / Domain</dt><dd>科技領域（資訊科技）</dd></div>
+      <div><dt>實施年級 Grade</dt><dd>七年級<span>2 節（每節約 45 分鐘）</span></dd></div>
+      <div><dt>教材來源 Teaching Material</dt><dd>BMI 網站、draw.io、Scratch、學習吧</dd></div>
+      <div><dt>設計者 Designer</dt><dd>何政賢</dd></div>
+    </dl>
+  </section>
+
+  <section id="idea" class="panel">
+    <h2>教學設計理念<small>Rationale for Instructional Design</small></h2>
+    <p>以生活中的身高與體重為情境，運用 BMI 網頁理解輸入、計算、條件判斷與輸出結果，再將流程轉換為流程圖與 Scratch 程式。課程結合科技實作與健康教育，讓學生從操作、表達到建置，理解程式如何協助解決生活問題。</p>
+    <p class="en">Using real-life height and weight scenarios as the context, students utilize a BMI webpage to understand input, calculation, conditional logic, and output results. They then translate this process into flowcharts and Scratch programs. Combining hands-on technology practice with health education, the course guides students from hands-on operation and expression to project construction, helping them understand how programming solves real-world problems.</p>
+
+    <h2 style="margin-top:22px">領域核心素養與學習內容<small>Contents Corresponding to the Domain/Subject Core Competences</small></h2>
+    <div class="rows">
+      <div class="row"><h3>總綱<small>General Guidelines</small></h3><div>A2 系統思考與解決問題；A3 規劃執行與創新應變；B2 科技資訊與媒體素養。</div></div>
+      <div class="row"><h3>領域<small>Domain/Subject Guidelines</small></h3><div>科-J-A1 具備良好的科技態度並應用科技知能；科-J-A2 運用科技工具理解、歸納問題；科-J-A3 利用科技資源執行實作活動。</div></div>
+      <div class="row"><h3>校本能力<small>School-based Competences</small></h3><div>無</div></div>
+    </div>
+  </section>
+
+  <section id="focus" class="panel">
+    <h2>學習重點<small>Learning Focus</small></h2>
+    <div class="rows">
+      <div class="row"><h3>學習表現<small>Learning Performance</small></h3>
+        <ol>
+          <li>辨識流程圖的開始／結束、輸入／輸出、處理與判斷圖形。</li>
+          <li>以 if / else 表達 BMI 分類條件。</li>
+          <li>運用網頁與 Scratch 完成可操作的作品。</li>
+        </ol></div>
+      <div class="row"><h3>學習內容<small>Learning Contents</small></h3>
+        <div>
+          <div class="formula-box"><span class="formula" style="font-size:clamp(18px,2.4vw,24px)">BMI = weight (kg) ÷ height (m)²</span><br>身高若以公分輸入，須先除以 100 換算成公尺。</div>
+          依序比較 BMI 是否小於 18.5、24、27，建立巢狀選擇結構，輸出：
+          <div class="cats"><span class="a">thin<small>&lt; 18.5</small></span><span class="b">normal<small>18.5–24</small></span><span class="c">overweight<small>24–27</small></span><span class="d">obesity<small>≥ 27</small></span></div>
+          <p class="muted" style="font-size:.9em">這些切點為成人分類的程式設計示例。</p>
+        </div></div>
+    </div>
+
+    <h2 style="margin-top:22px">學生準備度<small>Students' Readiness</small></h2>
+    <div class="rows">
+      <div class="row"><h3>領域準備度<small>Readiness of Domain/Subject</small></h3><div>學生已知道如何開啟學習吧、使用瀏覽器，已知道如何安裝或開啟 draw.io 繪圖工具；具備基本鍵盤、滑鼠操作與簡單數學運算經驗。</div></div>
+      <div class="row"><h3>英文準備度<small>Readiness of English</small></h3><div>以課室英文為主，能理解並回應 <span class="say">Good morning</span> <span class="say">Please open…</span> <span class="say">Click…</span> <span class="say">Type…</span> <span class="say">Save your work.</span> 能辨識 weight、height、thin、normal、overweight、obesity。</div></div>
+    </div>
+  </section>
+
+  <section id="goals" class="panel">
+    <h2>單元學習目標<small>Learning Objectives · 學生能：</small></h2>
+    <ol class="objectives">
+      <li>說出 weight 是體重、height 是身高，並正確輸入資料。</li>
+      <li>使用 BMI 網站完成計算，辨識 thin、normal、overweight、obesity。</li>
+      <li>正確選用流程圖圖形，並以 if / else 表達判斷。</li>
+      <li>依流程圖在 Scratch 建置 BMI 分類程式。</li>
+      <li>將第一節流程圖繳交至親師生平台 → 學習吧。</li>
+    </ol>
+  </section>
+
+  <section id="method" class="panel">
+    <h2>中英文使用時機<small>Timing for Using Chinese / English</small></h2>
+    <div class="lang">
+      <div><h3>教師 Teacher</h3>開場問候、操作指令、網站與 Scratch 介面詞彙、重點詞彙複誦時使用英文；BMI 公式、健康意義與個別協助時以中文搭配英文。</div>
+      <div><h3>學生 Students</h3>學生以英文回應固定課室語句與關鍵詞；討論流程邏輯、解釋判斷條件與作品反思時，可用中文完整表達並穿插英文詞彙。</div>
+    </div>
+    <div class="rows" style="margin-top:14px">
+      <div class="row"><h3>教學方法<small>Teaching Methods</small></h3><div>講述法與實作操作法；示範—模仿—實作—分享回饋。</div></div>
+      <div class="row"><h3>教學策略<small>Teaching Strategies</small></h3><div>以生活情境引起動機，先操作 BMI 網頁，再拆解成流程圖，最後以 Scratch 重建；採逐步示範、提問引導、同儕檢核與程式除錯。</div></div>
+      <div class="row links"><h3>教學資源與輔助<small>Teaching Resources and Aids</small></h3><ul>
+        <li>BMI 網站：<a href="https://taksito.github.io/flowchart-work">https://taksito.github.io/flowchart-work</a></li>
+        <li>draw.io：<a href="https://app.diagrams.net/">https://app.diagrams.net/</a></li>
+        <li>Scratch：<a href="https://scratch.mit.edu/">https://scratch.mit.edu/</a></li>
+        <li>電腦、投影設備、瀏覽器、學習吧。</li></ul></div>
+      <div class="row"><h3>議題融入<small>Issues Integrated</small></h3><div><b>健康教育：</b>認識身高、體重與 BMI，培養關心身心健康及尊重不同體型的態度。本課以成人 BMI 分類規則作為程式設計示例，使用教師提供的虛構資料，不直接判定七年級學生的健康體位；兒童與青少年須依年齡、性別參照適用標準。</div></div>
+    </div>
+  </section>
+
+  <h2 style="margin-top:32px">教學流程<small>Teaching Procedures · 以下英文為課堂中實際使用的課室語句與操作活動</small></h2>
+
+  <section id="s1">
+    <div class="session-head"><h2>第一節 Session 1</h2><span class="badge">BMI 網站 → draw.io 流程圖 · 45 分鐘</span></div>
+
+    <div class="stage">
+      <div class="when"><b>準備階段</b><span class="en">Preparation stage</span><span class="time">5<small>分鐘</small></span></div>
+      <ol>
+        <li>教師說 <span class="say">Good morning.</span>，學生回應 <span class="say">Good morning, Mr. Ho.</span></li>
+        <li>說明任務：操作 BMI 網站、辨識輸入與判斷圖形，再以 draw.io 繪製流程圖。</li>
+        <li>確認學生能開啟學習吧、瀏覽器及 draw.io；提供虛構身高與體重作為操作資料。</li>
+      </ol>
+    </div>
+
+    <div class="stage">
+      <div class="when"><b>發展階段</b><span class="en">Development stage</span><span class="time">35<small>分鐘</small></span>
+        <div class="split">網站操作 15 分鐘（1–4）<br>流程圖實作 20 分鐘（5–7）</div></div>
+      <ol>
+        <li>教師示範開啟 <a href="../../">https://taksito.github.io/flowchart-work</a>，依網站順序帶學生操作三個頁面，觀察輸入欄位、操作按鈕與結果顯示區。</li>
+        <li>說明 weight 是體重、height 是身高。學生依範例輸入數值，確認單位後點擊按鈕，指出哪些資料是輸入、哪些內容是輸出。<br>課室英文：<span class="say">Please enter your weight and height.</span> <span class="say">What is the input?</span></li>
+        <li>引導學生觀察 BMI 計算式，說明以公尺計算身高；更換範例資料，觀察數值與 thin、normal、overweight、obesity 分類結果的變化。</li>
+        <li>操作網站第三頁，歸納「輸入 → 計算 → 判斷 → 輸出」。提醒網站的成人分類切點用於本課程式示例。</li>
+        <li>教師示範 draw.io：橢圓表示開始／結束，平行四邊形表示輸入／輸出，矩形表示計算處理，菱形表示判斷。學生先完成輸入與計算部分。</li>
+        <li>教師利用網站提示及數線分段，引導學生依序判斷 BMI &lt; 18.5、BMI &lt; 24、BMI &lt; 27。前一條件不成立才進入下一判斷，因此無須重複設定已排除的下限。</li>
+        <li>學生補上三個判斷菱形、四種分類輸出及結束圖形，將分支標示為 Yes／No，並以箭頭連接。教師巡視，檢查每個菱形是否有兩條分支。<br>課室英文：<span class="say">What does the diamond mean?</span> <span class="say">Connect the arrows.</span></li>
+      </ol>
+    </div>
+
+    <div class="stage">
+      <div class="when"><b>總結階段</b><span class="en">Summary stage</span><span class="time">5<small>分鐘</small></span>
+        <div class="split">回饋、繳交與叮嚀</div></div>
+      <div>
+        <ol>
+          <li>學生依檢核項目確認圖形、箭頭、Yes／No 分支及四種分類是否完整；同儕指出一項可修正之處。</li>
+          <li>教師提問：「哪個圖形表示輸入？哪個圖形表示判斷？條件不成立時，流程會往哪裡走？」並針對常見錯誤回饋。</li>
+          <li>學生截圖或匯出流程圖，以「班級_座號_BMI流程圖」命名，經親師生平台進入學習吧上傳，確認繳交成功。</li>
+        </ol>
+        <div class="endnote"><strong>第一節結束 End of the first session</strong><br>叮嚀：保留可編輯的 draw.io 檔案，供下一節對照 Scratch 使用；未完成者依教師指定期限補交。</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s2">
+    <div class="session-head"><h2>第二節 Session 2</h2><span class="badge">流程圖 → Scratch 程式 · 45 分鐘</span></div>
+
+    <div class="stage">
+      <div class="when"><b>準備階段</b><span class="en">Preparation stage</span><span class="time">5<small>分鐘</small></span></div>
+      <ol>
+        <li>師生以課室英文問候。學生開啟第一節流程圖與 Scratch，指出輸入、處理、判斷及輸出四個部分。</li>
+        <li>說明成果：依流程圖完成可輸入身高、體重並顯示分類的程式，最後設計人物造型。</li>
+      </ol>
+    </div>
+
+    <div class="stage">
+      <div class="when"><b>發展階段</b><span class="en">Development stage</span><span class="time">35<small>分鐘</small></span>
+        <div class="split">圖形與積木對照 10 分鐘（1）<br>程式建置 15 分鐘（2–4）<br>測試與創意繪圖 10 分鐘（5–6）</div></div>
+      <ol>
+        <li>教師對照流程圖與積木：
+          <div class="map">
+            <div><b>開始 橢圓</b>當綠旗被點擊</div>
+            <div><b>輸入 平行四邊形</b>詢問……並等待、回答</div>
+            <div><b>處理 矩形</b>變數設定及運算</div>
+            <div><b>判斷 菱形</b>如果……那麼……否則</div>
+            <div><b>輸出 平行四邊形</b>說出……、切換造型</div>
+          </div></li>
+        <li>教師示範建立 weight、height、BMI 變數。先詢問體重，將「回答」存入 weight；再詢問身高，將「回答」存入 height，避免第二次回答覆蓋第一次資料。</li>
+        <li>若身高以公分輸入，將 height 除以 100 換成公尺；以 <code>weight ÷ (height × height)</code> 計算 BMI。教師於各步驟暫停，確認學生跟上並檢查單位、變數及運算順序。</li>
+        <li>逐步加入巢狀「如果……那麼……否則」：先判斷 BMI &lt; 18.5，否則再判斷 BMI &lt; 24，否則再判斷 BMI &lt; 27，最後的否則輸出 obesity。各分支分別輸出 thin、normal、overweight、obesity。</li>
+        <li>學生使用教師提供的測試資料，檢查四個分支。例如身高固定 100 公分，體重依序輸入 18、18.5、24、27 公斤，確認四種結果與門檻值的歸屬。這些數值只供程式測試。</li>
+        <li>創意造型設計：學生使用造型編輯器繪製不同體型人物，搭配服裝、髮型或姿勢展現創意，為造型命名；在判斷分支加入「切換造型」，使人物隨結果改變。尚未完成四個造型者，先完成一個原創造型，其餘課後延伸。提醒尊重不同體型，避免以身材取笑他人。</li>
+      </ol>
+    </div>
+
+    <div class="stage">
+      <div class="when"><b>總結階段</b><span class="en">Summary stage</span><span class="time">5<small>分鐘</small></span>
+        <div class="split">分享、回饋與儲存</div></div>
+      <div>
+        <ol>
+          <li>學生展示一組輸入與分類結果，並說明程式如何進入對應分支；分享自己設計的人物造型。</li>
+          <li>教師依程式功能、判斷正確性與參與程度回饋，提醒檢查門檻值是否歸入正確分類。</li>
+        </ol>
+        <div class="endnote"><strong>第二節結束 End of the second session</strong>
+          <ol style="margin-top:4px">
+            <li>將作品以「班級_座號_BMI程式」命名，儲存或下載 .sb3 檔，依教師指定方式繳交。</li>
+            <li>課室英文：<span class="say">Create a variable.</span> <span class="say">Ask for the user’s height.</span> <span class="say">Click the green flag to test your program.</span></li>
+          </ol></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="assess" class="panel">
+    <h2>評量方式<small>Assessment Methods</small></h2>
+    <div class="rows">
+      <div class="row"><h3>形成性評量</h3><div>課堂提問、操作紀錄、流程圖檢核。</div></div>
+      <div class="row"><h3>總結性評量</h3><div>Scratch 作品完成度、功能正確性、課堂參與程度與作業繳交。</div></div>
+    </div>
+    <h2 style="margin-top:22px">評量規準<small>Rubrics</small></h2>
+    <div class="rubric">
+      <div class="r"><span class="pct">40%</span><div><b>作品完成度</b>：流程圖完整，Scratch 程式能執行並顯示結果。<div class="bar"><i style="width:40%"></i></div></div></div>
+      <div class="r"><span class="pct">30%</span><div><b>判斷邏輯</b>：輸入與單位換算正確，巢狀如果否則及分類結果正確。<div class="bar"><i style="width:30%"></i></div></div></div>
+      <div class="r"><span class="pct">20%</span><div><b>課堂參與</b>：積極操作、回應提問並參與同儕檢核。<div class="bar"><i style="width:20%"></i></div></div></div>
+      <div class="r"><span class="pct">10%</span><div><b>繳交與表達</b>：按時繳交作品，並能說明判斷流程。<div class="bar"><i style="width:10%"></i></div></div></div>
+    </div>
+    <p class="muted" style="font-size:.92em;margin-top:12px">人物繪圖著重創意表達，不以繪畫技巧評定程式能力。</p>
+  </section>
+
+  <section id="refs" class="panel links">
+    <h2>參考資料<small>References</small></h2>
+    <ul>
+      <li>教育部《十二年國民基本教育課程綱要總綱》與科技領域、健康與體育領域課程綱要</li>
+      <li>BMI：<a href="https://taksito.github.io/flowchart-work">https://taksito.github.io/flowchart-work</a></li>
+      <li>draw.io：<a href="https://app.diagrams.net/">https://app.diagrams.net/</a></li>
+      <li>Scratch：<a href="https://scratch.mit.edu/">https://scratch.mit.edu/</a></li>
+      <li>衛生福利部：成人與兒童青少年 BMI 分類說明 <a href="https://www.mohw.gov.tw/fp-16-23244-1.html">https://www.mohw.gov.tw/fp-16-23244-1.html</a></li>
+    </ul>
+  </section>
+</main>
+<footer class="foot">Mr.Ho 雙語資訊課程 · 教案：選擇結構-BMI</footer>
+<script>
+(function(){
+  var b=document.getElementById('big');
+  function set(on){document.body.classList.toggle('big',on);b.setAttribute('aria-pressed',on?'true':'false');try{localStorage.setItem('plan-big',on?'1':'0')}catch(e){}}
+  try{if(localStorage.getItem('plan-big')==='1')set(true)}catch(e){}
+  b.addEventListener('click',function(){set(!document.body.classList.contains('big'))});
+  // highlight the section in view
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id)})}})},{rootMargin:'-30% 0px -60% 0px'});
+    links.forEach(function(a){var s=document.querySelector(a.getAttribute('href'));if(s)io.observe(s)});
+  }
+})();
+</script>
+</body>
+</html>

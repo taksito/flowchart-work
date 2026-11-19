@@ -50,6 +50,10 @@ a.card.mine{flex-direction:row;align-items:center;gap:16px;margin-top:20px}a.car
 ol{padding-left:20px;color:var(--muted);font-size:14px}
 h3{font-size:15px;margin:36px 0 6px}
 footer{margin-top:40px;font-size:12px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:10px}.stack>a.card{flex:1}
+a.plan-btn{display:flex;align-items:center;gap:10px;background:var(--soft);border:1px dashed var(--accent);border-radius:12px;padding:10px 14px;color:var(--ink);text-decoration:none;font-weight:500;font-size:15px;transition:border-color .15s,background .15s}
+a.plan-btn:hover,a.plan-btn:focus-visible{border-style:solid;background:var(--panel);outline:none}
+a.plan-btn svg{width:26px;height:26px;color:var(--accent);flex:0 0 auto}a.plan-btn span{flex:1;line-height:1.3}a.plan-btn small{display:block;font-size:12px;color:var(--muted);font-weight:400}a.plan-btn b{color:var(--accent)}
 @media (prefers-reduced-motion:reduce){a.card{transition:none}}
 </style>
 </head>
@@ -96,12 +100,15 @@ footer{margin-top:40px;font-size:12px;color:var(--muted)}
       <p>+ − × ÷ in English, average four scores, pass or fail. 四則運算的英文、平均、及格判斷。</p>
       <span class="go">Start 開始上課 →</span>
     </a>
-    <a class="card" href="learn/u2/">
-      <div class="top"><svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"><path d="M6 34h36"/><path d="M6 34v-4M16 34v-4M26 34v-4M36 34v-4"/><path d="M16 22l6-10 6 10"/><circle cx="22" cy="8" r="2"/></svg><span class="num">UNIT 02</span></div>
-      <h2>BMI &amp; Flowchart<small>BMI 流程圖教學</small></h2>
-      <p>BMI formula, If / Else decisions, and a Scratch BMI calculator. BMI 計算、條件判斷到 Scratch。</p>
-      <span class="go">Start 開始上課 →</span>
-    </a>
+    <div class="stack">
+      <a class="card" href="learn/u2/">
+        <div class="top"><svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"><path d="M6 34h36"/><path d="M6 34v-4M16 34v-4M26 34v-4M36 34v-4"/><path d="M16 22l6-10 6 10"/><circle cx="22" cy="8" r="2"/></svg><span class="num">UNIT 02</span></div>
+        <h2>BMI &amp; Flowchart<small>BMI 流程圖教學</small></h2>
+        <p>BMI formula, If / Else decisions, and a Scratch BMI calculator. BMI 計算、條件判斷到 Scratch。</p>
+        <span class="go">Start 開始上課 →</span>
+      </a>
+      <a class="plan-btn" href="learn/u2/plan.html"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4M9 11h7M9 15h7M9 19h4"/></svg><span>Lesson Plan 教案<small>公開觀議課講解用</small></span><b>→</b></a>
+    </div>
     <a class="card" href="learn/u3/">
       <div class="top"><svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="26" width="8" height="12" rx="2"/><rect x="18" y="26" width="8" height="12" rx="2"/><rect x="30" y="26" width="8" height="12" rx="2"/><path d="M22 8v12M18 16l4 4 4-4"/><path d="M40 14h4M42 12v4"/></svg><span class="num">UNIT 03</span></div>
       <h2>1 + 2 + … + n<small>加總：手指與盒子</small></h2>
