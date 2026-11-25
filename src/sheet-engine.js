@@ -119,6 +119,10 @@ const SH_FN={
   MIN(s,a){ const n=s.nums(a); return n.length?Math.min(...n):0; },
   COUNT(s,a){ return s.nums(a).length; },
   COUNTA(s,a){ let k=0; a.forEach(n=>{ if(n.k==='range') s.range(n.a,n.b).forEach(v=>{ if(v!==null&&v!=='') k++; }); else if(n.k!=='blank'){ const v=s.evalNode(n); if(v!==null&&v!=='') k++; } }); return k; },
+  COUNTIFS(s,a){ if(a.length<2||a.length%2) throw shErr('#N/A'); let ok=null;
+    for(let i=0;i<a.length;i+=2){ if(a[i].k!=='range') throw shErr('#N/A'); const f=critFn(s.evalNode(a[i+1])), vals=s.range(a[i].a,a[i].b);
+      if(ok&&ok.length!==vals.length) throw shErr('#VALUE!'); ok=vals.map((v,j)=>(ok?ok[j]:true)&&f(v)); }
+    return ok.filter(Boolean).length; },
   COUNTIF(s,a){ if(a.length!==2||a[0].k!=='range') throw shErr('#N/A'); const f=critFn(s.evalNode(a[1])); return s.range(a[0].a,a[0].b).filter(f).length; },
   ROUND(s,a){ if(a.length<1) throw shErr('#N/A'); const x=toNum(s.evalNode(a[0])), d=a[1]?toNum(s.evalNode(a[1])):0, f=Math.pow(10,d); return Math.round(x*f+Math.sign(x)*1e-9)/f; },
   ABS(s,a){ return Math.abs(toNum(s.evalNode(a[0]))); },
@@ -186,8 +190,8 @@ function shShift(raw,dr,dc){
   return out;
 }
 
-/* ---------- the task: score sheet, rows 4–26 ---------- */
-const SH_FIRST=4, SH_LAST=26;
+/* ---------- the tasks: 1 = score sheet (rows 4–26, columns I–L); 2 = the same as review + counts (rows 31–37, columns D–H) ---------- */
+const SH_FIRST=4, SH_LAST=26, SH_SUBJ=['D','E','F','G','H'];
 const SH_DATA=[
 ['Mandon Junior High School First Term Exam 漫動國中第一次段考成績'],
 ['Analyser:','','serial:',799],
@@ -200,53 +204,84 @@ const SH_DATA=[
 [16,'Natsu Dragneel','納茲·多拉格尼爾',41,42,50,31,99],[17,'Reborn','里包恩',14,71,28,89,60],[18,'Tsunayoshi Sawada','澤田綱吉',59,43,96,17,43],
 [19,'Hayato Gokudera','獄寺隼人',50,30,'',74,12],[20,'Takeshi Yamamoto','山本武',40,35,17,39,55],[21,'Ryohei Sasagawa','笹川了平','',73,51,'',''],
 [22,'Lambo','藍波',73,51,15,17,17],[23,'Kyoya Hibari','雲雀恭彌',69,'',91,83,71]];
-function shStart(){ const cells={}; SH_DATA.forEach((row,r)=>row.forEach((v,c)=>{ if(v!==''&&v!=null) cells[refName(c,r)]=String(v); })); return cells; }
+/* rows 31–37 of task 2: [row, label in B, label in C, test for one score] */
+const SH_BANDS=[[31,'Participant counts','參加人數',null],[32,'Score counts','100',v=>v===100],[33,'','99-90',v=>v>=90&&v<=99],[34,'','89-80',v=>v>=80&&v<90],[35,'','79-70',v=>v>=70&&v<80],[36,'','69-60',v=>v>=60&&v<70],[37,'','<60',v=>v<60]];
+function shStart(task){ const cells={}; SH_DATA.forEach((row,r)=>row.forEach((v,c)=>{ if(v!==''&&v!=null) cells[refName(c,r)]=String(v); }));
+  if(task===2) SH_BANDS.forEach(([r,b,c])=>{ if(b) cells['B'+r]=b; cells['C'+r]=c; });
+  return cells; }
+/* the cells students fill: [row, col] zero-based */
+function shTodo(task,r,c){ if(r>=SH_FIRST-1&&r<=SH_LAST-1&&c>=8&&c<=11) return true; return task===2&&r>=30&&r<=36&&c>=3&&c<=7; }
 
 const SH_PASS=/及格|pass|yes|通過|○|✓|⭕/i, SH_FAIL=/不及格|未及格|fail|\bno\b|不通過|×|✗|❌/i;
 function shPassCat(v){ if(v===true) return 'pass'; if(v===false) return 'fail'; const t=String(v==null?'':v).trim(); if(!t) return null; if(SH_FAIL.test(t)) return 'fail'; if(SH_PASS.test(t)) return 'pass'; return null; }
-/* grade one sheet: columns I (Total), J (Average), K (Pass or not), L (Rank) for rows 4–26 */
-function gradeSheet(cells){
-  const S=new Sheet(cells), base=new Sheet(shStart());
+/* one group of cells: points for using the function (fnPts, when 80% of the cells use it) + points for the share of right cells */
+function shPart(S,o){
+  let right=0, formulas=0, typed=0, usesFn=0, errs=0; const bad=[];
+  o.cells.forEach(name=>{ const raw=S.raw(name), v=S.value(name), isF=raw[0]==='=';
+    if(isF) formulas++; else if(raw.trim()!=='') typed++;
+    if(isF&&o.fn.test(raw)) usesFn++;
+    if(isErr(v)) errs++;
+    if(isF&&o.ok(v,name)) right++; else bad.push(name); });
+  const n=o.cells.length, useOK=usesFn>=Math.ceil(n*0.8);
+  const got=Math.round(((useOK?o.fnPts:usesFn?o.fnPts/2:0)+o.okPts*right/n)*10)/10;
+  const note=[];
+  if(!formulas&&!typed) note.push('還沒有填。');
+  if(typed) note.push(`有 ${typed} 格是直接打的數字或文字，要用公式（= 開頭）才算分。`);
+  if(!useOK&&formulas) note.push(`請用 ${o.fnName} 函數。`);
+  if(errs) note.push(`有 ${errs} 格出現錯誤（例如 #DIV/0!、#NAME?、#N/A）。`);
+  return {right,n,formulas,bad,got,note,max:o.fnPts+o.okPts};
+}
+function gradeSheet(cells,task){
+  task=task===2?2:1;
+  const S=new Sheet(cells), base=new Sheet(shStart(task));
   const rows=[]; for(let r=SH_FIRST;r<=SH_LAST;r++) rows.push(r);
-  /* the right answers, worked out from the scores on the student's own sheet (so a changed score is still checked fairly) */
-  const scores=r=>['D','E','F','G','H'].map(c=>S.value(c+r)).filter(v=>typeof v==='number');
+  /* the right answers, worked out from the scores on the student's own sheet */
+  const scores=r=>SH_SUBJ.map(c=>S.value(c+r)).filter(v=>typeof v==='number');
   const exp={};
   rows.forEach(r=>{ const n=scores(r), t=n.reduce((a,b)=>a+b,0); exp[r]={total:t,avg:n.length?t/n.length:null}; });
   const rankOf=(key,r)=>1+rows.filter(q=>exp[q][key]!=null&&exp[q][key]>exp[r][key]+1e-9).length;
   rows.forEach(r=>{ exp[r].rankT=rankOf('total',r); exp[r].rankA=exp[r].avg==null?null:rankOf('avg',r); });
   const close=(v,x,tol)=>typeof v==='number'&&x!=null&&Math.abs(v-x)<=tol;
-  const parts=[
-    {key:'sum',col:'I',name:'Total 總分（SUM）',fn:/SUM\s*\(/i,ok:(v,r)=>close(v,exp[r].total,1e-6),want:r=>fmtNum(exp[r].total)},
-    {key:'avg',col:'J',name:'Average 平均（AVERAGE）',fn:/AVERAGE\s*\(/i,ok:(v,r)=>close(v,exp[r].avg,0.051),want:r=>exp[r].avg==null?'':fmtNum(Math.round(exp[r].avg*100)/100)},
-    {key:'if',col:'K',name:'Pass or not 及格與否（IF）',fn:/IF\s*\(/i,ok:(v,r)=>exp[r].avg!=null&&shPassCat(v)===(exp[r].avg>=60?'pass':'fail'),want:r=>exp[r].avg==null?'':exp[r].avg>=60?'及格':'不及格'},
-    {key:'rank',col:'L',name:'Rank 名次（RANK）',fn:/RANK(\.EQ)?\s*\(/i,ok:(v,r)=>typeof v==='number'&&(v===exp[r].rankT||v===exp[r].rankA),want:r=>String(exp[r].rankT)}
-  ];
-  const wrong=[], items=[], notes=[];
-  parts.forEach(P=>{
-    let right=0, formulas=0, typed=0, usesFn=0, errs=0; const bad=[];
-    rows.forEach(r=>{
-      const name=P.col+r, raw=S.raw(name), v=S.value(name), isF=raw[0]==='=';
-      if(isF) formulas++; else if(raw.trim()!=='') typed++;
-      if(isF&&P.fn.test(raw)) usesFn++;
-      if(isErr(v)) errs++;
-      if(isF&&P.ok(v,r)) right++; else { bad.push(r); wrong.push(name); }
-    });
-    const n=rows.length, useOK=usesFn>=Math.ceil(n*0.8);
-    const got=Math.round(((useOK?5:usesFn?2:0)+20*right/n)*10)/10;
-    const note=[];
-    if(!formulas&&!typed) note.push('還沒有填。');
-    if(typed) note.push(`有 ${typed} 格是直接打的數字或文字，要用公式（= 開頭）才算分。`);
-    if(!useOK&&formulas) note.push(`請用 ${P.key==='sum'?'SUM':P.key==='avg'?'AVERAGE':P.key==='if'?'IF':'RANK'} 函數。`);
-    if(errs) note.push(`有 ${errs} 格出現錯誤（例如 #DIV/0!、#NAME?、#N/A）。`);
-    if(P.key==='rank'&&formulas&&right<n){ const f=S.raw('L'+SH_LAST); if(f[0]==='='&&!/\$[A-L]\$4\s*:\s*\$[A-L]\$26/i.test(f)) note.push('往下複製後範圍跑掉了：範圍的開頭和結尾都要加 $ 鎖住，例如 $I$4:$I$26（在參照上按 F4）。'); }
-    if(P.key==='avg'&&formulas&&right<n){ const f=S.raw('J'+SH_FIRST); if(/\/\s*5/.test(f)) note.push('除以 5 會把缺考（空白）當成 0 分；AVERAGE 會自動略過空白的格子。'); }
-    if(P.key==='if'&&formulas&&right<n) note.push('平均 60 分以上是及格，剛好 60 也算及格：用 >=60。');
-    items.push({key:P.key,name:P.name,col:P.col,max:25,got,right,n,note:note.join(' ')});
-    bad.slice(0,3).forEach(r=>{ if(S.raw(P.col+r)[0]==='=') notes.push(`${P.col}${r}（${S.raw('C'+r)||S.raw('B'+r)}）：應該是 ${P.want(r)}，現在是 ${shShow(S.value(P.col+r))||'空白'}`); });
+  const rowOf=name=>Number(name.slice(1));
+  const fnPts=task===2?2:5, okPts=task===2?8:20;
+  const tops=[
+    {key:'sum',col:'I',name:'Total 總分（SUM）',fn:/SUM\s*\(/i,fnName:'SUM',ok:(v,n)=>close(v,exp[rowOf(n)].total,1e-6),want:r=>fmtNum(exp[r].total)},
+    {key:'avg',col:'J',name:'Average 平均（AVERAGE）',fn:/AVERAGE\s*\(/i,fnName:'AVERAGE',ok:(v,n)=>close(v,exp[rowOf(n)].avg,0.051),want:r=>exp[r].avg==null?'':fmtNum(Math.round(exp[r].avg*100)/100)},
+    {key:'if',col:'K',name:'Passed or not 及格與否（IF）',fn:/IF\s*\(/i,fnName:'IF',ok:(v,n)=>{ const e=exp[rowOf(n)]; return e.avg!=null&&shPassCat(v)===(e.avg>=60?'pass':'fail'); },want:r=>exp[r].avg==null?'':exp[r].avg>=60?'及格':'不及格'},
+    {key:'rank',col:'L',name:'Rank 名次（RANK）',fn:/RANK(\.EQ)?\s*\(/i,fnName:'RANK',ok:(v,n)=>{ const e=exp[rowOf(n)]; return typeof v==='number'&&(v===e.rankT||v===e.rankA); },want:r=>String(exp[r].rankT)}];
+  const items=[], wrong=[], notes=[];
+  tops.forEach(P=>{
+    const g=shPart(S,{cells:rows.map(r=>P.col+r),fn:P.fn,fnName:P.fnName,ok:P.ok,fnPts,okPts});
+    if(P.key==='rank'&&g.formulas&&g.right<g.n){ const f=S.raw('L'+SH_LAST); if(f[0]==='='&&!/\$[A-L]\$4\s*:\s*\$[A-L]\$26/i.test(f)) g.note.push('往下複製後範圍跑掉了：範圍的開頭和結尾都要加 $ 鎖住，例如 $I$4:$I$26（在參照上按 F4）。'); }
+    if(P.key==='avg'&&g.formulas&&g.right<g.n){ if(/\/\s*5/.test(S.raw('J'+SH_FIRST))) g.note.push('除以 5 會把缺考（空白）當成 0 分；AVERAGE 會自動略過空白的格子。'); }
+    if(P.key==='if'&&g.formulas&&g.right<g.n) g.note.push('平均 60 分以上是及格，剛好 60 也算及格：用 >=60。');
+    items.push({key:P.key,name:(task===2?'複習 Review · ':'')+P.name,col:P.col,max:g.max,got:g.got,right:g.right,n:g.n,note:g.note.join(' ')});
+    wrong.push(...g.bad);
+    g.bad.slice(0,task===2?1:3).forEach(name=>{ const r=rowOf(name); if(S.raw(name)[0]==='=') notes.push(`${name}（${S.raw('C'+r)||S.raw('B'+r)}）：應該是 ${P.want(r)}，現在是 ${shShow(S.value(name))||'空白'}`); });
   });
+  if(task===2){
+    /* counts per subject: how many took it, and how many in each band */
+    const col=c=>rows.map(r=>S.value(c+r)).filter(v=>typeof v==='number');
+    const want=(c,r)=>{ const b=SH_BANDS.find(x=>x[0]===r), v=col(c); return b[3]?v.filter(b[3]).length:v.length; };
+    const okCount=(v,name)=>typeof v==='number'&&v===want(name[0],rowOf(name));
+    const parts=[
+      {key:'count',name:'Participant counts 參加人數（COUNT）',cells:SH_SUBJ.map(c=>c+'31'),fn:/COUNTA?\s*\(/i,fnName:'COUNT',fnPts:2,okPts:8},
+      {key:'bands',name:'Score counts 分數段人數（COUNTIF）',cells:[32,33,34,35,36,37].flatMap(r=>SH_SUBJ.map(c=>c+r)),fn:/COUNTIFS?\s*\(/i,fnName:'COUNTIF 或 COUNTIFS',fnPts:10,okPts:40}];
+    parts.forEach(P=>{
+      const g=shPart(S,{cells:P.cells,fn:P.fn,fnName:P.fnName,ok:okCount,fnPts:P.fnPts,okPts:P.okPts});
+      if(P.key==='count'&&g.formulas&&g.right<g.n&&/COUNTA\s*\(/i.test(S.raw('D31'))) g.note.push('COUNTA 會把文字也算進去；只數有分數的人用 COUNT。');
+      if(P.key==='bands'&&g.formulas&&g.right<g.n){
+        g.note.push('每一段要同時有「下限」和「上限」，例如 99-90 是 >=90 而且 <=99：用 COUNTIFS，或用 COUNTIF(>=90) 減掉 COUNTIF(=100)。');
+        const sumBad=SH_SUBJ.filter(c=>{ const t=[32,33,34,35,36,37].reduce((a,r)=>a+(typeof S.value(c+r)==='number'?S.value(c+r):0),0), n=S.value(c+'31'); return typeof n==='number'&&t!==n; });
+        if(sumBad.length) g.note.push(`檢查看看：每一科六段的人數加起來，要等於參加人數（${sumBad.join('、')} 欄對不起來）。`); }
+      items.push({key:P.key,name:P.name,col:'D–H',max:g.max,got:g.got,right:g.right,n:g.n,note:g.note.join(' ')});
+      wrong.push(...g.bad);
+      g.bad.slice(0,2).forEach(name=>{ if(S.raw(name)[0]==='=') notes.push(`${name}（${S.raw('C'+rowOf(name))||'參加人數'}，${S.raw(name[0]+'3').replace(/\(.*/,'')}）：應該是 ${want(name[0],rowOf(name))}，現在是 ${shShow(S.value(name))||'空白'}`); });
+    });
+  }
   /* the given scores must stay as they were */
-  const changed=[]; rows.forEach(r=>['A','B','C','D','E','F','G','H'].forEach(c=>{ if(S.raw(c+r)!==base.raw(c+r)) changed.push(c+r); }));
+  const changed=[]; rows.forEach(r=>['A','B','C',...SH_SUBJ].forEach(c=>{ if(S.raw(c+r)!==base.raw(c+r)) changed.push(c+r); }));
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
-  return {total,items,wrong,notes:notes.slice(0,6),changed,passed:total>=100&&!changed.length};
+  return {task,total,items,wrong,notes:notes.slice(0,6),changed,passed:total>=100&&!changed.length};
 }
-if(typeof module!=='undefined') module.exports={Sheet,shParse,shShift,shShow,shStart,gradeSheet,parseRef,refName,isErr,SH_COLS,SH_ROWS};
+if(typeof module!=='undefined') module.exports={Sheet,shParse,shShift,shShow,shStart,shTodo,gradeSheet,parseRef,refName,isErr,SH_COLS,SH_ROWS};
