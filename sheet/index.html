@@ -61,7 +61,8 @@ table.grid{border-collapse:separate;border-spacing:0;table-layout:fixed;font-siz
 .grid td.wrong{box-shadow:inset 0 0 0 2px var(--bad)}
 .grid tr.headrow td{height:40px}
 #selBox{position:absolute;border:2px solid var(--sel);background:rgba(26,115,232,.06);pointer-events:none;z-index:2}
-#fillH{position:absolute;width:8px;height:8px;background:var(--sel);border:1px solid #fff;cursor:crosshair;z-index:2}
+#fillH{position:absolute;width:10px;height:10px;background:var(--sel);border:1.5px solid #fff;cursor:crosshair;z-index:2;touch-action:none}
+#fillH::after{content:"";position:absolute;inset:-7px}
 #fillBox{position:absolute;border:1px dashed var(--sel);pointer-events:none;z-index:2}
 .refbox{position:absolute;border:2px dashed;pointer-events:none;z-index:2}
 #cellEd{position:absolute;z-index:5;font:13px "JetBrains Mono",monospace;padding:0 5px;border:2px solid var(--sel);outline:none;background:#fff;color:#1e2a2c;box-shadow:0 2px 8px rgba(0,0,0,.18)}
@@ -126,7 +127,7 @@ aside h2{font-size:15px;margin:4px 0 8px}
       <div class="only2">
       <div class="fn"><h3>COUNT <small>數有幾個數字</small></h3><p><code>=COUNT(D4:D26)</code></p><p>Counts cells with a number; blanks (absent) are not counted. 只數有分數的格子，空白（缺考）不算。</p></div>
       <div class="fn"><h3>COUNTIF <small>數符合條件的</small></h3><p><code>=COUNTIF(D4:D26,100)</code></p><p><code>=COUNTIF(D4:D26,"&lt;60")</code></p><p>條件有 &gt; &lt; = 時要用 <code>" "</code> 包起來。</p></div>
-      <div class="fn"><h3>COUNTIFS <small>同時符合好幾個條件</small></h3><p><code>=COUNTIFS(D4:D26,"&gt;=90",D4:D26,"&lt;=99")</code></p><p>90 到 99 分：要 ≥ 90 而且 ≤ 99。也可以用 <code>COUNTIF(…,"&gt;=90")-COUNTIF(…,100)</code>。</p></div>
+      <div class="fn"><h3>COUNTIFS <small>同時符合好幾個條件</small></h3><p><code>=COUNTIFS(D4:D26,"&gt;=90",D4:D26,"&lt;=99")</code></p><p>90-99 分：要 ≥ 90 而且 ≤ 99。也可以用 <code>COUNTIF(…,"&gt;=90")-COUNTIF(…,100)</code>。</p></div>
       </div>
       <h2>Tips 小技巧</h2>
       <ol class="tips">
@@ -379,9 +380,11 @@ const SH_DATA=[
 [19,'Hayato Gokudera','獄寺隼人',50,30,'',74,12],[20,'Takeshi Yamamoto','山本武',40,35,17,39,55],[21,'Ryohei Sasagawa','笹川了平','',73,51,'',''],
 [22,'Lambo','藍波',73,51,15,17,17],[23,'Kyoya Hibari','雲雀恭彌',69,'',91,83,71]];
 /* rows 31–37 of task 2: [row, label in B, label in C, test for one score] */
-const SH_BANDS=[[31,'Participant counts','參加人數',null],[32,'Score counts','100',v=>v===100],[33,'','99-90',v=>v>=90&&v<=99],[34,'','89-80',v=>v>=80&&v<90],[35,'','79-70',v=>v>=70&&v<80],[36,'','69-60',v=>v>=60&&v<70],[37,'','<60',v=>v<60]];
+const SH_BANDS=[[31,'Participant counts','參加人數',null],[32,'Score counts','100',v=>v===100],[33,'','90-99',v=>v>=90&&v<=99],[34,'','80-89',v=>v>=80&&v<90],[35,'','70-79',v=>v>=70&&v<80],[36,'','60-69',v=>v>=60&&v<70],[37,'','< 60',v=>v<60]];
+/* put the labels of rows 31–37 back (older saves had other labels) */
+function shLabels(cells){ SH_BANDS.forEach(([r,b,c])=>{ if(b) cells['B'+r]=b; else delete cells['B'+r]; cells['C'+r]=c; }); return cells; }
 function shStart(task){ const cells={}; SH_DATA.forEach((row,r)=>row.forEach((v,c)=>{ if(v!==''&&v!=null) cells[refName(c,r)]=String(v); }));
-  if(task===2) SH_BANDS.forEach(([r,b,c])=>{ if(b) cells['B'+r]=b; cells['C'+r]=c; });
+  if(task===2) shLabels(cells);
   return cells; }
 /* the cells students fill: [row, col] zero-based */
 function shTodo(task,r,c){ if(r>=SH_FIRST-1&&r<=SH_LAST-1&&c>=8&&c<=11) return true; return task===2&&r>=30&&r<=36&&c>=3&&c<=7; }
@@ -427,8 +430,8 @@ function gradeSheet(cells,task,how){
   rows.forEach(r=>{ exp[r].rankT=rankOf('total',r); exp[r].rankA=exp[r].avg==null?null:rankOf('avg',r); });
   const close=(v,x,tol)=>typeof v==='number'&&x!=null&&Math.abs(v-x)<=tol;
   const rowOf=name=>Number(name.slice(1));
-  /* points: sheet 1 = 25 a column (first row 10, dragged rows 15); sheet 2 review = 10 a column (4 + 6) */
-  const firstPts=task===2?4:10, fillPts=task===2?6:15;
+  /* points: sheet 1 = 25 a column (first row 10, dragged rows 15); sheet 2 review = 20 in all, 5 a column (2 + 3) */
+  const firstPts=task===2?2:10, fillPts=task===2?3:15;
   const tops=[
     {key:'sum',col:'I',name:'Total 總分（SUM）',fn:/SUM\s*\(/i,fnName:'SUM',ok:(v,n)=>close(v,exp[rowOf(n)].total,1e-6),want:r=>fmtNum(exp[r].total)},
     {key:'avg',col:'J',name:'Average 平均（AVERAGE）',fn:/AVERAGE\s*\(/i,fnName:'AVERAGE',ok:(v,n)=>close(v,exp[rowOf(n)].avg,0.051),want:r=>exp[r].avg==null?'':fmtNum(Math.round(exp[r].avg*100)/100)},
@@ -452,12 +455,12 @@ function gradeSheet(cells,task,how){
     const right4=['E','F','G','H'], bandRows=[32,33,34,35,36,37];
     const parts=[
       {key:'count',name:'Participant counts 參加人數（COUNT）',first:['D31'],filled:right4.map(c=>c+'31'),fn:/COUNTA?\s*\(/i,fnName:'COUNT',firstPts:4,fillPts:6},
-      {key:'bands',name:'Score counts 分數段人數（COUNTIF）',first:bandRows.map(r=>'D'+r),filled:bandRows.flatMap(r=>right4.map(c=>c+r)),fn:/COUNTIFS?\s*\(/i,fnName:'COUNTIF 或 COUNTIFS',firstPts:20,fillPts:30}];
+      {key:'bands',name:'Score counts 分數段人數（COUNTIF）',first:bandRows.map(r=>'D'+r),filled:bandRows.flatMap(r=>right4.map(c=>c+r)),fn:/COUNTIFS?\s*\(/i,fnName:'COUNTIF 或 COUNTIFS',firstPts:28,fillPts:42}];
     parts.forEach(P=>{
       const g=shPart(S,how,{first:P.first,filled:P.filled,fn:P.fn,fnName:P.fnName,ok:okCount,firstPts:P.firstPts,fillPts:P.fillPts,dir:'往右拖到 H 欄'});
       if(P.key==='count'&&g.bad.length&&/COUNTA\s*\(/i.test(S.raw('D31'))) g.note.push('COUNTA 會把文字也算進去；只數有分數的人用 COUNT。');
       if(P.key==='bands'&&g.bad.some(n=>S.raw(n)[0]==='='&&!okCount(S.value(n),n))){
-        g.note.push('每一段要同時有「下限」和「上限」，例如 99-90 是 >=90 而且 <=99：用 COUNTIFS，或用 COUNTIF(>=90) 減掉 COUNTIF(=100)。');
+        g.note.push('每一段要同時有「下限」和「上限」，例如 90-99 是 >=90 而且 <=99：用 COUNTIFS，或用 COUNTIF(>=90) 減掉 COUNTIF(=100)。');
         const sumBad=SH_SUBJ.filter(c=>{ const t=bandRows.reduce((a,r)=>a+(typeof S.value(c+r)==='number'?S.value(c+r):0),0), n=S.value(c+'31'); return typeof n==='number'&&t!==n; });
         if(sumBad.length) g.note.push(`檢查看看：每一科六段的人數加起來，要等於參加人數（${sumBad.join('、')} 欄對不起來）。`); }
       items.push({key:P.key,name:P.name,col:'D–H',max:g.max,got:g.got,detail:`D 欄公式 ${g.rightFirst}/${g.nFirst}，往右拖曳 ${g.rightFill}/${g.nFill} 格`,note:g.note.join(' ')});
@@ -470,7 +473,7 @@ function gradeSheet(cells,task,how){
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   return {task,total,items,wrong,notes:notes.slice(0,6),changed,passed:total>=100&&!changed.length};
 }
-if(typeof module!=='undefined') module.exports={shHasRef,Sheet,shParse,shShift,shShow,shStart,shTodo,gradeSheet,parseRef,refName,isErr,SH_COLS,SH_ROWS};
+if(typeof module!=='undefined') module.exports={shLabels,shHasRef,Sheet,shParse,shShift,shShow,shStart,shTodo,gradeSheet,parseRef,refName,isErr,SH_COLS,SH_ROWS};
 </script>
 <script>
 {
@@ -480,7 +483,7 @@ let task=/(^|#)2$/.test(location.hash)?2:1; try{ if(!location.hash&&localStorage
 const stacks={1:{u:[],r:[]},2:{u:[],r:[]}};
 const W=[42,56,130,118,70,70,70,70,70,76,80,96,92];
 /* cells = what is typed in each cell; how = how it got there: type, fill (dragged), paste, filld (Ctrl+D) — only dragged cells score below the first row */
-function loadCells(t){ let c=shStart(t), h={}; try{ const s=JSON.parse(localStorage.getItem(KEYS[t])||'null'); if(s&&typeof s==='object'){ if(s.cells&&typeof s.cells==='object'){ c=s.cells; h=s.how||{}; } else c=s; } }catch(e){} return {c,h}; }
+function loadCells(t){ let c=shStart(t), h={}; try{ const s=JSON.parse(localStorage.getItem(KEYS[t])||'null'); if(s&&typeof s==='object'){ if(s.cells&&typeof s.cells==='object'){ c=s.cells; h=s.how||{}; } else c=s; } }catch(e){} if(t===2) shLabels(c); return {c,h}; }
 let how={}, cells=(()=>{ const x=loadCells(task); how=x.h; return x.c; })();
 let S=new Sheet(cells), undo=stacks[task].u, redo=stacks[task].r, wrongSet=new Set();
 let sel={r:3,c:8}, anc={r:3,c:8}, editing=null, point=null, drag=null, fill=null, clip=null;
@@ -533,7 +536,7 @@ function rect(r1,c1,r2,c2){ const a=TD[Math.min(r1,r2)][Math.min(c1,c2)], b=TD[M
 const place=(el,q,pad=0)=>{ el.style.left=(q.x-pad)+'px'; el.style.top=(q.y-pad)+'px'; el.style.width=(q.w+pad*2)+'px'; el.style.height=(q.h+pad*2)+'px'; };
 function drawSel(){
   const q=rect(anc.r,anc.c,sel.r,sel.c); place($('#selBox'),q,1);
-  const f=$('#fillH'); f.style.left=(q.x+q.w-5)+'px'; f.style.top=(q.y+q.h-5)+'px'; f.hidden=!!editing;
+  const f=$('#fillH'); f.style.left=(q.x+q.w-6)+'px'; f.style.top=(q.y+q.h-6)+'px'; f.hidden=!!editing;
   document.querySelectorAll('.grid th.on').forEach(t=>t.classList.remove('on'));
   for(let c=Math.min(anc.c,sel.c);c<=Math.max(anc.c,sel.c);c++) grid.querySelector(`[data-hc="${c}"]`).classList.add('on');
   for(let r=Math.min(anc.r,sel.r);r<=Math.max(anc.r,sel.r);r++) grid.querySelector(`[data-hr="${r}"]`).classList.add('on');
@@ -604,36 +607,51 @@ function putRef(r1,c1,r2,c2){ const inp=active(); const t=r1===r2&&c1===c2?nm(r1
   const v=inp.value; let a,b; if(point){ a=point.a; b=point.b; } else { a=b=inp.selectionStart; }
   inp.value=v.slice(0,a)+t+v.slice(b); point={a,b:a+t.length,r:r1,c:c1}; const keep=point; sync(inp); point=keep; inp.focus(); inp.setSelectionRange(point.b,point.b); }
 
-/* ---------- mouse ---------- */
+/* ---------- mouse: pointer capture keeps the drag going outside the grid and the window ---------- */
 const cellAt=ev=>{ const td=ev.target.closest&&ev.target.closest('td'); return td?{r:+td.dataset.r,c:+td.dataset.c}:null; };
-gw.addEventListener('mousedown',ev=>{
-  if(ev.target.id==='cellEd') return;
-  if(ev.target.id==='fillH'){ ev.preventDefault(); fill={...box(),tr:sel.r,tc:sel.c}; return; }
-  const at=cellAt(ev); if(!at) return;
-  if(editing&&canPoint()){ ev.preventDefault(); putRef(at.r,at.c,at.r,at.c); drag={point:true,r:at.r,c:at.c}; return; }
-  if(editing) commit(0,0);
-  ev.preventDefault(); gw.focus({preventScroll:true});
-  select(at.r,at.c,ev.shiftKey); drag={point:false};
+/* the visible cell area (without the headers and the scroll bars) */
+function area(){ const g=gw.getBoundingClientRect(), hh=grid.tHead.getBoundingClientRect().height; return {l:g.left+W[0],t:g.top+hh,r:g.left+gw.clientWidth,b:g.top+gw.clientHeight}; }
+function cellAtPoint(x,y){ const A=area(); const cx=Math.max(A.l+2,Math.min(A.r-2,x)), cy=Math.max(A.t+2,Math.min(A.b-2,y));
+  const el=document.elementFromPoint(cx,cy); const td=el&&el.closest&&el.closest('td'); return td?{r:+td.dataset.r,c:+td.dataset.c}:null; }
+let lastPt=null, raf=0;
+function edgeLoop(){
+  raf=0; if(!lastPt||!(fill||drag)) return;
+  const A=area(), {x,y}=lastPt, zone=36; let dy=0, dx=0;
+  const sp=d=>Math.min(18,2+d*0.12);
+  if(y>A.b-zone) dy=sp(y-(A.b-zone)); else if(y<A.t+zone&&gw.scrollTop>0) dy=-sp((A.t+zone)-y);
+  if(x>A.r-zone) dx=sp(x-(A.r-zone)); else if(x<A.l+zone&&gw.scrollLeft>0) dx=-sp((A.l+zone)-x);
+  const before=[gw.scrollTop,gw.scrollLeft];
+  if(dy) gw.scrollTop+=dy; if(dx) gw.scrollLeft+=dx;
+  /* the page itself scrolls on small screens */
+  if(dy&&gw.scrollTop===before[0]&&(y>innerHeight-zone||y<zone)) window.scrollBy(0,dy);
+  if(dy||dx) track(x,y);
+  raf=requestAnimationFrame(edgeLoop);
+}
+gw.addEventListener('mousedown',ev=>{ if(ev.target.id!=='cellEd'&&ev.button===0) ev.preventDefault(); });   // keep the focus where it is (the formula being typed)
+gw.addEventListener('pointerdown',ev=>{
+  if(ev.button!==0||ev.target.id==='cellEd') return;
+  if(ev.target.id==='fillH'){ if(editing) commit(0,0); fill={...box(),tr:sel.r,tc:sel.c}; }
+  else {
+    const at=cellAt(ev); if(!at) return;
+    if(editing&&canPoint()){ putRef(at.r,at.c,at.r,at.c); drag={point:true,r:at.r,c:at.c}; }
+    else { if(editing) commit(0,0); gw.focus({preventScroll:true}); select(at.r,at.c,ev.shiftKey); drag={point:false}; }
+  }
+  try{ gw.setPointerCapture(ev.pointerId); }catch(e){}
+  lastPt={x:ev.clientX,y:ev.clientY};
 });
-/* while dragging near the edge, scroll and keep tracking the cell under the pointer */
-let lastPt=null, autoT=null;
-function cellAtPoint(x,y){ const g=gw.getBoundingClientRect(); const cx=Math.max(g.left+W[0]+4,Math.min(g.right-6,x)), cy=Math.max(g.top+28,Math.min(g.bottom-6,y)); const el=document.elementFromPoint(cx,cy); const td=el&&el.closest&&el.closest('td'); return td?{r:+td.dataset.r,c:+td.dataset.c}:null; }
-function autoScroll(){ if(!lastPt||!(fill||drag)){ clearInterval(autoT); autoT=null; return; } const g=gw.getBoundingClientRect(); let moved=false;
-  if(lastPt.y>g.bottom-20){ gw.scrollTop+=20; moved=true; } else if(lastPt.y<g.top+30){ gw.scrollTop-=20; moved=true; }
-  if(lastPt.x>g.right-20){ gw.scrollLeft+=20; moved=true; } else if(lastPt.x<g.left+W[0]){ gw.scrollLeft-=20; moved=true; }
-  if(moved) track({clientX:lastPt.x,clientY:lastPt.y,buttons:1}); }
-window.addEventListener('mousemove',ev=>{ if(!(fill||(drag&&(ev.buttons&1)))) return; lastPt={x:ev.clientX,y:ev.clientY}; track(ev); if(!autoT) autoT=setInterval(autoScroll,60); });
-function track(ev){
-  if(fill){ const at=cellAtPoint(ev.clientX,ev.clientY); if(!at) return; const b=fill; let r2=b.r2,c2=b.c2,r1=b.r1,c1=b.c1;
+gw.addEventListener('pointermove',ev=>{ if(!(fill||drag)) return; lastPt={x:ev.clientX,y:ev.clientY}; track(ev.clientX,ev.clientY); if(!raf) raf=requestAnimationFrame(edgeLoop); });
+function track(x,y){
+  const at=cellAtPoint(x,y); if(!at) return;
+  if(fill){ const b=fill; let r2=b.r2,c2=b.c2;
     const dDown=at.r-b.r2, dRight=at.c-b.c2;
     if(dDown>0&&dDown>=dRight) r2=at.r; else if(dRight>0) c2=at.c;
-    fill.to={r2,c2}; const f=$('#fillBox'); f.hidden=false; place(f,rect(r1,c1,r2,c2)); return; }
-  if(!drag||!(ev.buttons&1)) return; const at=cellAtPoint(ev.clientX,ev.clientY); if(!at) return;
+    fill.to={r2,c2}; const f=$('#fillBox'); f.hidden=false; place(f,rect(b.r1,b.c1,r2,c2)); return; }
+  if(!drag) return;
   if(drag.point){ putRef(drag.r,drag.c,at.r,at.c); return; }
   select(at.r,at.c,true);
 }
-window.addEventListener('mouseup',()=>{
-  lastPt=null;
+function endDrag(){
+  lastPt=null; if(raf){ cancelAnimationFrame(raf); raf=0; }
   if(fill){ const b=fill, to=fill.to; fill=null; $('#fillBox').hidden=true;
     if(to&&(to.r2>b.r2||to.c2>b.c2)) change(()=>{ const h=b.r2-b.r1+1, w=b.c2-b.c1+1;
       for(let r=b.r1;r<=to.r2;r++) for(let c=b.c1;c<=to.c2;c++){ if(r<=b.r2&&c<=b.c2) continue;
@@ -642,7 +660,8 @@ window.addEventListener('mouseup',()=>{
     if(to){ anc={r:b.r1,c:b.c1}; sel={r:to.r2,c:to.c2}; drawSel(); }
     return; }
   drag=null;
-});
+}
+gw.addEventListener('pointerup',endDrag); gw.addEventListener('pointercancel',endDrag); gw.addEventListener('lostpointercapture',()=>{ if(fill||drag) endDrag(); });
 gw.addEventListener('dblclick',ev=>{ const at=cellAt(ev); if(!at) return; select(at.r,at.c); startEdit('',false,'cell'); });
 gw.addEventListener('scroll',()=>{ if(editing){ const q=rect(editing.r,editing.c,editing.r,editing.c); ed.style.left=(q.x-1)+'px'; ed.style.top=(q.y-1)+'px'; } });
 

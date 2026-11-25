@@ -205,9 +205,11 @@ const SH_DATA=[
 [19,'Hayato Gokudera','獄寺隼人',50,30,'',74,12],[20,'Takeshi Yamamoto','山本武',40,35,17,39,55],[21,'Ryohei Sasagawa','笹川了平','',73,51,'',''],
 [22,'Lambo','藍波',73,51,15,17,17],[23,'Kyoya Hibari','雲雀恭彌',69,'',91,83,71]];
 /* rows 31–37 of task 2: [row, label in B, label in C, test for one score] */
-const SH_BANDS=[[31,'Participant counts','參加人數',null],[32,'Score counts','100',v=>v===100],[33,'','99-90',v=>v>=90&&v<=99],[34,'','89-80',v=>v>=80&&v<90],[35,'','79-70',v=>v>=70&&v<80],[36,'','69-60',v=>v>=60&&v<70],[37,'','<60',v=>v<60]];
+const SH_BANDS=[[31,'Participant counts','參加人數',null],[32,'Score counts','100',v=>v===100],[33,'','90-99',v=>v>=90&&v<=99],[34,'','80-89',v=>v>=80&&v<90],[35,'','70-79',v=>v>=70&&v<80],[36,'','60-69',v=>v>=60&&v<70],[37,'','< 60',v=>v<60]];
+/* put the labels of rows 31–37 back (older saves had other labels) */
+function shLabels(cells){ SH_BANDS.forEach(([r,b,c])=>{ if(b) cells['B'+r]=b; else delete cells['B'+r]; cells['C'+r]=c; }); return cells; }
 function shStart(task){ const cells={}; SH_DATA.forEach((row,r)=>row.forEach((v,c)=>{ if(v!==''&&v!=null) cells[refName(c,r)]=String(v); }));
-  if(task===2) SH_BANDS.forEach(([r,b,c])=>{ if(b) cells['B'+r]=b; cells['C'+r]=c; });
+  if(task===2) shLabels(cells);
   return cells; }
 /* the cells students fill: [row, col] zero-based */
 function shTodo(task,r,c){ if(r>=SH_FIRST-1&&r<=SH_LAST-1&&c>=8&&c<=11) return true; return task===2&&r>=30&&r<=36&&c>=3&&c<=7; }
@@ -253,8 +255,8 @@ function gradeSheet(cells,task,how){
   rows.forEach(r=>{ exp[r].rankT=rankOf('total',r); exp[r].rankA=exp[r].avg==null?null:rankOf('avg',r); });
   const close=(v,x,tol)=>typeof v==='number'&&x!=null&&Math.abs(v-x)<=tol;
   const rowOf=name=>Number(name.slice(1));
-  /* points: sheet 1 = 25 a column (first row 10, dragged rows 15); sheet 2 review = 10 a column (4 + 6) */
-  const firstPts=task===2?4:10, fillPts=task===2?6:15;
+  /* points: sheet 1 = 25 a column (first row 10, dragged rows 15); sheet 2 review = 20 in all, 5 a column (2 + 3) */
+  const firstPts=task===2?2:10, fillPts=task===2?3:15;
   const tops=[
     {key:'sum',col:'I',name:'Total 總分（SUM）',fn:/SUM\s*\(/i,fnName:'SUM',ok:(v,n)=>close(v,exp[rowOf(n)].total,1e-6),want:r=>fmtNum(exp[r].total)},
     {key:'avg',col:'J',name:'Average 平均（AVERAGE）',fn:/AVERAGE\s*\(/i,fnName:'AVERAGE',ok:(v,n)=>close(v,exp[rowOf(n)].avg,0.051),want:r=>exp[r].avg==null?'':fmtNum(Math.round(exp[r].avg*100)/100)},
@@ -278,12 +280,12 @@ function gradeSheet(cells,task,how){
     const right4=['E','F','G','H'], bandRows=[32,33,34,35,36,37];
     const parts=[
       {key:'count',name:'Participant counts 參加人數（COUNT）',first:['D31'],filled:right4.map(c=>c+'31'),fn:/COUNTA?\s*\(/i,fnName:'COUNT',firstPts:4,fillPts:6},
-      {key:'bands',name:'Score counts 分數段人數（COUNTIF）',first:bandRows.map(r=>'D'+r),filled:bandRows.flatMap(r=>right4.map(c=>c+r)),fn:/COUNTIFS?\s*\(/i,fnName:'COUNTIF 或 COUNTIFS',firstPts:20,fillPts:30}];
+      {key:'bands',name:'Score counts 分數段人數（COUNTIF）',first:bandRows.map(r=>'D'+r),filled:bandRows.flatMap(r=>right4.map(c=>c+r)),fn:/COUNTIFS?\s*\(/i,fnName:'COUNTIF 或 COUNTIFS',firstPts:28,fillPts:42}];
     parts.forEach(P=>{
       const g=shPart(S,how,{first:P.first,filled:P.filled,fn:P.fn,fnName:P.fnName,ok:okCount,firstPts:P.firstPts,fillPts:P.fillPts,dir:'往右拖到 H 欄'});
       if(P.key==='count'&&g.bad.length&&/COUNTA\s*\(/i.test(S.raw('D31'))) g.note.push('COUNTA 會把文字也算進去；只數有分數的人用 COUNT。');
       if(P.key==='bands'&&g.bad.some(n=>S.raw(n)[0]==='='&&!okCount(S.value(n),n))){
-        g.note.push('每一段要同時有「下限」和「上限」，例如 99-90 是 >=90 而且 <=99：用 COUNTIFS，或用 COUNTIF(>=90) 減掉 COUNTIF(=100)。');
+        g.note.push('每一段要同時有「下限」和「上限」，例如 90-99 是 >=90 而且 <=99：用 COUNTIFS，或用 COUNTIF(>=90) 減掉 COUNTIF(=100)。');
         const sumBad=SH_SUBJ.filter(c=>{ const t=bandRows.reduce((a,r)=>a+(typeof S.value(c+r)==='number'?S.value(c+r):0),0), n=S.value(c+'31'); return typeof n==='number'&&t!==n; });
         if(sumBad.length) g.note.push(`檢查看看：每一科六段的人數加起來，要等於參加人數（${sumBad.join('、')} 欄對不起來）。`); }
       items.push({key:P.key,name:P.name,col:'D–H',max:g.max,got:g.got,detail:`D 欄公式 ${g.rightFirst}/${g.nFirst}，往右拖曳 ${g.rightFill}/${g.nFill} 格`,note:g.note.join(' ')});
@@ -296,4 +298,4 @@ function gradeSheet(cells,task,how){
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   return {task,total,items,wrong,notes:notes.slice(0,6),changed,passed:total>=100&&!changed.length};
 }
-if(typeof module!=='undefined') module.exports={shHasRef,Sheet,shParse,shShift,shShow,shStart,shTodo,gradeSheet,parseRef,refName,isErr,SH_COLS,SH_ROWS};
+if(typeof module!=='undefined') module.exports={shLabels,shHasRef,Sheet,shParse,shShift,shShow,shStart,shTodo,gradeSheet,parseRef,refName,isErr,SH_COLS,SH_ROWS};
