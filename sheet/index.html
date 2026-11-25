@@ -130,9 +130,9 @@ aside h2{font-size:15px;margin:4px 0 8px}
       </div>
       <h2>Tips 小技巧</h2>
       <ol class="tips">
-        <li>Type <code>=</code> first. 公式一定要用 = 開頭。</li>
+        <li>Type <code>=</code> first and point at cells. 公式要用 = 開頭並參照格子；直接打數字（例如 484 或 =93+98）不算分。</li>
         <li>While typing a formula, click cells or drag a range to put them in. 打公式時可以直接點格子或拖曳範圍。</li>
-        <li>Drag the small square ■ at the corner of a cell down to copy. 拖曳格子右下角的小方塊往下複製。</li>
+        <li><b>Drag the small square ■ at the corner of a cell to fill the rest — only dragged cells score.</b> <b>往下（或往右）延伸一定要拖曳格子右下角的小方塊才算分</b>；用打的、複製貼上或 Ctrl+D 都不算。</li>
         <li>Press <code>F4</code> on a reference to add $. 在參照上按 F4 可以加上 $。</li>
         <li>Enter / F2 / double-click edits a cell; Delete clears it. 按 Enter、F2 或連按兩下可以修改，Delete 清除。</li>
       </ol>
@@ -388,25 +388,35 @@ function shTodo(task,r,c){ if(r>=SH_FIRST-1&&r<=SH_LAST-1&&c>=8&&c<=11) return t
 
 const SH_PASS=/及格|pass|yes|通過|○|✓|⭕/i, SH_FAIL=/不及格|未及格|fail|\bno\b|不通過|×|✗|❌/i;
 function shPassCat(v){ if(v===true) return 'pass'; if(v===false) return 'fail'; const t=String(v==null?'':v).trim(); if(!t) return null; if(SH_FAIL.test(t)) return 'fail'; if(SH_PASS.test(t)) return 'pass'; return null; }
-/* one group of cells: points for using the function (fnPts, when 80% of the cells use it) + points for the share of right cells */
-function shPart(S,o){
-  let right=0, formulas=0, typed=0, usesFn=0, errs=0; const bad=[];
-  o.cells.forEach(name=>{ const raw=S.raw(name), v=S.value(name), isF=raw[0]==='=';
-    if(isF) formulas++; else if(raw.trim()!=='') typed++;
-    if(isF&&o.fn.test(raw)) usesFn++;
-    if(isErr(v)) errs++;
-    if(isF&&o.ok(v,name)) right++; else bad.push(name); });
-  const n=o.cells.length, useOK=usesFn>=Math.ceil(n*0.8);
-  const got=Math.round(((useOK?o.fnPts:usesFn?o.fnPts/2:0)+o.okPts*right/n)*10)/10;
+/* does a formula point at cells (not just numbers typed into it)? */
+const shHasRef=raw=>/(^|[^A-Za-z0-9_.])\$?[A-L]\$?\d+(?![0-9(])/i.test(String(raw).replace(/"[^"]*"/g,''));
+/* one group: the first cells are typed (function + right answer), the rest must be filled by dragging the fill handle.
+   Typed numbers, formulas without cell references, and cells typed or pasted where dragging is needed get nothing. */
+function shPart(S,how,o){
+  let typed=0, noRef=0, notDragged=0, errs=0, rightFirst=0, rightFill=0, formulas=0; const bad=[];
+  const okCell=name=>{ const raw=S.raw(name), v=S.value(name); return raw[0]==='='&&shHasRef(raw)&&o.ok(v,name); };
+  const look=name=>{ const raw=S.raw(name), v=S.value(name);
+    if(raw[0]==='='){ formulas++; if(!shHasRef(raw)) noRef++; } else if(raw.trim()!=='') typed++;
+    if(isErr(v)) errs++; };
+  let firstGot=0;
+  o.first.forEach(name=>{ look(name);
+    if(okCell(name)){ rightFirst++; firstGot+=(o.fn.test(S.raw(name))?1:0.5)*o.firstPts/o.first.length; }
+    else bad.push(name); });
+  o.filled.forEach(name=>{ look(name);
+    if(okCell(name)&&how[name]==='fill') rightFill++;
+    else { bad.push(name); if(okCell(name)) notDragged++; } });
+  const got=Math.round((firstGot+o.fillPts*rightFill/o.filled.length)*10)/10;
   const note=[];
   if(!formulas&&!typed) note.push('還沒有填。');
-  if(typed) note.push(`有 ${typed} 格是直接打的數字或文字，要用公式（= 開頭）才算分。`);
-  if(!useOK&&formulas) note.push(`請用 ${o.fnName} 函數。`);
+  if(typed) note.push(`有 ${typed} 格是直接打的數字或文字，不算分，要用公式（= 開頭）。`);
+  if(noRef) note.push(`有 ${noRef} 個公式沒有參照格子（例如 =93+98），不算分，要寫成 D4、D4:H4 這樣的參照。`);
+  if(o.first.some(n=>S.raw(n)[0]==='='&&!o.fn.test(S.raw(n)))) note.push(`請用 ${o.fnName} 函數（沒用只得一半）。`);
+  if(notDragged) note.push(`有 ${notDragged} 格答案對了，但不是用拖曳的（打字、複製貼上或 Ctrl+D），不算分：請拖曳 ${o.first.join('、')} 右下角的小方塊${o.dir}。`);
   if(errs) note.push(`有 ${errs} 格出現錯誤（例如 #DIV/0!、#NAME?、#N/A）。`);
-  return {right,n,formulas,bad,got,note,max:o.fnPts+o.okPts};
+  return {rightFirst,rightFill,nFirst:o.first.length,nFill:o.filled.length,formulas,bad,got,note,max:o.firstPts+o.fillPts};
 }
-function gradeSheet(cells,task){
-  task=task===2?2:1;
+function gradeSheet(cells,task,how){
+  task=task===2?2:1; how=how||{};
   const S=new Sheet(cells), base=new Sheet(shStart(task));
   const rows=[]; for(let r=SH_FIRST;r<=SH_LAST;r++) rows.push(r);
   /* the right answers, worked out from the scores on the student's own sheet */
@@ -417,7 +427,8 @@ function gradeSheet(cells,task){
   rows.forEach(r=>{ exp[r].rankT=rankOf('total',r); exp[r].rankA=exp[r].avg==null?null:rankOf('avg',r); });
   const close=(v,x,tol)=>typeof v==='number'&&x!=null&&Math.abs(v-x)<=tol;
   const rowOf=name=>Number(name.slice(1));
-  const fnPts=task===2?2:5, okPts=task===2?8:20;
+  /* points: sheet 1 = 25 a column (first row 10, dragged rows 15); sheet 2 review = 10 a column (4 + 6) */
+  const firstPts=task===2?4:10, fillPts=task===2?6:15;
   const tops=[
     {key:'sum',col:'I',name:'Total 總分（SUM）',fn:/SUM\s*\(/i,fnName:'SUM',ok:(v,n)=>close(v,exp[rowOf(n)].total,1e-6),want:r=>fmtNum(exp[r].total)},
     {key:'avg',col:'J',name:'Average 平均（AVERAGE）',fn:/AVERAGE\s*\(/i,fnName:'AVERAGE',ok:(v,n)=>close(v,exp[rowOf(n)].avg,0.051),want:r=>exp[r].avg==null?'':fmtNum(Math.round(exp[r].avg*100)/100)},
@@ -425,32 +436,33 @@ function gradeSheet(cells,task){
     {key:'rank',col:'L',name:'Rank 名次（RANK）',fn:/RANK(\.EQ)?\s*\(/i,fnName:'RANK',ok:(v,n)=>{ const e=exp[rowOf(n)]; return typeof v==='number'&&(v===e.rankT||v===e.rankA); },want:r=>String(exp[r].rankT)}];
   const items=[], wrong=[], notes=[];
   tops.forEach(P=>{
-    const g=shPart(S,{cells:rows.map(r=>P.col+r),fn:P.fn,fnName:P.fnName,ok:P.ok,fnPts,okPts});
-    if(P.key==='rank'&&g.formulas&&g.right<g.n){ const f=S.raw('L'+SH_LAST); if(f[0]==='='&&!/\$[A-L]\$4\s*:\s*\$[A-L]\$26/i.test(f)) g.note.push('往下複製後範圍跑掉了：範圍的開頭和結尾都要加 $ 鎖住，例如 $I$4:$I$26（在參照上按 F4）。'); }
-    if(P.key==='avg'&&g.formulas&&g.right<g.n){ if(/\/\s*5/.test(S.raw('J'+SH_FIRST))) g.note.push('除以 5 會把缺考（空白）當成 0 分；AVERAGE 會自動略過空白的格子。'); }
-    if(P.key==='if'&&g.formulas&&g.right<g.n) g.note.push('平均 60 分以上是及格，剛好 60 也算及格：用 >=60。');
-    items.push({key:P.key,name:(task===2?'複習 Review · ':'')+P.name,col:P.col,max:g.max,got:g.got,right:g.right,n:g.n,note:g.note.join(' ')});
+    const g=shPart(S,how,{first:[P.col+SH_FIRST],filled:rows.slice(1).map(r=>P.col+r),fn:P.fn,fnName:P.fnName,ok:P.ok,firstPts,fillPts,dir:'往下拖到第 '+SH_LAST+' 列'});
+    if(P.key==='rank'&&g.formulas&&g.rightFill<g.nFill){ const f=S.raw('L'+SH_LAST); if(f[0]==='='&&!/\$[A-L]\$4\s*:\s*\$[A-L]\$26/i.test(f)) g.note.push('往下拖曳後範圍跑掉了：範圍的開頭和結尾都要加 $ 鎖住，例如 $I$4:$I$26（在參照上按 F4）。'); }
+    if(P.key==='avg'&&g.formulas&&g.bad.length){ if(/\/\s*5/.test(S.raw('J'+SH_FIRST))) g.note.push('除以 5 會把缺考（空白）當成 0 分；AVERAGE 會自動略過空白的格子。'); }
+    if(P.key==='if'&&g.formulas&&g.bad.some(n=>S.raw(n)[0]==='='&&!P.ok(S.value(n),n))) g.note.push('平均 60 分以上是及格，剛好 60 也算及格：用 >=60。');
+    items.push({key:P.key,name:(task===2?'複習 Review · ':'')+P.name,col:P.col,max:g.max,got:g.got,detail:`第 ${SH_FIRST} 列公式 ${g.rightFirst}/1，拖曳 ${g.rightFill}/${g.nFill} 格`,note:g.note.join(' ')});
     wrong.push(...g.bad);
-    g.bad.slice(0,task===2?1:3).forEach(name=>{ const r=rowOf(name); if(S.raw(name)[0]==='=') notes.push(`${name}（${S.raw('C'+r)||S.raw('B'+r)}）：應該是 ${P.want(r)}，現在是 ${shShow(S.value(name))||'空白'}`); });
+    g.bad.filter(n=>S.raw(n)[0]==='='&&!P.ok(S.value(n),n)).slice(0,task===2?1:2).forEach(name=>{ const r=rowOf(name); notes.push(`${name}（${S.raw('C'+r)||S.raw('B'+r)}）：應該是 ${P.want(r)}，現在是 ${shShow(S.value(name))||'空白'}`); });
   });
   if(task===2){
-    /* counts per subject: how many took it, and how many in each band */
+    /* counts per subject: type in column D, then drag right to H */
     const col=c=>rows.map(r=>S.value(c+r)).filter(v=>typeof v==='number');
     const want=(c,r)=>{ const b=SH_BANDS.find(x=>x[0]===r), v=col(c); return b[3]?v.filter(b[3]).length:v.length; };
     const okCount=(v,name)=>typeof v==='number'&&v===want(name[0],rowOf(name));
+    const right4=['E','F','G','H'], bandRows=[32,33,34,35,36,37];
     const parts=[
-      {key:'count',name:'Participant counts 參加人數（COUNT）',cells:SH_SUBJ.map(c=>c+'31'),fn:/COUNTA?\s*\(/i,fnName:'COUNT',fnPts:2,okPts:8},
-      {key:'bands',name:'Score counts 分數段人數（COUNTIF）',cells:[32,33,34,35,36,37].flatMap(r=>SH_SUBJ.map(c=>c+r)),fn:/COUNTIFS?\s*\(/i,fnName:'COUNTIF 或 COUNTIFS',fnPts:10,okPts:40}];
+      {key:'count',name:'Participant counts 參加人數（COUNT）',first:['D31'],filled:right4.map(c=>c+'31'),fn:/COUNTA?\s*\(/i,fnName:'COUNT',firstPts:4,fillPts:6},
+      {key:'bands',name:'Score counts 分數段人數（COUNTIF）',first:bandRows.map(r=>'D'+r),filled:bandRows.flatMap(r=>right4.map(c=>c+r)),fn:/COUNTIFS?\s*\(/i,fnName:'COUNTIF 或 COUNTIFS',firstPts:20,fillPts:30}];
     parts.forEach(P=>{
-      const g=shPart(S,{cells:P.cells,fn:P.fn,fnName:P.fnName,ok:okCount,fnPts:P.fnPts,okPts:P.okPts});
-      if(P.key==='count'&&g.formulas&&g.right<g.n&&/COUNTA\s*\(/i.test(S.raw('D31'))) g.note.push('COUNTA 會把文字也算進去；只數有分數的人用 COUNT。');
-      if(P.key==='bands'&&g.formulas&&g.right<g.n){
+      const g=shPart(S,how,{first:P.first,filled:P.filled,fn:P.fn,fnName:P.fnName,ok:okCount,firstPts:P.firstPts,fillPts:P.fillPts,dir:'往右拖到 H 欄'});
+      if(P.key==='count'&&g.bad.length&&/COUNTA\s*\(/i.test(S.raw('D31'))) g.note.push('COUNTA 會把文字也算進去；只數有分數的人用 COUNT。');
+      if(P.key==='bands'&&g.bad.some(n=>S.raw(n)[0]==='='&&!okCount(S.value(n),n))){
         g.note.push('每一段要同時有「下限」和「上限」，例如 99-90 是 >=90 而且 <=99：用 COUNTIFS，或用 COUNTIF(>=90) 減掉 COUNTIF(=100)。');
-        const sumBad=SH_SUBJ.filter(c=>{ const t=[32,33,34,35,36,37].reduce((a,r)=>a+(typeof S.value(c+r)==='number'?S.value(c+r):0),0), n=S.value(c+'31'); return typeof n==='number'&&t!==n; });
+        const sumBad=SH_SUBJ.filter(c=>{ const t=bandRows.reduce((a,r)=>a+(typeof S.value(c+r)==='number'?S.value(c+r):0),0), n=S.value(c+'31'); return typeof n==='number'&&t!==n; });
         if(sumBad.length) g.note.push(`檢查看看：每一科六段的人數加起來，要等於參加人數（${sumBad.join('、')} 欄對不起來）。`); }
-      items.push({key:P.key,name:P.name,col:'D–H',max:g.max,got:g.got,right:g.right,n:g.n,note:g.note.join(' ')});
+      items.push({key:P.key,name:P.name,col:'D–H',max:g.max,got:g.got,detail:`D 欄公式 ${g.rightFirst}/${g.nFirst}，往右拖曳 ${g.rightFill}/${g.nFill} 格`,note:g.note.join(' ')});
       wrong.push(...g.bad);
-      g.bad.slice(0,2).forEach(name=>{ if(S.raw(name)[0]==='=') notes.push(`${name}（${S.raw('C'+rowOf(name))||'參加人數'}，${S.raw(name[0]+'3').replace(/\(.*/,'')}）：應該是 ${want(name[0],rowOf(name))}，現在是 ${shShow(S.value(name))||'空白'}`); });
+      g.bad.filter(n=>S.raw(n)[0]==='='&&!okCount(S.value(n),n)).slice(0,2).forEach(name=>{ notes.push(`${name}（${S.raw('C'+rowOf(name))||'參加人數'}，${S.raw(name[0]+'3').replace(/\(.*/,'')}）：應該是 ${want(name[0],rowOf(name))}，現在是 ${shShow(S.value(name))||'空白'}`); });
     });
   }
   /* the given scores must stay as they were */
@@ -458,7 +470,7 @@ function gradeSheet(cells,task){
   const total=Math.round(items.reduce((s,i)=>s+i.got,0));
   return {task,total,items,wrong,notes:notes.slice(0,6),changed,passed:total>=100&&!changed.length};
 }
-if(typeof module!=='undefined') module.exports={Sheet,shParse,shShift,shShow,shStart,shTodo,gradeSheet,parseRef,refName,isErr,SH_COLS,SH_ROWS};
+if(typeof module!=='undefined') module.exports={shHasRef,Sheet,shParse,shShift,shShow,shStart,shTodo,gradeSheet,parseRef,refName,isErr,SH_COLS,SH_ROWS};
 </script>
 <script>
 {
@@ -467,8 +479,9 @@ const KEYS={1:'sheetlab-score-v1',2:'sheetlab-count-v1'}, META='sheetlab-meta';
 let task=/(^|#)2$/.test(location.hash)?2:1; try{ if(!location.hash&&localStorage.getItem('sheetlab-tab')==='2') task=2; }catch(e){}
 const stacks={1:{u:[],r:[]},2:{u:[],r:[]}};
 const W=[42,56,130,118,70,70,70,70,70,76,80,96,92];
-function loadCells(t){ let c=shStart(t); try{ const s=JSON.parse(localStorage.getItem(KEYS[t])||'null'); if(s&&typeof s==='object') c=s; }catch(e){} return c; }
-let cells=loadCells(task);
+/* cells = what is typed in each cell; how = how it got there: type, fill (dragged), paste, filld (Ctrl+D) — only dragged cells score below the first row */
+function loadCells(t){ let c=shStart(t), h={}; try{ const s=JSON.parse(localStorage.getItem(KEYS[t])||'null'); if(s&&typeof s==='object'){ if(s.cells&&typeof s.cells==='object'){ c=s.cells; h=s.how||{}; } else c=s; } }catch(e){} return {c,h}; }
+let how={}, cells=(()=>{ const x=loadCells(task); how=x.h; return x.c; })();
 let S=new Sheet(cells), undo=stacks[task].u, redo=stacks[task].r, wrongSet=new Set();
 let sel={r:3,c:8}, anc={r:3,c:8}, editing=null, point=null, drag=null, fill=null, clip=null;
 const nm=(r,c)=>refName(c,r);
@@ -497,20 +510,21 @@ function render(){
   }
   drawSel();
 }
-function save(){ try{ localStorage.setItem(KEYS[task],JSON.stringify(cells)); }catch(e){} }
-function change(fn){ undo.push(JSON.stringify(cells)); if(undo.length>100) undo.shift(); redo=[]; fn(); wrongSet.clear(); save(); render(); }
-$('#bUndo').onclick=()=>{ if(editing) cancelEdit(); if(!undo.length) return; redo.push(JSON.stringify(cells)); cells=JSON.parse(undo.pop()); save(); render(); };
+function save(){ try{ localStorage.setItem(KEYS[task],JSON.stringify({cells,how})); }catch(e){} }
+const snap=()=>JSON.stringify({cells,how}), unsnap=t=>{ const o=JSON.parse(t); cells=o.cells; how=o.how; };
+function change(fn){ undo.push(snap()); if(undo.length>100) undo.shift(); redo=[]; fn(); wrongSet.clear(); save(); render(); }
+$('#bUndo').onclick=()=>{ if(editing) cancelEdit(); if(!undo.length) return; redo.push(snap()); unsnap(undo.pop()); save(); render(); };
 /* ---------- the two sheets ---------- */
-const TASKS={1:'<b>Task 任務：在黃色格子用公式算出</b><span class="step"><i>1</i>Total 總分 <code>I</code> SUM</span><span class="step"><i>2</i>Average 平均 <code>J</code> AVERAGE</span><span class="step"><i>3</i>Passed or not 及格與否 <code>K</code> IF（平均 ≥ 60）</span><span class="step"><i>4</i>Rank 名次 <code>L</code> RANK</span>',
-  2:'<b>Task 任務：先複習 I–L，再算每一科的人數</b><span class="step"><i>1</i>Review 複習 <code>I–L</code> SUM · AVERAGE · IF · RANK</span><span class="step"><i>2</i>Participant counts 參加人數 <code>D31:H31</code> COUNT</span><span class="step"><i>3</i>Score counts 分數段人數 <code>D32:H37</code> COUNTIF / COUNTIFS</span>'};
+const TASKS={1:'<b>Task 任務：在黃色格子用公式算出</b><span class="step"><i>1</i>Total 總分 <code>I</code> SUM</span><span class="step"><i>2</i>Average 平均 <code>J</code> AVERAGE</span><span class="step"><i>3</i>Passed or not 及格與否 <code>K</code> IF（平均 ≥ 60）</span><span class="step"><i>4</i>Rank 名次 <code>L</code> RANK</span><span class="step" style="border-color:var(--accent)"><i>!</i>第一格打公式，其他格拖曳右下角 ■ 延伸才算分</span>',
+  2:'<b>Task 任務：先複習 I–L，再算每一科的人數</b><span class="step"><i>1</i>Review 複習 <code>I–L</code> SUM · AVERAGE · IF · RANK</span><span class="step"><i>2</i>Participant counts 參加人數 <code>D31:H31</code> COUNT</span><span class="step"><i>3</i>Score counts 分數段人數 <code>D32:H37</code> COUNTIF / COUNTIFS</span><span class="step" style="border-color:var(--accent)"><i>!</i>I4、D31、D32:D37 打公式，其他格拖曳右下角 ■ 延伸才算分</span>'};
 function showTask(){ $('#task').innerHTML=TASKS[task]; document.querySelectorAll('.only2').forEach(x=>x.hidden=task!==2);
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',String(Number(b.dataset.task)===task)));
   document.title=task===2?'Sheet Lab 2 試算表練習：人數統計':'Sheet Lab 試算表練習'; }
-function switchTask(t,keepCells){ if(editing) commit(0,0); if(t===task&&!keepCells) return; save(); task=t; undo=stacks[t].u; redo=stacks[t].r; if(!keepCells) cells=loadCells(t); wrongSet.clear();
+function switchTask(t,keepCells){ if(editing) commit(0,0); if(t===task&&!keepCells) return; save(); task=t; undo=stacks[t].u; redo=stacks[t].r; if(!keepCells){ const x=loadCells(t); cells=x.c; how=x.h; } wrongSet.clear();
   try{ localStorage.setItem('sheetlab-tab',String(t)); history.replaceState(null,'',t===2?'#2':location.pathname); }catch(e){}
   showTask(); render(); select(3,8); gw.focus({preventScroll:true}); }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTask(Number(b.dataset.task)));
-$('#bRedo').onclick=()=>{ if(editing) cancelEdit(); if(!redo.length) return; undo.push(JSON.stringify(cells)); cells=JSON.parse(redo.pop()); save(); render(); };
+$('#bRedo').onclick=()=>{ if(editing) cancelEdit(); if(!redo.length) return; undo.push(snap()); unsnap(redo.pop()); save(); render(); };
 
 /* ---------- selection ---------- */
 const clampR=r=>Math.max(0,Math.min(SH_ROWS-1,r)), clampC=c=>Math.max(0,Math.min(SH_COLS-1,c));
@@ -547,7 +561,7 @@ function startEdit(text,replace,from){
 function commit(dr,dc){
   if(!editing) return; const e=editing, v=ed.value;
   editing=null; ed.hidden=true; point=null; $('#refs').innerHTML='';
-  if(v!==e.orig) change(()=>{ if(v==='') delete cells[e.name]; else cells[e.name]=v; });
+  if(v!==e.orig) change(()=>{ if(v===''){ delete cells[e.name]; delete how[e.name]; } else { cells[e.name]=v; how[e.name]='type'; } });
   select(e.r+dr,e.c+dc); gw.focus({preventScroll:true});
 }
 function cancelEdit(){ if(!editing) return; const e=editing; editing=null; ed.hidden=true; point=null; $('#refs').innerHTML=''; select(e.r,e.c); gw.focus({preventScroll:true}); }
@@ -601,21 +615,30 @@ gw.addEventListener('mousedown',ev=>{
   ev.preventDefault(); gw.focus({preventScroll:true});
   select(at.r,at.c,ev.shiftKey); drag={point:false};
 });
-gw.addEventListener('mousemove',ev=>{
-  if(fill){ const at=cellAt(ev); if(!at) return; const b=fill; let r2=b.r2,c2=b.c2,r1=b.r1,c1=b.c1;
+/* while dragging near the edge, scroll and keep tracking the cell under the pointer */
+let lastPt=null, autoT=null;
+function cellAtPoint(x,y){ const g=gw.getBoundingClientRect(); const cx=Math.max(g.left+W[0]+4,Math.min(g.right-6,x)), cy=Math.max(g.top+28,Math.min(g.bottom-6,y)); const el=document.elementFromPoint(cx,cy); const td=el&&el.closest&&el.closest('td'); return td?{r:+td.dataset.r,c:+td.dataset.c}:null; }
+function autoScroll(){ if(!lastPt||!(fill||drag)){ clearInterval(autoT); autoT=null; return; } const g=gw.getBoundingClientRect(); let moved=false;
+  if(lastPt.y>g.bottom-20){ gw.scrollTop+=20; moved=true; } else if(lastPt.y<g.top+30){ gw.scrollTop-=20; moved=true; }
+  if(lastPt.x>g.right-20){ gw.scrollLeft+=20; moved=true; } else if(lastPt.x<g.left+W[0]){ gw.scrollLeft-=20; moved=true; }
+  if(moved) track({clientX:lastPt.x,clientY:lastPt.y,buttons:1}); }
+window.addEventListener('mousemove',ev=>{ if(!(fill||(drag&&(ev.buttons&1)))) return; lastPt={x:ev.clientX,y:ev.clientY}; track(ev); if(!autoT) autoT=setInterval(autoScroll,60); });
+function track(ev){
+  if(fill){ const at=cellAtPoint(ev.clientX,ev.clientY); if(!at) return; const b=fill; let r2=b.r2,c2=b.c2,r1=b.r1,c1=b.c1;
     const dDown=at.r-b.r2, dRight=at.c-b.c2;
     if(dDown>0&&dDown>=dRight) r2=at.r; else if(dRight>0) c2=at.c;
     fill.to={r2,c2}; const f=$('#fillBox'); f.hidden=false; place(f,rect(r1,c1,r2,c2)); return; }
-  if(!drag||!(ev.buttons&1)) return; const at=cellAt(ev); if(!at) return;
+  if(!drag||!(ev.buttons&1)) return; const at=cellAtPoint(ev.clientX,ev.clientY); if(!at) return;
   if(drag.point){ putRef(drag.r,drag.c,at.r,at.c); return; }
   select(at.r,at.c,true);
-});
+}
 window.addEventListener('mouseup',()=>{
+  lastPt=null;
   if(fill){ const b=fill, to=fill.to; fill=null; $('#fillBox').hidden=true;
     if(to&&(to.r2>b.r2||to.c2>b.c2)) change(()=>{ const h=b.r2-b.r1+1, w=b.c2-b.c1+1;
       for(let r=b.r1;r<=to.r2;r++) for(let c=b.c1;c<=to.c2;c++){ if(r<=b.r2&&c<=b.c2) continue;
         const sr=b.r1+((r-b.r1)%h), sc=b.c1+((c-b.c1)%w), raw=cells[nm(sr,sc)];
-        const n=nm(r,c); if(raw==null) delete cells[n]; else cells[n]=shShift(raw,r-sr,c-sc); } });
+        const n=nm(r,c); if(raw==null){ delete cells[n]; delete how[n]; } else { cells[n]=shShift(raw,r-sr,c-sc); how[n]='fill'; } } });
     if(to){ anc={r:b.r1,c:b.c1}; sel={r:to.r2,c:to.c2}; drawSel(); }
     return; }
   drag=null;
@@ -631,7 +654,7 @@ gw.addEventListener('keydown',e=>{
   if(mv){ e.preventDefault(); select(sel.r+mv[0],sel.c+mv[1],e.shiftKey); return; }
   if(k==='Tab'){ e.preventDefault(); select(sel.r,sel.c+(e.shiftKey?-1:1)); return; }
   if(k==='Enter'||k==='F2'){ e.preventDefault(); startEdit('',false,'cell'); return; }
-  if(k==='Delete'||k==='Backspace'){ e.preventDefault(); const b=box(); change(()=>{ for(let r=b.r1;r<=b.r2;r++) for(let c=b.c1;c<=b.c2;c++) delete cells[nm(r,c)]; }); return; }
+  if(k==='Delete'||k==='Backspace'){ e.preventDefault(); const b=box(); change(()=>{ for(let r=b.r1;r<=b.r2;r++) for(let c=b.c1;c<=b.c2;c++){ delete cells[nm(r,c)]; delete how[nm(r,c)]; } }); return; }
   if(ctrl&&(k==='z'||k==='Z')){ e.preventDefault(); (e.shiftKey?$('#bRedo'):$('#bUndo')).click(); return; }
   if(ctrl&&(k==='y'||k==='Y')){ e.preventDefault(); $('#bRedo').click(); return; }
   if(ctrl&&(k==='c'||k==='C')){ e.preventDefault(); const b=box(); clip={...b,raw:[]}; for(let r=b.r1;r<=b.r2;r++){ const row=[]; for(let c=b.c1;c<=b.c2;c++) row.push(cells[nm(r,c)]); clip.raw.push(row); }
@@ -639,17 +662,17 @@ gw.addEventListener('keydown',e=>{
   if(ctrl&&(k==='v'||k==='V')){ e.preventDefault(); if(!clip) return; const b=box(), h=clip.raw.length, w=clip.raw[0].length;
     const rows=Math.max(h,b.r2-b.r1+1), cols=Math.max(w,b.c2-b.c1+1);
     change(()=>{ for(let i=0;i<rows;i++) for(let j=0;j<cols;j++){ const r=b.r1+i, c=b.c1+j; if(r>=SH_ROWS||c>=SH_COLS) continue; const raw=clip.raw[i%h][j%w], n=nm(r,c);
-      if(raw==null) delete cells[n]; else cells[n]=shShift(raw,r-(clip.r1+i%h),c-(clip.c1+j%w)); } });
+      if(raw==null){ delete cells[n]; delete how[n]; } else { cells[n]=shShift(raw,r-(clip.r1+i%h),c-(clip.c1+j%w)); how[n]='paste'; } } });
     anc={r:b.r1,c:b.c1}; sel={r:Math.min(SH_ROWS-1,b.r1+rows-1),c:Math.min(SH_COLS-1,b.c1+cols-1)}; drawSel(); return; }
-  if(ctrl&&(k==='d'||k==='D')){ e.preventDefault(); const b=box(); if(b.r2===b.r1) return; change(()=>{ for(let c=b.c1;c<=b.c2;c++){ const raw=cells[nm(b.r1,c)]; for(let r=b.r1+1;r<=b.r2;r++){ const n=nm(r,c); if(raw==null) delete cells[n]; else cells[n]=shShift(raw,r-b.r1,0); } } }); return; }
+  if(ctrl&&(k==='d'||k==='D')){ e.preventDefault(); const b=box(); if(b.r2===b.r1) return; change(()=>{ for(let c=b.c1;c<=b.c2;c++){ const raw=cells[nm(b.r1,c)]; for(let r=b.r1+1;r<=b.r2;r++){ const n=nm(r,c); if(raw==null){ delete cells[n]; delete how[n]; } else { cells[n]=shShift(raw,r-b.r1,0); how[n]='filld'; } } } }); return; }
   if(!ctrl&&!e.altKey&&k.length===1){ e.preventDefault(); startEdit(k,true,'cell'); }
 });
 gw.addEventListener('compositionstart',()=>{ if(!editing) startEdit('',true,'cell'); });
 
 /* ---------- check ---------- */
-$('#bCheck').onclick=()=>{ if(editing) commit(0,0); const g=gradeSheet(cells,task);
+$('#bCheck').onclick=()=>{ if(editing) commit(0,0); const g=gradeSheet(cells,task,how);
   $('#ckTotal').textContent=g.total; $('#ckBadge').textContent=g.passed?'✓ All correct 全部正確':'';
-  $('#ckParts').innerHTML=g.items.map(i=>`<div class="part"><div class="top"><span>${escH(i.col)} · ${escH(i.name)}</span><span>${i.got} / ${i.max}</span></div><div class="bar"><i style="width:${Math.round(100*i.got/i.max)}%"></i></div><p>${i.right} / ${i.n} 格正確${i.note?'。'+escH(i.note):''}</p></div>`).join('');
+  $('#ckParts').innerHTML=g.items.map(i=>`<div class="part"><div class="top"><span>${escH(i.col)} · ${escH(i.name)}</span><span>${i.got} / ${i.max}</span></div><div class="bar"><i style="width:${Math.round(100*i.got/i.max)}%"></i></div><p>${escH(i.detail)}${i.note?'。'+escH(i.note):''}</p></div>`).join('');
   $('#ckNotes').innerHTML=(g.changed.length?[`題目的分數被改過了（${g.changed.slice(0,5).join('、')}${g.changed.length>5?'…':''}），請按「復原」或「重新開始」。`]:[]).concat(g.notes).map(n=>`<li>${escH(n)}</li>`).join('');
   $('#ckSt').textContent=g.wrong.length?`${g.wrong.length} 格還要修改`:''; $('#bShowWrong').hidden=!g.wrong.length;
   $('#bShowWrong').onclick=()=>{ wrongSet=new Set(g.wrong); render(); $('#checkModal').hidden=true; const f=parseRef(g.wrong[0]); if(f) select(f.r,f.c); };
@@ -663,18 +686,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySele
 $('#bDownload').onclick=()=>{ if(editing) commit(0,0); $('#wCls').value=meta.cls; $('#wSeat').value=meta.seat; $('#wName').value=meta.name; $('#dlSt').textContent=''; $('#dlModal').hidden=false; };
 $('#bDoDl').onclick=()=>{ meta={cls:$('#wCls').value.trim(),seat:$('#wSeat').value.trim(),name:$('#wName').value.trim()}; try{ localStorage.setItem(META,JSON.stringify(meta)); }catch(e){}
   if(!meta.name){ $('#dlSt').textContent='Enter your name first. 請先填寫姓名。'; $('#dlSt').classList.add('err'); return; }
-  const student=(meta.cls?meta.cls+(meta.seat?'-':''):'')+meta.seat+' '+meta.name, g=gradeSheet(cells,task);
-  const data={format:'sheetlab-v1',task:task===2?'sheet-count':'sheet-score',student,cls:meta.cls,seat:meta.seat,name:meta.name,exportedAt:new Date().toISOString(),check:{total:g.total},cells};
+  const student=(meta.cls?meta.cls+(meta.seat?'-':''):'')+meta.seat+' '+meta.name, g=gradeSheet(cells,task,how);
+  const data={format:'sheetlab-v1',task:task===2?'sheet-count':'sheet-score',student,cls:meta.cls,seat:meta.seat,name:meta.name,exportedAt:new Date().toISOString(),check:{total:g.total},cells,how};
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'})); a.download=student.replace(/[\\/:*?"<>|]/g,'')+(task===2?' 試算表2.json':' 試算表.json'); document.body.appendChild(a); a.click(); a.remove();
   $('#dlSt').classList.remove('err'); $('#dlSt').textContent='Saved! 已下載'; };
 $('#bOpen').onclick=()=>{ $('#openSt').textContent=''; $('#fileIn').value=''; $('#openModal').hidden=false; };
 $('#fileIn').onchange=()=>{ const f=$('#fileIn').files[0]; if(!f) return; const rd=new FileReader();
-  rd.onload=()=>{ try{ const o=JSON.parse(String(rd.result)); if(!o||o.format!=='sheetlab-v1'||typeof o.cells!=='object') throw 0; const t=o.task==='sheet-count'?2:1; if(t!==task) switchTask(t); change(()=>{ cells=o.cells; }); ['cls','seat','name'].forEach(k=>{ if(o[k]) meta[k]=o[k]; }); $('#openModal').hidden=true; toast('已開啟 '+(o.student||f.name)); }
+  rd.onload=()=>{ try{ const o=JSON.parse(String(rd.result)); if(!o||o.format!=='sheetlab-v1'||typeof o.cells!=='object') throw 0; const t=o.task==='sheet-count'?2:1; if(t!==task) switchTask(t); change(()=>{ cells=o.cells; how=o.how&&typeof o.how==='object'?o.how:{}; }); ['cls','seat','name'].forEach(k=>{ if(o[k]) meta[k]=o[k]; }); $('#openModal').hidden=true; toast('已開啟 '+(o.student||f.name)); }
     catch(e){ $('#openSt').textContent='This is not a Sheet Lab file. 這不是試算表練習的作業檔。'; } };
   rd.readAsText(f); };
 const bReset=$('#bReset'); let rT;
 bReset.onclick=()=>{ if(!bReset.classList.contains('danger')){ bReset.classList.add('danger'); bReset.textContent='確定重新開始？'; clearTimeout(rT); rT=setTimeout(()=>{ bReset.classList.remove('danger'); bReset.textContent='重新開始'; },3000); return; }
-  clearTimeout(rT); bReset.classList.remove('danger'); bReset.textContent='重新開始'; if(editing) cancelEdit(); change(()=>{ cells=shStart(task); }); toast('已回到原始的成績單，可以按「復原」找回'); };
+  clearTimeout(rT); bReset.classList.remove('danger'); bReset.textContent='重新開始'; if(editing) cancelEdit(); change(()=>{ cells=shStart(task); how={}; }); toast('已回到原始的成績單，可以按「復原」找回'); };
 
 window.addEventListener('resize',()=>{ drawSel(); drawRefs(); });
 showTask(); render(); select(3,8); gw.focus({preventScroll:true});

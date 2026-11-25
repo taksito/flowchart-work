@@ -102,8 +102,9 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 - Works like a real sheet: formula bar, click or drag cells while typing a formula, F4 adds $, fill handle, Ctrl+C / Ctrl+V / Ctrl+D with relative references, undo, saved in the browser, download / open `.json`.
 - Functions: SUM, AVERAGE, MAX, MIN, COUNT, COUNTA, COUNTIF, ROUND, ABS, IF, AND, OR, NOT, RANK / RANK.EQ. Errors: #DIV/0!, #NAME?, #N/A, #REF!, #VALUE!.
 - Two sheets (tabs at the bottom, `sheet/#2` opens the second): **1 · Scores 成績計算** as above; **2 · Counts 人數統計（含複習）** repeats I–L as review and adds rows 31–37 for each subject D–H: Participant counts `=COUNT(D4:D26)`, 100 `=COUNTIF(D4:D26,100)`, 99-90 … 69-60 `=COUNTIFS(D4:D26,">=90",D4:D26,"<=99")` (or COUNTIF differences), <60 `=COUNTIF(D4:D26,"<60")`. The original file's last band label ">60" is shown as "<60". Each sheet is saved separately.
-- Sheet 2 scoring (100): review I–L 10 each (2 for the function + 8 for right rows), participant counts 10, score bands 50 (10 for COUNTIF/COUNTIFS + 40 for right cells).
-- Check 提交批改 (100): each column 25 = 5 for using the function + 20 for the share of right rows. Typed numbers get no credit. Rank by Total or by Average both count; ROUND to 1 decimal is accepted. Engine and grader: `src/sheet-engine.js` (inlined into the page).
+- Scoring rule: only formulas that point at cells count (typed numbers or `=93+98` get nothing). The first cell (I4 / D31 / D32:D37) is typed; every other cell must be filled by **dragging the fill handle** — cells typed, pasted or filled with Ctrl+D get no points. The page records how each cell got its content (`how`: type / fill / paste / filld), saved with the work. Dragging near the edge scrolls.
+- Sheet 1 (100): each of I–L 25 = first row 10 (6 for the right answer, the other 4 for using the function) + dragged rows 15. Sheet 2 (100): review I–L 10 each (first row 4 + dragged 6), participant counts 10 (D31 4 + dragged E–H 6), score bands 50 (D32:D37 20 + dragged E–H 30).
+- Check 提交批改 shows each part's points, what is missing, and can outline the cells that did not score. Rank by Total or by Average both count; ROUND to 1 decimal is accepted. Engine and grader: `src/sheet-engine.js` (inlined into the page).
 
 ## Scratch Exam 考試：補救教學成績
 
