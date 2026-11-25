@@ -96,6 +96,13 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 - Six test runs feed answers in order (137 / 1,137 / 1,2,137 / 1,2,3 / 999,0,1378 / 1,2,3,137) and check the final message (welcome or locked, by keyword) and how many times the program asked.
 - Rubric: Structure 10, Input 15, Process 15, Decision 30, Output 5, Test run 25. All six tests right = full marks, whatever the method.
 
+## Sheet Lab 試算表練習
+
+- `sheet/`: a simulated spreadsheet (columns A–L, rows 1–40) with the 漫動國中 first-term score sheet. Students fill I4:L26 with formulas: Total `=SUM(D4:H4)`, Average `=AVERAGE(D4:H4)` (blank = absent, skipped), Passed or not `=IF(J4>=60,"及格","不及格")`, Rank `=RANK(I4,$I$4:$I$26)`.
+- Works like a real sheet: formula bar, click or drag cells while typing a formula, F4 adds $, fill handle, Ctrl+C / Ctrl+V / Ctrl+D with relative references, undo, saved in the browser, download / open `.json`.
+- Functions: SUM, AVERAGE, MAX, MIN, COUNT, COUNTA, COUNTIF, ROUND, ABS, IF, AND, OR, NOT, RANK / RANK.EQ. Errors: #DIV/0!, #NAME?, #N/A, #REF!, #VALUE!.
+- Check 提交批改 (100): each column 25 = 5 for using the function + 20 for the share of right rows. Typed numbers get no credit. Rank by Total or by Average both count; ROUND to 1 decimal is accepted. Engine and grader: `src/sheet-engine.js` (inlined into the page).
+
 ## Scratch Exam 考試：補救教學成績
 
 - `exam-flow/`: the flowchart board for planning before the exam (not graded). Signed in with 新北市 OpenID, students save drafts to the cloud (`draft_save`, latest 10 kept in the folder 考試流程圖暫存 Exam Drafts) and open any of them again (`draft_get`). 考前畫流程圖，不計分；登入後可以暫存到雲端（保留最近 10 次）並讀回。
