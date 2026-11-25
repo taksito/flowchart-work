@@ -177,7 +177,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
 .status.err{color:var(--danger)}
 .works{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;max-height:260px;overflow-y:auto}
 .works li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line)}
-.works li:first-child{border-top:0}
+.works li:first-child{border-top:0}.works:empty{display:none}
 .works .wi{display:flex;flex-direction:column;min-width:0;flex:1}
 .works .wi b{font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .works .wi span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -253,6 +253,7 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
       <button class="btn" id="bExport">匯出圖片</button>
       <button class="btn primary" id="bCheck">Check 提交批改</button>
       <button class="btn primary" id="bSubmit" hidden>Submit 繳交</button>
+      <button class="btn primary" id="bDraft" hidden>Cloud save 雲端暫存</button>
     </div>
   </header>
 
@@ -374,6 +375,20 @@ textarea.code{font-family:var(--font-mono);font-size:12px;color:var(--ink);backg
 <p class="devnote" style="margin:0;font-size:12px;color:var(--muted)">This computer 這台電腦的代號：<b class="devid" style="font-family:var(--font-mono)"></b></p>
     <p id="sbSummary" style="color:var(--ink);font-weight:500"></p>
     <div class="row"><span class="status" id="sbStatus"></span><button class="btn" data-close>Cancel 取消</button><button class="btn primary" id="bDoSubmit">Submit 繳交</button></div>
+  </div>
+</div>
+
+<div class="modal" id="draftModal" hidden>
+  <div class="dialog narrow" style="width:min(640px,100%)">
+    <h2>Exam flowchart 考試流程圖（不計分）</h2>
+    <div class="cloud" style="margin:0"><p><b>Exam question 考題：補救教學成績</b></p>
+      <p style="font-size:13px">1. Ask for a score 詢問「請輸入成績」　2. Below 60: say 進行教學 and ask again, until 60 or more 不到 60 分說「進行教學」並重新輸入，直到 60 分以上　3. 80 or more: 很棒; 60–79: 剛好及格　4. Last: 您的成績是○○，恭喜你完成測驗</p>
+      <p style="font-size:13px;color:var(--muted)">Draw it with a LOOP (repeat until), then a DECISION after the loop. 用 LOOP 重複畫「直到及格」，重複結束後再用 DECISION 判斷很棒或剛好及格。</p></div>
+    <p>Sign in to save your flowchart to the cloud and open it again on any computer. 用校務行政帳號登入，就能把流程圖暫存到雲端，換電腦也能打開。最多保留最近 10 次。</p>
+    <div id="dLogin"></div>
+    <div class="row"><span class="status" id="dSt"></span><button class="btn" id="bDList">My saves 我的暫存紀錄</button><button class="btn primary" id="bDSave">Save now 暫存到雲端</button></div>
+    <ul class="works" id="dList"></ul>
+    <div class="row"><button class="btn" data-close>Close 關閉</button></div>
   </div>
 </div>
 
@@ -1284,6 +1299,97 @@ Object.assign(EN_WORDS,{'密碼':'password','次數':'count','歡迎':'welcome',
   feedbackTask=function(w,g){ return (g&&g.task||taskOf(w))==='scratch-pw'?feedbackScratchPw(w,g):_fb(w,g); };
 })();
 if(typeof module!=='undefined') Object.assign(module.exports,{gradeScratchPw,feedbackScratchPw,pwCat,gradeTask,feedbackTask,taskOf});
+/* ===== Scratch exam: remedial score. Ask a score; below 60 say 進行教學 and ask again until it is 60 or more;
+   80 or more says 很棒, otherwise 剛好及格; last, say the score and 恭喜你完成測驗 ===== */
+const EX_TEACH=/教學|補救|上課|teach|lesson|study|review/i, EX_GREAT=/很棒|太棒|很好|優秀|great|excellent|awesome|good job|well done/i,
+  EX_PASS=/剛好及格|及格|pass/i, EX_DONE=/恭喜|完成|congrat|finish|complete/i;
+function exCat(msg){ const m=String(msg||'');
+  if(EX_DONE.test(m)) return 'done';
+  if(EX_TEACH.test(m)&&!EX_GREAT.test(m)) return 'teach';
+  if(EX_GREAT.test(m)) return 'great';
+  if(EX_PASS.test(m)) return 'pass';
+  return null; }
+/* run with answers in order; after they run out the program gets 100, so a loop that never ends still stops */
+function exRun(ws,answers){
+  const r=sbRunFn(ws,(q,k)=>k<answers.length?answers[k]:'100');
+  const cats=r.says.map(exCat), teach=cats.filter(c=>c==='teach').length;
+  const lastTeach=cats.lastIndexOf('teach');
+  const after=cats.slice(lastTeach+1), result=after.find(c=>c==='great'||c==='pass')||null;
+  const last=r.says.length?r.says[r.says.length-1]:'';
+  return {...r,cats,teach,result,last};
+}
+const EX_CASES=[{a:[90],exp:'great'},{a:[70],exp:'pass'},{a:[80],exp:'great'},{a:[79],exp:'pass'},{a:[60],exp:'pass'},
+  {a:[59,75],exp:'pass'},{a:[30,45,95],exp:'great'},{a:[10,60],exp:'pass'}];
+const EX_NAME={great:'很棒',pass:'剛好及格'};
+function exTests(ws){
+  return EX_CASES.map(c=>{
+    const r=exRun(ws,c.a.map(String)), n=c.a.length, fin=String(c.a[n-1]);
+    const finalOK=new RegExp('(^|[^0-9.])'+fin+'([^0-9]|$)').test(r.last)&&EX_DONE.test(r.last);
+    const ok=!r.err&&r.asks.length===n&&r.teach===n-1&&r.result===c.exp&&finalOK;
+    let why='';
+    if(r.err) why='程式停不下來：重複裡要再詢問一次成績';
+    else if(r.asks.length<n) why=n>1?`只問了 ${r.asks.length} 次：不到 60 分要在重複裡再詢問一次`:'要用 ask 詢問成績';
+    else if(r.asks.length>n) why=c.a[n-1]>=60&&c.a[n-1]<61?'剛好 60 分已經及格，不用再教學（條件寫 score > 59，或 not score < 60）':`問了 ${r.asks.length} 次：成績到 60 分就要停止重複`;
+    else if(r.teach!==n-1) why=r.teach<n-1?'不到 60 分要說「進行教學」':'及格的成績不用說「進行教學」';
+    else if(!r.result) why='重複結束後要說「很棒」或「剛好及格」';
+    else if(r.result!==c.exp) why=c.exp==='great'?(c.a[n-1]===80?'80 分也算很棒（條件寫 score > 79，或 not score < 80）':'80 分以上要說「很棒」'):'60 到 79 分要說「剛好及格」';
+    else if(!finalOK) why='最後要說「您的成績是 '+fin+'，恭喜你完成測驗」：用 join 字串組合把成績接進去';
+    return {a:c.a,exp:EX_NAME[c.exp],got:r.result?EX_NAME[r.result]:(r.last||null),asks:r.asks.length,needAsks:n,teach:r.teach,last:r.last,ok,why,lab:`輸入 ${c.a.join('、')}`};
+  });
+}
+function gradeScratchExam(work){
+  const ws=work.workspace||{}, F=sbFacts(ws), items=[], bad=new Set(), names=F.names;
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  add('結構','有「當綠旗被點擊」',5,F.flags.length?5:0,F.flags.length?'':'程式要從「when ⚑ clicked 當綠旗被點擊」開始');
+  add('結構','沒有散落的積木',5,5-2.5*F.loose.length,F.loose.length?`有 ${F.loose.length} 組積木沒有接在綠旗下面`:'');
+  F.loose.forEach(b=>bad.add(b.id));
+  const loops=F.inFlag.filter(b=>b.type==='sc_until'||b.type==='sc_repeat');
+  const inLoop=[]; loops.forEach(l=>{ const d=l.inputs&&l.inputs.DO&&l.inputs.DO.block; if(d) sbWalk(d,b=>inLoop.push(b)); });
+  const asks=F.inFlag.filter(b=>b.type==='sc_ask'), askIn=inLoop.some(b=>b.type==='sc_ask');
+  add('輸入','詢問成績',8,asks.length?8:0,asks.length?'':'用「ask 詢問並等待」詢問成績');
+  add('輸入','不及格時在重複裡再詢問一次',7,askIn?7:0,askIn?'':'在 repeat until 裡面再放一個「ask 詢問」，教學後重新輸入成績');
+  add('計算','把答案存進變數（set score to answer）',10,F.stores.length?10:0,F.stores.length?'':'詢問後用「set score to (answer)」把成績存起來');
+  const until=loops.find(b=>b.type==='sc_until'), cond=until&&sbIn(until,'COND');
+  const nums=x=>{ const out=[]; if(x) sbWalk(x,y=>{ if(y.type==='sc_num') out.push(sbNum(sbField(y,'NUM'))); if(y.type==='sc_text'&&isFinite(Number(sbField(y,'TEXT')))) out.push(Number(sbField(y,'TEXT'))); }); return out; };
+  const c60=cond&&nums(cond).some(v=>v===59||v===60);
+  const ifAfter=F.inFlag.filter(b=>(b.type==='sc_ifelse'||b.type==='sc_if')&&!inLoop.includes(b));
+  const if80=ifAfter.some(b=>nums(sbIn(b,'COND')).some(v=>v===79||v===80));
+  add('判斷','使用重複積木（repeat until 重複直到）',10,until?10:loops.length?6:0,until?'':loops.length?'這題建議用「repeat until 重複直到」':'用「repeat until 重複直到」：成績不到 60 就一直重複');
+  add('判斷','重複的停止條件和 60 比較',10,c60?10:cond?5:0,c60?'':'停止條件寫 score > 59（成績到 60 分就停）');
+  add('判斷','重複結束後用「如果…否則」和 80 比較',10,if80?10:ifAfter.length?5:0,if80?'':'重複結束後用「if … else」：score > 79 說很棒，否則說剛好及格');
+  const sayIn=b=>b.type==='sc_say'||b.type==='sc_saysecs';
+  const loopSays=inLoop.filter(sayIn), allSays=F.inFlag.filter(sayIn);
+  const sayText=b=>{ const t=[]; sbWalk(sbIn(b,'MSG')||{},x=>{ if(x.type==='sc_text') t.push(String(sbField(x,'TEXT')||'')); }); return t.join(''); };
+  const teachIn=loopSays.some(b=>exCat(sayText(b))==='teach');
+  const both=allSays.some(b=>exCat(sayText(b))==='great')&&allSays.some(b=>exCat(sayText(b))==='pass');
+  const joinFinal=allSays.some(b=>{ let j=false; sbWalk(sbIn(b,'MSG')||{},x=>{ if(x.type==='sc_join') j=true; }); return j&&EX_DONE.test(sayText(b)); });
+  add('輸出','重複裡說「進行教學」',3,teachIn?3:0,teachIn?'':'在 repeat until 裡說「進行教學」');
+  add('輸出','說出「很棒」和「剛好及格」',3,both?3:0,both?'':'if 裡說「很棒」，else 裡說「剛好及格」');
+  add('輸出','最後用 join 說出成績與恭喜',4,joinFinal?4:0,joinFinal?'':'最後用 join 字串組合說「您的成績是 (score)，恭喜你完成測驗」');
+  const full=exTests(ws), fp=full.filter(t=>t.ok).length;
+  add('執行測試','執行測試（8 組輸入）',25,25*fp/full.length,`${fp} / ${full.length} 題正確`);
+  /* english */
+  const CJK=/[㐀-鿿]/; const units=[...F.texts,...F.varNames]; const zh=units.filter(t=>CJK.test(t));
+  const english=units.length?Math.round(100*(units.length-zh.length)/units.length):0;
+  if(fp===full.length) items.forEach(i=>{ if(i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } });
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max-1e-9&&i.note&&!/題正確$|答案全部正確/.test(i.note)).forEach(i=>fixes.push(i.note));
+  full.filter(t=>!t.ok&&t.why).slice(0,2).forEach(t=>fixes.push(`${t.lab}：${t.why}`));
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  return {task:'exam',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:fp===full.length&&total>=100,english,zhWords:[],enTips:[],facts:F};
+}
+function feedbackScratchExam(work,g){
+  if(g.passed) return {en:'All 8 tests passed.',zh:'8 組測試全部通過。'};
+  return {en:`${g.full.filter(t=>t.ok).length} of 8 tests passed.`,zh:g.fixes.slice(0,3).join('；')||'請檢查程式。'};
+}
+(function(){
+  const _taskOf=taskOf, _grade=gradeTask, _fb=feedbackTask;
+  taskOf=function(w){ if(w&&w.task==='exam') return 'exam'; return _taskOf(w); };
+  gradeTask=function(w){ return taskOf(w)==='exam'?gradeScratchExam(w):_grade(w); };
+  feedbackTask=function(w,g){ return (g&&g.task||taskOf(w))==='exam'?feedbackScratchExam(w,g):_fb(w,g); };
+})();
+if(typeof module!=='undefined') Object.assign(module.exports,{gradeScratchExam,feedbackScratchExam,exCat,exRun,exTests,gradeTask,feedbackTask,taskOf});
 
 /* ===== Flowchart scoring in three steps: shapes 60 → text 90 → lines 100 ===== */
 const TIER_NEED={
@@ -1714,9 +1820,9 @@ function BuddyBot(o){
 (function(){
 const $=s=>document.querySelector(s);
 const svg=$('#board'), world=$('#world'), wrap=$('#wrap'), editor=$('#editor');
-const FREE=window.FLOW_MODE==='free';
+const EXAMFLOW=window.FLOW_MODE==='exam', FREE=window.FLOW_MODE==='free'||EXAMFLOW;
 const TASK=FREE?'free':(['score','sum','dog'].includes(window.FLOW_TASK)?window.FLOW_TASK:'bmi');
-const KEY=FREE?'flowchart-free-v1':TASK==='score'?'flowchart-score-v1':TASK==='sum'?'flowchart-sum-v1':TASK==='dog'?'flowchart-dog-v1':'flowboard-v2', SNAP=10;
+const KEY=EXAMFLOW?'flowchart-exam-v1':FREE?'flowchart-free-v1':TASK==='score'?'flowchart-score-v1':TASK==='sum'?'flowchart-sum-v1':TASK==='dog'?'flowchart-dog-v1':'flowboard-v2', SNAP=10;
 
 const TOOLS=[
   {key:'start',label:'START',sub:'開始',type:'terminator',w:120,h:48,text:'START',mini:[64,26],tag:'START'},
@@ -1725,7 +1831,7 @@ const TOOLS=[
   {key:'output',label:'OUTPUT',sub:'輸出',type:'io',role:'output',w:180,h:56,text:'output',mini:[68,30],tag:'output',edit:true},
   {key:'process',label:'PROCESS',sub:'處理',type:'process',w:220,h:60,text:'',mini:[64,32],edit:true},
   {key:'decision',label:'DECISION',sub:'判斷',type:'decision',w:180,h:96,text:'',mini:[66,40],edit:true},
-  {key:'loop',label:'LOOP',sub:'重複',type:'loop',w:170,h:60,text:TASK==='sum'?'repeat n':TASK==='dog'?'repeat 10':'repeat',mini:[68,30],edit:true},
+  {key:'loop',label:'LOOP',sub:'重複',type:'loop',w:170,h:60,text:EXAMFLOW?'repeat until':TASK==='sum'?'repeat n':TASK==='dog'?'repeat 10':'repeat',mini:[68,30],edit:true},
   {key:'document',label:'DOCUMENT',sub:'文件',type:'document',w:140,h:70,text:'',mini:[60,36],edit:true},
   {key:'connector',label:'CONNECTOR',sub:'連接點',type:'connector',w:44,h:44,text:'A',mini:[28,28]},
 ];
@@ -2781,13 +2887,43 @@ if(canSubmit){ $('#bSubmit').hidden=false; $('#bCkSubmit').hidden=false; }
 $('#bSubmit').onclick=openSubmit;
 $('#bCkSubmit').onclick=()=>{ $('#checkModal').hidden=true; openSubmit(); };
 
+/* ---------- 考試流程圖暫存 Exam flowchart: save drafts to the cloud after signing in (not graded) ---------- */
+if(EXAMFLOW){
+  const okUrl=!window.claude&&/^https:\/\/script\.google(usercontent)?\.com\//.test(SUBMIT_URL);
+  const DL=okUrl&&CFG.ntpcOpenId?NtpcLogin({url:SUBMIT_URL,box:$('#dLogin'),optional:false,onUser:()=>{ dSay(''); listDrafts(false); },onOut:()=>{ $('#dList').innerHTML=''; }}):null;
+  const dSay=(m,bad)=>{ const s=$('#dSt'); s.textContent=m||''; s.classList.toggle('err',!!bad); };
+  const when=t=>new Date(t).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const errText=k=>k==='none'?'雲端上還沒有暫存。 Nothing saved yet.':k==='unknown_action'?'老師的雲端程式還沒更新，暫時不能暫存。':(DL&&DL.message(k))||('發生錯誤，請再試一次。'+(k?'（'+k+'）':''));
+  const need=()=>{ if(!DL){ dSay('This page needs the Google script and 新北市 OpenID in config.js. 需要在 config.js 開啟雲端程式與新北市 OpenID。',true); return null; }
+    const t=DL.token(); if(!t){ DL.render(); dSay('Sign in first. 請先登入。',true); } return t; };
+  function fail(r){ const k=r&&r.error; if(k==='login_expired'||k==='bad_token') DL.expired(); dSay(errText(k),true); }
+  async function listDrafts(loadIndex){
+    const tok=need(); if(!tok) return; dSay('Loading… 讀取中…');
+    try{ const r=await callDrive({action:'draft_get',idToken:tok,index:loadIndex===false?0:loadIndex});
+      if(!r||!r.ok){ if(r&&r.error==='none'){ $('#dList').innerHTML=''; dSay('雲端上還沒有暫存，畫好按「暫存到雲端」。 Nothing saved yet.'); } else fail(r); return; }
+      $('#dList').innerHTML=r.versions.map((v,i)=>`<li><span><b>${esc(when(v.time))}</b>　${v.shapes} 個圖形${i===0?'（最新）':''}</span><button class="btn" data-dv="${i}">Open 打開</button></li>`).join('');
+      if(loadIndex!==false){ commitEdit(); loadText(JSON.stringify(r.work),'考試流程圖'); $('#draftModal').hidden=true; toast('已打開 '+when(r.versions[r.index].time)+' 的暫存'); }
+      else dSay(`共 ${r.versions.length} 筆暫存，按「打開」可以拿回那一次的流程圖。`);
+    }catch(e){ dSay('Cannot reach Google Drive. 連不上雲端，請再試一次。',true); } }
+  $('#bDList').onclick=()=>listDrafts(false);
+  $('#dList').addEventListener('click',e=>{ const b=e.target.closest('[data-dv]'); if(b) listDrafts(Number(b.dataset.dv)); });
+  $('#bDSave').onclick=async()=>{ commitEdit(); if(!state.nodes.length){ dSay('Draw your flowchart first. 畫布是空的，先畫流程圖。',true); return; }
+    const tok=need(); if(!tok) return; const b=$('#bDSave'); b.disabled=true; dSay('Saving… 暫存中…');
+    try{ const r=await callDrive({action:'draft_save',idToken:tok,title:'考試流程圖',work:exportData()});
+      if(r&&r.ok){ dSay(`Saved! 已暫存 ${when(r.time)}（雲端共 ${r.count} 筆）`); toast('已暫存到雲端'); listDrafts(false); } else fail(r);
+    }catch(e){ dSay('Cannot reach Google Drive. 連不上雲端，請再試一次。',true); }
+    finally{ b.disabled=false; } };
+  $('#bDraft').hidden=false; $('#bDraft').onclick=()=>{ if(DL) DL.render(); dSay(''); $('#draftModal').hidden=false; if(DL&&DL.token()) listDrafts(false); };
+  $('#bWorks').hidden=true;
+}
 /* ---------- start ---------- */
 let loaded=false;
 try{ const s=localStorage.getItem(KEY); if(s){ loadStr(s); loaded=true; } }catch(e){}
 if(TASK==='score'){ $('#appName').textContent='Pass or Fail Tool 成績及格判斷工具'; document.title='Pass or Fail Tool 成績及格判斷工具'; $('#ckImg').alt='成績及格判斷完成圖'; }
 if(TASK==='sum'){ $('#appName').textContent='Summation Tool 1 加到 n 工具'; document.title='Summation Tool 1 加到 n 工具'; $('#ckImg').alt='1 加到 n 完成圖'; }
 if(TASK==='dog'){ $('#appName').textContent='Dog Talk 小狗對話流程圖'; document.title='Dog Talk Flowchart 小狗對話流程圖'; $('#ckImg').alt='Dog Talk 完成圖'; }
-if(FREE){ $('#buddy').hidden=true; $('#bCheck').hidden=true; $('#appName').textContent='Free Draw 自由繪製'; document.title='Free Draw 自由繪製'; }
+if(FREE){ $('#buddy').hidden=true; $('#bCheck').hidden=true; $('#appName').textContent=EXAMFLOW?'Exam Flowchart 考試流程圖':'Free Draw 自由繪製'; document.title=EXAMFLOW?'Exam Flowchart 考試流程圖':'Free Draw 自由繪製'; }
+if(EXAMFLOW&&!loaded) setTimeout(()=>$('#bDraft').click(),300);
 render(); showTitle(); requestAnimationFrame(fit);
 })();
 </script>

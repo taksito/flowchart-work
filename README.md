@@ -96,6 +96,16 @@ A Scratch-style block editor built with [Blockly](https://developers.google.com/
 - Six test runs feed answers in order (137 / 1,137 / 1,2,137 / 1,2,3 / 999,0,1378 / 1,2,3,137) and check the final message (welcome or locked, by keyword) and how many times the program asked.
 - Rubric: Structure 10, Input 15, Process 15, Decision 30, Output 5, Test run 25. All six tests right = full marks, whatever the method.
 
+## Scratch Exam 考試：補救教學成績
+
+- `exam-flow/`: the flowchart board for planning before the exam (not graded). Signed in with 新北市 OpenID, students save drafts to the cloud (`draft_save`, latest 10 kept in the folder 考試流程圖暫存 Exam Drafts) and open any of them again (`draft_get`). 考前畫流程圖，不計分；登入後可以暫存到雲端（保留最近 10 次）並讀回。
+- `exam/`: the Scratch Lab in exam mode — no helper, no Check, no score shown. Students sign in (or type class, number and name) and enter **today's 4-digit code**; the code changes every day and is worked out in the Apps Script from a secret kept in Script Properties (`EXAM_SECRET`), so it is never in this repository. A right code gives a signed ticket for `EXAM_HOURS` (3) hours, the same day only. Eight wrong codes for one student in 10 minutes are blocked for 10 minutes.
+- Hand in 交卷: `exam_submit` saves the program to the folder Scratch 考試 Exam (one file per student, the last one counts) and a row in the tab 考試成績 Exam.
+- Teacher 老師: on the exam page press **Teacher 老師**, sign in with 新北市 OpenID (an account in `TEACHERS`) and type the Gradebook teacher password (`TEACHER_KEY`). **Today's code 顯示今日密碼** shows the code; **Load 載入成績** loads a class, grades every program again on the page, lists missing students, and **Open 開啟** shows a student's blocks; **Write to sheet 寫入試算表** writes the scores to 考試成績 Exam. The exam is not one of the eight assignments in the Gradebook.
+- Answer 標準答案: ask score, `set score to answer`, `repeat until <score > 59>` { say 進行教學, ask, set score to answer }, `if <score > 79>` say 很棒 else say 剛好及格, then say `join 您的成績是 (join score ，恭喜你完成測驗)`. 60 passes and 80 is 很棒.
+- Tests 測試 (8): 90, 70, 80, 79, 60, 59→75, 30→45→95, 10→60 — checks how many times it asks, how many times it says 進行教學, 很棒 or 剛好及格, and that the last message has the score and 恭喜／完成.
+- Rubric: Structure 10, Input 15, Process 10, Decision 30, Output 10, Test run 25. All tests right = full marks.
+
 ## Flowchart scoring in three steps 流程圖三階段計分
 
 BMI, Pass or Fail and Summation flowcharts are scored as **1. Shapes 圖形 60** (the right kinds and number of shapes) → **2. Text 文字 30** (the right inputs, formulas, conditions and outputs) → **3. Lines 線段 10** (connections 4 + test runs 6). Dragging out every shape gives 60, correct text brings it to 90, and correct lines (all tests pass) make it 100. 拉完圖形 60 分、文字打對 90 分、線段接對 100 分。

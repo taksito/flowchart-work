@@ -80,6 +80,10 @@ button{font:inherit;color:inherit}
 .stagebar .dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
 .stagebar.on .dot{background:#2e9e4f}
 
+.exq{margin:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:14px}.exq h2{margin:0 0 6px;font-size:16px}.exq ol{margin:6px 0 10px;padding-left:20px}.exq li{margin:4px 0}.exq .en{color:var(--muted);font-size:13px}.exq a{color:var(--accent);font-weight:600}
+.exwho{font-size:13px;color:var(--muted);margin-left:8px}.excode{font:700 44px/1 var(--font-mono,monospace);letter-spacing:.2em;color:var(--accent)}
+.extable{width:100%;border-collapse:collapse;font-size:13px}.extable th,.extable td{border-bottom:1px solid var(--line);padding:6px;text-align:left;vertical-align:top}.extable td.n{text-align:right;white-space:nowrap}.extable .miss{color:var(--muted)}
+.exrow{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
 .buddy{margin:0 12px 12px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
 .b-head{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 12px;border-bottom:1px solid var(--line);background:var(--stencil)}
 .b-head>b{font-size:13px;white-space:nowrap}
@@ -176,6 +180,17 @@ button{font:inherit;color:inherit}
         </div>
         <div class="stagebar" id="stagebar" hidden><span class="dot"></span><span id="stageMsg"></span></div>
       </div>
+      <section class="exq" id="examQ" hidden>
+        <h2>Exam question 考題：補救教學成績</h2>
+        <ol>
+          <li>Ask for a score. 詢問「請輸入成績」。</li>
+          <li>Below 60: say 進行教學, then ask again, until the score is 60 or more. 不到 60 分：說「進行教學」，再重新輸入成績，直到 60 分以上。</li>
+          <li>80 or more: say 很棒. 60–79: say 剛好及格. 80 分以上說「很棒」；60～79 分說「剛好及格」。</li>
+          <li>Last, say 您的成績是（成績），恭喜你完成測驗. 最後說「您的成績是○○，恭喜你完成測驗」。</li>
+        </ol>
+        <p class="en">Press Run to test it yourself. Submit when you are done; you can submit again, the last one counts. 可以按 Run 自己測試；做完按「Submit 交卷」，可以重交，以最後一次為準。</p>
+        <p><a href="../exam-flow/" target="_blank" rel="noopener">Open my flowchart 打開我的流程圖 ↗</a></p>
+      </section>
       <section class="buddy" id="buddy" aria-live="polite">
         <div class="b-head">
           <svg class="b-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M12 7V4" stroke="var(--accent)" stroke-width="1.6"/><circle cx="12" cy="3.4" r="1.3" fill="var(--accent)"/><circle cx="9" cy="13" r="1.5" fill="var(--accent)"/><circle cx="15" cy="13" r="1.5" fill="var(--accent)"/></svg>
@@ -241,6 +256,39 @@ button{font:inherit;color:inherit}
 <p class="devnote" style="margin:0;font-size:12px;color:var(--muted)">This computer 這台電腦的代號：<b class="devid" style="font-family:var(--font-mono)"></b></p>
     <p id="sbSummary" style="color:var(--ink);font-weight:500"></p>
     <div class="row"><span class="status" id="sbStatus"></span><button class="btn" data-close>Cancel 取消</button><button class="btn primary" id="bDoSubmit">Submit 繳交</button></div>
+  </div>
+</div>
+
+<div class="modal" id="examGate" data-lock="1" hidden>
+  <div class="dialog">
+    <h2>Scratch Exam 考試</h2>
+    <p>Sign in or type your class, number and name, then enter today's exam code from your teacher. 用校務行政帳號登入，或填班級、座號、姓名，再輸入老師公布的今日考試密碼。</p>
+    <div id="exLogin"></div>
+    <div class="who" data-who="ex"></div>
+    <label class="field"><span>Exam code 今日考試密碼</span><input id="exCode" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="0000"></label>
+    <div class="row"><span class="status" id="exStatus"></span><button class="btn" id="bExTeacher" type="button">Teacher 老師</button><button class="btn primary" id="bExEnter" type="button">Start 開始考試</button></div>
+  </div>
+</div>
+
+<div class="modal" id="examSubmit" hidden>
+  <div class="dialog">
+    <h2>Submit your exam 交卷</h2>
+    <p id="exSubWho"></p>
+    <p>Your program goes to your teacher. You can submit again before the exam ends; the last one counts. 程式會交給老師。考試結束前可以重交，以最後一次為準。</p>
+    <div class="row"><span class="status" id="exSubSt"></span><button class="btn" data-close>Cancel 取消</button><button class="btn primary" id="bExSubmit">Submit 交卷</button></div>
+  </div>
+</div>
+
+<div class="modal" id="teachModal" hidden>
+  <div class="dialog wide" style="width:min(980px,100%)">
+    <h2>Teacher 老師：考試密碼與成績</h2>
+    <div id="tLogin"></div>
+    <div class="exrow"><label class="field" style="flex:1"><span>Teacher password 教師密碼（成績登錄頁的密碼）</span><input type="password" id="tKey" autocomplete="off"></label><button class="btn primary" id="bTCode">Today's code 顯示今日密碼</button></div>
+    <div id="tCodeBox" hidden><span class="excode" id="tCode"></span> <span class="exwho" id="tDay"></span></div>
+    <div class="exrow"><label class="field"><span>Class 班級</span><input id="tCls" inputmode="numeric" placeholder="701" autocomplete="off"></label><button class="btn" id="bTLoad">Load 載入成績</button><button class="btn primary" id="bTSave" disabled>Write to sheet 寫入試算表</button></div>
+    <div><span class="status" id="tSt"></span></div>
+    <div id="tList"></div>
+    <div class="row"><button class="btn" id="bTBack">Back 返回</button></div>
   </div>
 </div>
 
@@ -1481,6 +1529,97 @@ Object.assign(EN_WORDS,{'密碼':'password','次數':'count','歡迎':'welcome',
   feedbackTask=function(w,g){ return (g&&g.task||taskOf(w))==='scratch-pw'?feedbackScratchPw(w,g):_fb(w,g); };
 })();
 if(typeof module!=='undefined') Object.assign(module.exports,{gradeScratchPw,feedbackScratchPw,pwCat,gradeTask,feedbackTask,taskOf});
+/* ===== Scratch exam: remedial score. Ask a score; below 60 say 進行教學 and ask again until it is 60 or more;
+   80 or more says 很棒, otherwise 剛好及格; last, say the score and 恭喜你完成測驗 ===== */
+const EX_TEACH=/教學|補救|上課|teach|lesson|study|review/i, EX_GREAT=/很棒|太棒|很好|優秀|great|excellent|awesome|good job|well done/i,
+  EX_PASS=/剛好及格|及格|pass/i, EX_DONE=/恭喜|完成|congrat|finish|complete/i;
+function exCat(msg){ const m=String(msg||'');
+  if(EX_DONE.test(m)) return 'done';
+  if(EX_TEACH.test(m)&&!EX_GREAT.test(m)) return 'teach';
+  if(EX_GREAT.test(m)) return 'great';
+  if(EX_PASS.test(m)) return 'pass';
+  return null; }
+/* run with answers in order; after they run out the program gets 100, so a loop that never ends still stops */
+function exRun(ws,answers){
+  const r=sbRunFn(ws,(q,k)=>k<answers.length?answers[k]:'100');
+  const cats=r.says.map(exCat), teach=cats.filter(c=>c==='teach').length;
+  const lastTeach=cats.lastIndexOf('teach');
+  const after=cats.slice(lastTeach+1), result=after.find(c=>c==='great'||c==='pass')||null;
+  const last=r.says.length?r.says[r.says.length-1]:'';
+  return {...r,cats,teach,result,last};
+}
+const EX_CASES=[{a:[90],exp:'great'},{a:[70],exp:'pass'},{a:[80],exp:'great'},{a:[79],exp:'pass'},{a:[60],exp:'pass'},
+  {a:[59,75],exp:'pass'},{a:[30,45,95],exp:'great'},{a:[10,60],exp:'pass'}];
+const EX_NAME={great:'很棒',pass:'剛好及格'};
+function exTests(ws){
+  return EX_CASES.map(c=>{
+    const r=exRun(ws,c.a.map(String)), n=c.a.length, fin=String(c.a[n-1]);
+    const finalOK=new RegExp('(^|[^0-9.])'+fin+'([^0-9]|$)').test(r.last)&&EX_DONE.test(r.last);
+    const ok=!r.err&&r.asks.length===n&&r.teach===n-1&&r.result===c.exp&&finalOK;
+    let why='';
+    if(r.err) why='程式停不下來：重複裡要再詢問一次成績';
+    else if(r.asks.length<n) why=n>1?`只問了 ${r.asks.length} 次：不到 60 分要在重複裡再詢問一次`:'要用 ask 詢問成績';
+    else if(r.asks.length>n) why=c.a[n-1]>=60&&c.a[n-1]<61?'剛好 60 分已經及格，不用再教學（條件寫 score > 59，或 not score < 60）':`問了 ${r.asks.length} 次：成績到 60 分就要停止重複`;
+    else if(r.teach!==n-1) why=r.teach<n-1?'不到 60 分要說「進行教學」':'及格的成績不用說「進行教學」';
+    else if(!r.result) why='重複結束後要說「很棒」或「剛好及格」';
+    else if(r.result!==c.exp) why=c.exp==='great'?(c.a[n-1]===80?'80 分也算很棒（條件寫 score > 79，或 not score < 80）':'80 分以上要說「很棒」'):'60 到 79 分要說「剛好及格」';
+    else if(!finalOK) why='最後要說「您的成績是 '+fin+'，恭喜你完成測驗」：用 join 字串組合把成績接進去';
+    return {a:c.a,exp:EX_NAME[c.exp],got:r.result?EX_NAME[r.result]:(r.last||null),asks:r.asks.length,needAsks:n,teach:r.teach,last:r.last,ok,why,lab:`輸入 ${c.a.join('、')}`};
+  });
+}
+function gradeScratchExam(work){
+  const ws=work.workspace||{}, F=sbFacts(ws), items=[], bad=new Set(), names=F.names;
+  const add=(group,label,max,got,note)=>items.push({group,label,max,got:Math.max(0,Math.min(max,got)),note:note||''});
+  add('結構','有「當綠旗被點擊」',5,F.flags.length?5:0,F.flags.length?'':'程式要從「when ⚑ clicked 當綠旗被點擊」開始');
+  add('結構','沒有散落的積木',5,5-2.5*F.loose.length,F.loose.length?`有 ${F.loose.length} 組積木沒有接在綠旗下面`:'');
+  F.loose.forEach(b=>bad.add(b.id));
+  const loops=F.inFlag.filter(b=>b.type==='sc_until'||b.type==='sc_repeat');
+  const inLoop=[]; loops.forEach(l=>{ const d=l.inputs&&l.inputs.DO&&l.inputs.DO.block; if(d) sbWalk(d,b=>inLoop.push(b)); });
+  const asks=F.inFlag.filter(b=>b.type==='sc_ask'), askIn=inLoop.some(b=>b.type==='sc_ask');
+  add('輸入','詢問成績',8,asks.length?8:0,asks.length?'':'用「ask 詢問並等待」詢問成績');
+  add('輸入','不及格時在重複裡再詢問一次',7,askIn?7:0,askIn?'':'在 repeat until 裡面再放一個「ask 詢問」，教學後重新輸入成績');
+  add('計算','把答案存進變數（set score to answer）',10,F.stores.length?10:0,F.stores.length?'':'詢問後用「set score to (answer)」把成績存起來');
+  const until=loops.find(b=>b.type==='sc_until'), cond=until&&sbIn(until,'COND');
+  const nums=x=>{ const out=[]; if(x) sbWalk(x,y=>{ if(y.type==='sc_num') out.push(sbNum(sbField(y,'NUM'))); if(y.type==='sc_text'&&isFinite(Number(sbField(y,'TEXT')))) out.push(Number(sbField(y,'TEXT'))); }); return out; };
+  const c60=cond&&nums(cond).some(v=>v===59||v===60);
+  const ifAfter=F.inFlag.filter(b=>(b.type==='sc_ifelse'||b.type==='sc_if')&&!inLoop.includes(b));
+  const if80=ifAfter.some(b=>nums(sbIn(b,'COND')).some(v=>v===79||v===80));
+  add('判斷','使用重複積木（repeat until 重複直到）',10,until?10:loops.length?6:0,until?'':loops.length?'這題建議用「repeat until 重複直到」':'用「repeat until 重複直到」：成績不到 60 就一直重複');
+  add('判斷','重複的停止條件和 60 比較',10,c60?10:cond?5:0,c60?'':'停止條件寫 score > 59（成績到 60 分就停）');
+  add('判斷','重複結束後用「如果…否則」和 80 比較',10,if80?10:ifAfter.length?5:0,if80?'':'重複結束後用「if … else」：score > 79 說很棒，否則說剛好及格');
+  const sayIn=b=>b.type==='sc_say'||b.type==='sc_saysecs';
+  const loopSays=inLoop.filter(sayIn), allSays=F.inFlag.filter(sayIn);
+  const sayText=b=>{ const t=[]; sbWalk(sbIn(b,'MSG')||{},x=>{ if(x.type==='sc_text') t.push(String(sbField(x,'TEXT')||'')); }); return t.join(''); };
+  const teachIn=loopSays.some(b=>exCat(sayText(b))==='teach');
+  const both=allSays.some(b=>exCat(sayText(b))==='great')&&allSays.some(b=>exCat(sayText(b))==='pass');
+  const joinFinal=allSays.some(b=>{ let j=false; sbWalk(sbIn(b,'MSG')||{},x=>{ if(x.type==='sc_join') j=true; }); return j&&EX_DONE.test(sayText(b)); });
+  add('輸出','重複裡說「進行教學」',3,teachIn?3:0,teachIn?'':'在 repeat until 裡說「進行教學」');
+  add('輸出','說出「很棒」和「剛好及格」',3,both?3:0,both?'':'if 裡說「很棒」，else 裡說「剛好及格」');
+  add('輸出','最後用 join 說出成績與恭喜',4,joinFinal?4:0,joinFinal?'':'最後用 join 字串組合說「您的成績是 (score)，恭喜你完成測驗」');
+  const full=exTests(ws), fp=full.filter(t=>t.ok).length;
+  add('執行測試','執行測試（8 組輸入）',25,25*fp/full.length,`${fp} / ${full.length} 題正確`);
+  /* english */
+  const CJK=/[㐀-鿿]/; const units=[...F.texts,...F.varNames]; const zh=units.filter(t=>CJK.test(t));
+  const english=units.length?Math.round(100*(units.length-zh.length)/units.length):0;
+  if(fp===full.length) items.forEach(i=>{ if(i.got<i.max){ i.got=i.max; i.note='答案全部正確，用不同寫法也算對'; } });
+  const groups={}; items.forEach(i=>{ const g=groups[i.group]||(groups[i.group]={got:0,max:0}); g.got+=i.got; g.max+=i.max; });
+  const total=Math.round(items.reduce((s,i)=>s+i.got,0));
+  const fixes=[]; items.filter(i=>i.got<i.max-1e-9&&i.note&&!/題正確$|答案全部正確/.test(i.note)).forEach(i=>fixes.push(i.note));
+  full.filter(t=>!t.ok&&t.why).slice(0,2).forEach(t=>fixes.push(`${t.lab}：${t.why}`));
+  const level=total>=90?'優秀':total>=75?'良好':total>=60?'及格':'需加強';
+  return {task:'exam',total,level,items,groups,logic:[],full,fixes:[...new Set(fixes)],bad:[...bad],passed:fp===full.length&&total>=100,english,zhWords:[],enTips:[],facts:F};
+}
+function feedbackScratchExam(work,g){
+  if(g.passed) return {en:'All 8 tests passed.',zh:'8 組測試全部通過。'};
+  return {en:`${g.full.filter(t=>t.ok).length} of 8 tests passed.`,zh:g.fixes.slice(0,3).join('；')||'請檢查程式。'};
+}
+(function(){
+  const _taskOf=taskOf, _grade=gradeTask, _fb=feedbackTask;
+  taskOf=function(w){ if(w&&w.task==='exam') return 'exam'; return _taskOf(w); };
+  gradeTask=function(w){ return taskOf(w)==='exam'?gradeScratchExam(w):_grade(w); };
+  feedbackTask=function(w,g){ return (g&&g.task||taskOf(w))==='exam'?feedbackScratchExam(w,g):_fb(w,g); };
+})();
+if(typeof module!=='undefined') Object.assign(module.exports,{gradeScratchExam,feedbackScratchExam,exCat,exRun,exTests,gradeTask,feedbackTask,taskOf});
 
 /* ===== Flowchart scoring in three steps: shapes 60 → text 90 → lines 100 ===== */
 const TIER_NEED={
@@ -1805,19 +1944,20 @@ function BuddyBot(o){
 (function(){
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SBT=['bmi','sum','pw'].includes(window.SB_TASK)?window.SB_TASK:'score';
+const SBT=['bmi','sum','pw','exam'].includes(window.SB_TASK)?window.SB_TASK:'score', EXAM=SBT==='exam';
 const TC={
   score:{key:'blocklab-score-v1',title:'Scratch Pass or Fail',unit:'scratch',h1:'Scratch Lab: Pass or Fail',zh:'積木程式：成績及格判斷',eyebrow:'SCRATCH LAB · PASS OR FAIL · COMPLETE',ask:'Score 1?',says:['pass','fail'],tests:'✓ 8 / 8 tests passed 測試全數通過'},
   bmi:{key:'blocklab-bmi-v1',title:'Scratch BMI',unit:'scratch-bmi',h1:'Scratch Lab: BMI',zh:'積木程式：BMI 判斷',eyebrow:'SCRATCH LAB · BMI · COMPLETE',ask:'Height (m)?',says:['thin','normal','overweight','obesity'],tests:'✓ 8 / 8 BMI tests passed 測試全數通過'},
   pw:{key:'blocklab-pw-v1',title:'Scratch Password',unit:'scratch-pw',h1:'Scratch Lab: Password Check',zh:'積木程式：密碼檢查',eyebrow:'SCRATCH LAB · PASSWORD · COMPLETE',ask:'請輸入密碼',says:['密碼錯誤','歡迎使用本系統','輸入密碼錯誤3次，帳號已被鎖定'],cmp:'',vars:'password, count',tests:'✓ 6 / 6 tests passed 測試全數通過'},
+  exam:{key:'blocklab-exam-v1',title:'Scratch Exam',unit:'exam',h1:'Scratch Exam',zh:'考試：補救教學成績',eyebrow:'',ask:'請輸入成績',says:[''],cmp:'',vars:'score',tests:''},
   sum:{key:'blocklab-sum-v1',title:'Scratch Summation',unit:'scratch-sum',h1:'Scratch Lab: 1 + 2 + … + n',zh:'積木程式：1 加到 n',eyebrow:'SCRATCH LAB · SUMMATION · COMPLETE',ask:'n?',says:[],cmp:'',vars:'n, sum, i',tests:'✓ 8 / 8 tests passed 測試全數通過'}}[SBT];
 const KEY=TC.key, META_KEY='blocklab-meta', TITLE=TC.title;
 const gradeFn=w=>gradeTask(Object.assign({format:'blocklab-v1'},w,{task:TC.unit})), fbFn=(w,g)=>feedbackTask(Object.assign({format:'blocklab-v1'},w,{task:TC.unit}),g);
 document.title=TC.title+' 積木程式';
 $('#h1Name').textContent=TC.h1; $('#h1Zh').textContent=TC.zh;
 let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},2600); }
-document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m||e.target.closest('[data-close]')) m.hidden=true; }));
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal').forEach(m=>{ if(m.id!=='promptModal') m.hidden=true; }); });
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(m.dataset.lock) return; if(e.target===m||e.target.closest('[data-close]')) m.hidden=true; }));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal').forEach(m=>{ if(m.id!=='promptModal'&&!m.dataset.lock) m.hidden=true; }); });
 
 /* ---------- student info ---------- */
 let meta={cls:'',seat:'',name:''};
@@ -1882,7 +2022,7 @@ const toolbox={kind:'categoryToolbox',contents:[
     {kind:'block',type:'sc_add',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_sub',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_mul',inputs:{A:N(''),B:N('')}},{kind:'block',type:'sc_div',inputs:{A:N(''),B:N(4)}},
     {kind:'block',type:'sc_gt',inputs:{A:T(''),B:N(TC.cmp??60)}},{kind:'block',type:'sc_lt',inputs:{A:T(''),B:N(TC.cmp??60)}},{kind:'block',type:'sc_eq',inputs:{A:T(''),B:N(TC.cmp??60)}},
     {kind:'block',type:'sc_and'},{kind:'block',type:'sc_or'},{kind:'block',type:'sc_not'},
-    {kind:'block',type:'sc_join',inputs:{A:T(SBT==='sum'?'Sum: ':'Average: '),B:T('')}},{kind:'block',type:'sc_round',inputs:{A:N('')}}]},
+    {kind:'block',type:'sc_join',inputs:{A:T(SBT==='sum'?'Sum: ':EXAM?'':'Average: '),B:T('')}},{kind:'block',type:'sc_round',inputs:{A:N('')}}]},
   {kind:'category',name:'Control 控制',categorystyle:'control',contents:[{kind:'block',type:'sc_ifelse'},{kind:'block',type:'sc_if'},{kind:'block',type:'sc_repeat',inputs:{TIMES:N(SBT==='sum'?10:4)}},{kind:'block',type:'sc_until'},{kind:'block',type:'sc_wait',inputs:{SECS:N(1)}},{kind:'block',type:'sc_stop'}]},
   {kind:'category',name:'Looks 外觀',categorystyle:'looks',contents:TC.says.length?[...TC.says.map(t=>({kind:'block',type:'sc_say',inputs:{MSG:T(t)}})),{kind:'block',type:'sc_saysecs',inputs:{MSG:T(TC.says[0]),SECS:N(2)}}]:[{kind:'block',type:'sc_say',inputs:{MSG:T('')}},{kind:'block',type:'sc_say',inputs:{MSG:{shadow:{type:'sc_text',fields:{TEXT:''}},block:{type:'sc_join',inputs:{A:T('Sum: '),B:T('')}}}}}]},
 ]};
@@ -2039,7 +2179,7 @@ renderMonitors({},'');
 const STEPS=SBT==='pw'?['Flag','Set','Ask','Repeat until','Inside','If else','Say','Test']:SBT==='bmi'?['Flag','Ask','Save','BMI','If','Cut-offs','Say','Test']:SBT==='sum'?['Flag','Ask','Save n','Repeat','Count','Add','Say','Test']:['Flag','Ask','Save','Total','Average','If','Say','Test'];
 const B=s=>`<b>${s}</b>`;
 let helpT=null, lastKey='', helpFocus=null, lastDone=null;
-function scheduleHelp(){ clearTimeout(helpT); helpT=setTimeout(updateHelp,150); }
+function scheduleHelp(){ if(EXAM) return; clearTimeout(helpT); helpT=setTimeout(updateHelp,150); }
 function computeHelp(){ return SBT==='bmi'?computeHelpBMI():SBT==='sum'?computeHelpSum():SBT==='pw'?computeHelpPw():computeHelpScore(); }
 function computeHelpScore(){
   const j=wsJSON(), done=Array(8).fill(false); let cur=null;
@@ -2184,7 +2324,7 @@ function updateHelp(){
   $('#buddy').classList.toggle('done',cur.i===8);
   if(cur.focus!==helpFocus){ helpFocus=cur.focus; if(helpFocus){ const b=ws.getBlockById(helpFocus); if(b){ try{ b.select(); }catch(e){} } } }
 }
-const BOT=BuddyBot({panel:$('#buddy'),mode:'walk',activity:[$('#blocks')]});
+const BOT=EXAM?{say(){},done(){}}:BuddyBot({panel:$('#buddy'),mode:'walk',activity:[$('#blocks')]});
 /* short tips from the robot: how to watch values on the stage */
 const tipAt={};
 function tip(k,en,zh){ const now=Date.now(); if(tipAt[k]&&now-tipAt[k]<20000) return; tipAt[k]=now; BOT.say(en,zh,4500); }
@@ -2313,8 +2453,92 @@ $('#bDoSubmit').onclick=async()=>{ const st=$('#sbStatus'), btn=$('#bDoSubmit');
     if(LOGIN&&LOGIN.message(e)){ fail(LOGIN.message(e)); return; }
     fail(res&&res.error==='bad_unit'?'Your teacher needs to update the Google script first. 老師的雲端程式還沒更新，請先用「下載作業檔」交。':'The server said no. 雲端拒絕了這次繳交。'+(res&&res.error?`（${res.error}）`:''));
   }catch(e){ fail('Cannot reach Google Drive. Use “下載作業檔” instead. 連不上雲端，請改用「下載作業檔」。'); } };
-if(canSubmit) $('#bSubmit').hidden=false;
+if(canSubmit&&!EXAM) $('#bSubmit').hidden=false;
 $('#bSubmit').onclick=openSubmit; $('#bCkSubmit').onclick=openSubmit;
+
+/* ---------- Scratch exam 考試: today's code, a ticket, hand in; the teacher sees the code and the class's scores ---------- */
+if(EXAM){
+  const TK='exam-ticket-v1', OWN='blocklab-exam-owner';
+  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  ['#buddy','#bCheck','#bOpen','#bDownload'].forEach(q=>{ const el=$(q); if(el) el.hidden=true; });
+  $('#examQ').hidden=false; $('#bSubmit').textContent='Submit 交卷';
+  const ERR={bad_code:'The code is wrong. 考試密碼不對。',too_many:'Too many wrong codes. Wait 10 minutes or ask your teacher. 輸入錯太多次，請等 10 分鐘或找老師。',no_name:'Type your class, number and name. 請填班級、座號、姓名。',
+    unknown_action:'Your teacher needs to update the Google script. 老師的雲端程式還沒更新。',bad_ticket:'Please enter the exam code again. 請重新輸入考試密碼。',ticket_expired:'Exam time is over, or it is a new day. Enter the code again. 考試時間已過或已經換日，請重新輸入密碼。',
+    bad_key:'Wrong teacher password. 教師密碼不對。',not_teacher:'Sign in with the teacher account. 請用老師的帳號登入。',key_not_set:'Set TEACHER_KEY in the script first. 請先在雲端程式設定教師密碼。',login_required:'Sign in first. 請先登入。'};
+  const msg=(k,L)=>ERR[k]||(L&&L.message(k))||('Something went wrong. 發生錯誤。'+(k?'（'+k+'）':''));
+  let ticket=null;
+  try{ const t=JSON.parse(sessionStorage.getItem(TK)||'null'); if(t&&t.exp*1000>Date.now()&&t.day===today()) ticket=t; }catch(e){}
+  const mk=box=>canSubmit&&CFG.ntpcOpenId?NtpcLogin({url:SUBMIT_URL,box,optional:box.id==='exLogin',onUser:u=>{ if(box.id==='exLogin'){ meta.cls=u.cls; meta.seat=u.seat; meta.name=u.name; saveMeta(); fillWho('ex'); gateWho(); } },onOut:()=>gateWho()}):null;
+  const GL=mk($('#exLogin')), TL=mk($('#tLogin'));
+  function gateWho(){ const w=document.querySelector('[data-who="ex"]'); if(w) w.hidden=!!(GL&&GL.token()); }
+  function started(t){
+    ticket=t; try{ sessionStorage.setItem(TK,JSON.stringify(t)); }catch(e){}
+    const st=(t.who.cls?t.who.cls+'-':'')+t.who.seat+' '+t.who.name;
+    meta.cls=t.who.cls; meta.seat=t.who.seat; meta.name=t.who.name; saveMeta();
+    let own=''; try{ own=localStorage.getItem(OWN)||''; }catch(e){}
+    if(own!==t.day+'|'+st){ ws.clear(); try{ localStorage.setItem(OWN,t.day+'|'+st); }catch(e){} }   // a shared computer: start from an empty program
+    let w=$('#exWhoTag'); if(!w){ w=document.createElement('span'); w.id='exWhoTag'; w.className='exwho'; $('#h1Zh').after(w); }
+    w.textContent='考生 '+st; $('#examGate').hidden=true; if(canSubmit) $('#bSubmit').hidden=false;
+  }
+  function gate(m){ fillWho('ex'); if(GL) GL.render(); gateWho(); const s=$('#exStatus'); s.textContent=m||''; s.classList.toggle('err',!!m); $('#examGate').hidden=false; setTimeout(()=>$('#exCode').focus(),0); }
+  if(!canSubmit) gate('The exam needs the Google script in config.js. 這個考試要在 config.js 設定雲端程式才能使用。');
+  else if(ticket) started(ticket); else gate('');
+  $('#bExEnter').onclick=async()=>{
+    const s=$('#exStatus'), b=$('#bExEnter'); s.classList.remove('err');
+    const tok=GL?GL.token():null, code=$('#exCode').value.trim();
+    if(!tok&&!(String(meta.cls).trim()&&String(meta.seat).trim()&&String(meta.name).trim())){ s.textContent=ERR.no_name; s.classList.add('err'); return; }
+    if(!/^\d{4}$/.test(code)){ s.textContent='Enter the 4-digit code. 請輸入 4 位數考試密碼。'; s.classList.add('err'); $('#exCode').focus(); return; }
+    b.disabled=true; s.textContent='Checking… 確認中…';
+    try{ const r=await callDrive({action:'exam_enter',code,idToken:tok||'',cls:meta.cls,seat:meta.seat,name:meta.name});
+      if(r&&r.ok){ s.textContent=''; started({ticket:r.ticket,who:r.who,day:r.day,exp:r.exp}); toast('Good luck! 考試開始，加油！'); }
+      else { if(r&&r.error==='login_expired'&&GL) GL.expired(); s.textContent=msg(r&&r.error,GL)+(r&&r.error==='bad_code'&&r.left!=null?` 還可以試 ${r.left} 次。`:''); s.classList.add('err'); }
+    }catch(e){ s.textContent='Cannot reach Google Drive. 連不上雲端，請再試一次。'; s.classList.add('err'); }
+    finally{ b.disabled=false; } };
+  $('#exCode').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#bExEnter').click(); });
+  /* hand in: no score is shown during the exam */
+  openSubmit=function(){ if(!ticket){ gate(''); return; } $('#exSubWho').textContent='考生 Student：'+(ticket.who.cls?ticket.who.cls+'-':'')+ticket.who.seat+' '+ticket.who.name; const st=$('#exSubSt'); st.textContent=''; st.classList.remove('err'); $('#bExSubmit').disabled=false; $('#examSubmit').hidden=false; };
+  $('#bSubmit').onclick=openSubmit;
+  $('#bExSubmit').onclick=async()=>{
+    const st=$('#exSubSt'), b=$('#bExSubmit'); st.classList.remove('err');
+    const w=exportData(), g=gradeFn(w); b.disabled=true; st.textContent='Submitting… 交卷中…';
+    try{ const r=await callDrive({action:'exam_submit',ticket:ticket.ticket,work:w,check:{total:g.total,level:g.level,tests:g.full.filter(t=>t.ok).length+' / '+g.full.length}});
+      if(r&&r.ok){ st.textContent='Submitted! 已交卷 '+new Date(r.time).toLocaleTimeString('zh-TW',{hour12:false})+(r.times>1?`（第 ${r.times} 次）`:''); toast('Submitted 已交卷'); }
+      else if(r&&(r.error==='ticket_expired'||r.error==='bad_ticket')){ try{ sessionStorage.removeItem(TK); }catch(e){} ticket=null; $('#examSubmit').hidden=true; gate(msg(r.error)); }
+      else { st.textContent=msg(r&&r.error); st.classList.add('err'); }
+    }catch(e){ st.textContent='Cannot reach Google Drive. Try again. 連不上雲端，請再按一次交卷。'; st.classList.add('err'); }
+    finally{ b.disabled=false; } };
+  /* teacher */
+  let rows=[];
+  try{ $('#tKey').value=sessionStorage.getItem('exam-tkey')||''; }catch(e){}
+  $('#bExTeacher').onclick=()=>{ if(TL) TL.render(); $('#examGate').hidden=true; $('#teachModal').hidden=false; };
+  $('#bTBack').onclick=()=>{ $('#teachModal').hidden=true; if(!ticket) gate(''); };
+  const tAuth=()=>{ const key=$('#tKey').value.trim(); try{ sessionStorage.setItem('exam-tkey',key); }catch(e){} return {idToken:TL?TL.token()||'':'',key}; };
+  const tSay=(m,bad)=>{ const s=$('#tSt'); s.textContent=m; s.classList.toggle('err',!!bad); };
+  $('#bTCode').onclick=async()=>{ tSay('Loading… 讀取中…');
+    try{ const r=await callDrive(Object.assign({action:'exam_code'},tAuth()));
+      if(r&&r.ok){ $('#tCode').textContent=r.code; $('#tDay').textContent=r.day+' 今日密碼（每天自動更換）'; $('#tCodeBox').hidden=false; tSay(''); } else tSay(msg(r&&r.error,TL),true);
+    }catch(e){ tSay('Cannot reach Google Drive. 連不上雲端。',true); } };
+  $('#bTLoad').onclick=async()=>{ tSay('Loading and grading… 載入並批改中…'); $('#bTSave').disabled=true;
+    try{ const r=await callDrive(Object.assign({action:'exam_list',cls:$('#tCls').value.trim()},tAuth()));
+      if(!r||!r.ok){ tSay(msg(r&&r.error,TL),true); return; }
+      const bySeat={};
+      r.works.forEach(x=>{ const w=x.work, g=gradeTask(Object.assign({},w,{task:'exam'})); const k=w.cls+'-'+Number(w.seat);
+        bySeat[k]={cls:w.cls,seat:w.seat,name:w.name,day:w.examDay||'',time:w.submittedAt,total:g.total,level:g.level,tests:g.full.filter(t=>t.ok).length+' / '+g.full.length,fixes:g.fixes.slice(0,2).join('；'),url:x.url,work:w}; });
+      (r.roster||[]).forEach(x=>{ const k=x.cls+'-'+Number(x.seat); if(!bySeat[k]) bySeat[k]={cls:x.cls,seat:x.seat,name:x.name,miss:true}; });
+      rows=Object.values(bySeat).sort((a,b)=>String(a.cls).localeCompare(String(b.cls),undefined,{numeric:true})||Number(a.seat)-Number(b.seat));
+      const done=rows.filter(x=>!x.miss);
+      $('#tList').innerHTML=rows.length?`<table class="extable"><thead><tr><th>班級</th><th>座號</th><th>姓名</th><th>分數</th><th>測試</th><th>交卷時間</th><th>需要修正</th><th></th></tr></thead><tbody>${rows.map((x,i)=>x.miss?`<tr class="miss"><td>${esc(x.cls)}</td><td class="n">${esc(x.seat)}</td><td>${esc(x.name)}</td><td colspan="5">未交 Not handed in</td></tr>`:`<tr><td>${esc(x.cls)}</td><td class="n">${esc(x.seat)}</td><td>${esc(x.name)}</td><td class="n"><b>${x.total}</b></td><td class="n">${esc(x.tests)}</td><td>${esc(new Date(x.time).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))}</td><td>${esc(x.fixes)}</td><td><button class="btn" data-view="${i}">Open 開啟</button></td></tr>`).join('')}</tbody></table>`:'<p>No exams yet. 還沒有人交卷。</p>';
+      tSay(`${done.length} 人已交卷${rows.length>done.length?`，${rows.length-done.length} 人未交`:''}。分數是重新批改的結果，按「寫入試算表」存到 Google 試算表。`);
+      $('#bTSave').disabled=!done.length;
+    }catch(e){ tSay('Cannot reach Google Drive. 連不上雲端。',true); } };
+  $('#tList').addEventListener('click',e=>{ const b=e.target.closest('[data-view]'); if(!b) return; const x=rows[Number(b.dataset.view)]; if(!x||!x.work) return;
+    loadJSON(x.work.workspace); $('#teachModal').hidden=true; toast('正在看 '+x.cls+'-'+x.seat+' '+x.name+' 的程式（按 Run 可以測試）'); });
+  $('#bTSave').onclick=async()=>{ const done=rows.filter(x=>!x.miss); if(!done.length) return; $('#bTSave').disabled=true; tSay('Saving… 寫入中…');
+    try{ const r=await callDrive(Object.assign({action:'exam_save',rows:done.map(x=>({cls:x.cls,seat:x.seat,name:x.name,day:x.day,total:x.total,level:x.level,tests:x.tests,url:x.url}))},tAuth()));
+      if(r&&r.ok) tSay(`已寫入 ${r.saved} 位學生的成績到「考試成績 Exam」工作表。`); else tSay(msg(r&&r.error,TL),true);
+    }catch(e){ tSay('Cannot reach Google Drive. 連不上雲端。',true); }
+    finally{ $('#bTSave').disabled=false; } };
+}
 
 scheduleHelp();
 })();

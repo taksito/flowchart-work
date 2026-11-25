@@ -143,12 +143,16 @@ window.FLOW_CONFIG = {
 
 > 新增 Scratch 單元後，`Code.gs` 多了 `scratch` 單元。之前部署過的人要貼上新版 `Code.gs`（記得改回自己的 `TEACHER_KEY`），再部署新版本，學生才能從 Scratch Lab 繳交。
 
+> 新增考試功能（`exam/`、`exam-flow/`）與「依姓名找回上次的作業」後，`Code.gs` 多了 `exam_code`、`exam_enter`、`exam_submit`、`exam_list`、`exam_save`、`draft_save`、`draft_get`。請把 `Code.gs` 整份換成新版（**記得改回自己的 `TEACHER_KEY`**，其他自己改過的設定也要改回來），再部署新版本。不需要再執行 setup；第一次有人使用時會自動建立「Scratch 考試 Exam」「考試流程圖暫存 Exam Drafts」資料夾和「考試成績 Exam」工作表。
+
 改了 `Code.gs`（例如換教師密碼或班級代碼）之後，要到 **部署 → 管理部署作業 → ✏️ 編輯 → 版本選「新版本」→ 部署**，網址不會變。
 
 ## Troubleshooting 常見問題
 
 - **學生按 Submit 出現「連不上雲端」**：確認 `config.js` 的網址結尾是 `/exec`，部署存取權是「任何人」。學生也可以先用「下載作業檔」交檔案。
 - **批改台說「教師密碼不對」**：密碼要和 `Code.gs` 的 `TEACHER_KEY` 一模一樣；改過密碼要重新部署新版本。
+- **學生登入後按「載入我上次繳交的作業」說沒有交過**：網站是用「班級＋座號」找檔案，找不到時改用「姓名」找。如果學生是在學習吧交的，網站上沒有檔案可以載入。若出現「老師的雲端程式還沒更新」，請照上面的步驟更新 `Code.gs` 並部署新版本。
+- **考試密碼**：每天自動換，在考試頁按「Teacher 老師」→ 登入 → 輸入教師密碼 →「顯示今日密碼」。密碼由 Apps Script 的指令碼屬性 `EXAM_SECRET` 算出來，不會出現在網站上；想讓所有密碼重新產生，刪掉 `EXAM_SECRET` 即可。
 - **想清空重來**：把 Drive 裡的資料夾刪掉，再執行一次 `setup`（會建立新的資料夾和試算表）。若找不到新資料夾，到 Apps Script 的「專案設定 → 指令碼屬性」刪掉 `FOLDER_ID` 和 `SHEET_ID` 後再執行。
 
 ## Security 安全性

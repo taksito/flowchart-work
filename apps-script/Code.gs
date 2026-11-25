@@ -36,6 +36,10 @@ const CONFIG = {
   SHOW_SCORES: true,                  // true = 學生登入「我的成績」頁可以看到老師批改的分數與評語；false = 只看繳交狀態
   NTPC_WEBAPP: '',                    // （選填）這個網頁應用程式的部署網址 …/exec，填了會更嚴格地確認登入是送給這裡的
   NTPC_SCHOOL: '忠孝國中',             // 只接受這所學校的師生（學校名稱或單位代碼）；留空 = 新北市所有學校
+  EXAM_TAB: '考試成績 Exam',           // Scratch 考試的成績（每位學生一列）
+  EXAM_FOLDER: 'Scratch 考試 Exam',     // 考試作品的資料夾（在作業資料夾裡面）
+  DRAFT_FOLDER: '考試流程圖暫存 Exam Drafts',   // 學生考前暫存的流程圖
+  EXAM_HOURS: 3,                       // 輸入考試密碼後，可以作答、繳交多久（小時）
 };
 
 const UNITS = { dog: 'Dog Talk', score: 'Pass or Fail', bmi: 'BMI', sum: 'Summation', scratch: 'Scratch Pass or Fail', 'scratch-bmi': 'Scratch BMI', 'scratch-sum': 'Scratch Summation', 'scratch-pw': 'Scratch Password' };
@@ -103,6 +107,9 @@ function doPost(e) {
   if (req.action === 'mywork') {
     try { return json_(mywork_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
   }
+  if (req.action === 'exam_code' || req.action === 'exam_enter' || req.action === 'exam_list' || req.action === 'draft_get') {
+    try { return json_(req.action === 'exam_code' ? examCode_(req) : req.action === 'exam_enter' ? examEnter_(req) : req.action === 'exam_list' ? examList_(req) : draftGet_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
+  }
   if (req.action === 'whoami') {
     try { return json_(whoami_(req)); } catch (err) { return json_({ ok: false, error: 'server_error', message: String(err) }); }
   }
@@ -121,6 +128,9 @@ function doPost(e) {
     if (req.action === 'att_add') return json_(attAdd_(req));
     if (req.action === 'att_del') return json_(attDel_(req));
     if (req.action === 'room_import') return json_(roomImport_(req));
+    if (req.action === 'exam_submit') return json_(examSubmit_(req));
+    if (req.action === 'exam_save') return json_(examSave_(req));
+    if (req.action === 'draft_save') return json_(draftSave_(req));
     return json_({ ok: false, error: 'unknown_action' });
   } catch (err) {
     return json_({ ok: false, error: 'server_error', message: String(err) });
@@ -924,7 +934,8 @@ function mywork_(req) {
   if (!unit) return { ok: false, error: 'bad_unit' };
   const v = verify_(req.idToken);
   if (v.error) return { ok: false, error: v.error, email: v.email || '' };
-  const pick = myFiles_(v.who, workNames_(unit));
+  let pick = myFiles_(v.who, workNames_(unit));
+  if (!pick.length) pick = myFilesByName_(v.who, workNames_(unit));   /* handed in before signing in, with the class or seat typed differently */
   if (!pick.length) return { ok: false, error: 'none' };
   let best = null;
   pick.forEach(function (name) {
@@ -936,10 +947,158 @@ function mywork_(req) {
   try { work = JSON.parse(best.getBlob().getDataAsString('UTF-8')); } catch (err) { return { ok: false, error: 'bad_file' }; }
   return { ok: true, unit: unit, file: best.getName(), time: best.getLastUpdated().toISOString(), work: work };
 }
+/* Pure: file names with this student's name; same class first, otherwise the name alone when only one file has it */
+function myFilesByName_(who, names) {
+  const nm = String(who.name || '').replace(/\s+/g, '');
+  if (!nm) return [];
+  const withName = (names || []).filter(function (n) { const m = String(n).match(/^(.*?)\s+(.+)\.json$/i); return m && m[2].replace(/\s+/g, '') === nm; });
+  const sameCls = withName.filter(function (n) { return who.cls && String(n).indexOf(String(who.cls) + '-') === 0; });
+  return sameCls.length ? sameCls : withName.length === 1 ? withName : [];
+}
 /* Pure: this student's file names in a unit folder, matched by class and seat number (05 and 5 are the same seat) */
 function myFiles_(who, names) {
   const key = function (c, s) { return String(c).trim() + '-' + String(Number(s)); };
   const me = key(who.cls, who.seat);
   if (!who.cls || !Number(who.seat)) return [];
   return (names || []).filter(function (n) { const m = String(n).match(/^(\d+)-(\d+)\s/); return m && key(m[1], m[2]) === me; });
+}
+
+/* ---------- Scratch 考試 Exam: a code that changes every day, a ticket for the student, scores in their own tab ---------- */
+const EXAM_HEAD = ['考試日期 Date', '班級 Class', '座號 No.', '姓名 Name', '分數 Score', '等第 Level', '測試 Tests', '繳交次數 Times', '最後繳交 Last', '老師批改 Graded', '檔案 File'];
+function today_() { return Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy-MM-dd'); }
+function examSecret_() {
+  const p = PropertiesService.getScriptProperties();
+  let k = p.getProperty('EXAM_SECRET');
+  if (!k) { k = Utilities.getUuid() + Utilities.getUuid(); p.setProperty('EXAM_SECRET', k); }
+  return k;
+}
+/* the 4-digit code for one day: worked out from a secret kept only in this script, so it cannot be read from the website */
+function examCodeFor_(day) {
+  const b = Utilities.computeHmacSha256Signature('exam|' + day, examSecret_());
+  const n = (((b[0] & 255) << 16) | ((b[1] & 255) << 8) | (b[2] & 255)) % 10000;
+  return ('000' + n).slice(-4);
+}
+function subFolder_(name) { const root = rootFolder_(), it = root.getFoldersByName(name); return it.hasNext() ? it.next() : root.createFolder(name); }
+/* teacher: today's code */
+function examCode_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const day = today_();
+  return { ok: true, day: day, code: examCodeFor_(day) };
+}
+/* student: the code of the day -> a signed ticket for a few hours */
+function examEnter_(req) {
+  let who;
+  if (req.idToken) { const v = verify_(req.idToken); if (v.error) return { ok: false, error: v.error }; who = v.who; }
+  else if (CONFIG.LOGIN_REQUIRED) return { ok: false, error: 'login_required' };
+  else who = who_(req);
+  if (!who.name || !who.cls || !who.seat) return { ok: false, error: 'no_name' };
+  const cache = CacheService.getScriptCache(), mk = 'exfail:' + who.cls + '-' + Number(who.seat), all = Number(cache.get('exfail:all') || 0), mine = Number(cache.get(mk) || 0);
+  if (mine >= 8 || all >= 300) return { ok: false, error: 'too_many' };
+  const day = today_();
+  if (String(req.code || '').replace(/\s/g, '') !== examCodeFor_(day)) {
+    cache.put(mk, String(mine + 1), 600); cache.put('exfail:all', String(all + 1), 600);
+    return { ok: false, error: 'bad_code', left: Math.max(0, 7 - mine) };
+  }
+  const exp = Math.floor(Date.now() / 1000) + Number(CONFIG.EXAM_HOURS || 3) * 3600;
+  const body = b64_(JSON.stringify({ c: who.cls, s: who.seat, n: who.name, d: day, e: exp }));
+  return { ok: true, who: who, day: day, exp: exp, ticket: 'exam.' + body + '.' + sign_('exam|' + body) };
+}
+function examTicket_(t) {
+  const p = String(t || '').split('.');
+  if (p.length !== 3 || p[0] !== 'exam' || sign_('exam|' + p[1]) !== p[2]) return { error: 'bad_ticket' };
+  let d; try { d = JSON.parse(unb64_(p[1])); } catch (err) { return { error: 'bad_ticket' }; }
+  if (Number(d.e) * 1000 < Date.now() || d.d !== today_()) return { error: 'ticket_expired' };
+  return { day: d.d, who: who_({ cls: d.c, seat: d.s, name: d.n }) };
+}
+function examTab_() { const sh = tab_(CONFIG.EXAM_TAB, EXAM_HEAD); sh.getRange(1, 1, sh.getMaxRows(), 1).setNumberFormat('@'); return sh; }
+function examRowAt_(data, cls, seat) {
+  for (let r = 1; r < data.length; r++) if (String(data[r][1]).trim() === cls && String(Number(data[r][2])) === String(Number(seat))) return r + 1;
+  return 0;
+}
+/* student hands in the exam: the newest one replaces the old one */
+function examSubmit_(req) {
+  const t = examTicket_(req.ticket);
+  if (t.error) return { ok: false, error: t.error };
+  const work = req.work;
+  if (!work || !work.workspace || typeof work.workspace !== 'object') return { ok: false, error: 'bad_work' };
+  if (JSON.stringify(work).length > 500000) return { ok: false, error: 'too_large' };
+  const who = t.who, ck = req.check || {};
+  work.task = 'exam'; work.student = who.student; work.cls = who.cls; work.seat = who.seat; work.name = who.name;
+  work.examDay = t.day; work.submittedAt = new Date().toISOString();
+  const folder = subFolder_(CONFIG.EXAM_FOLDER), name = who.student + '.json', it = folder.getFilesByName(name);
+  const f = it.hasNext() ? it.next() : null, file = f ? (f.setContent(JSON.stringify(work)), f) : folder.createFile(name, JSON.stringify(work), MimeType.PLAIN_TEXT);
+  const sh = examTab_(), data = sh.getDataRange().getValues(), at = examRowAt_(data, who.cls, who.seat);
+  const times = at ? (Number(data[at - 1][7]) || 0) + 1 : 1;
+  const row = [t.day, who.cls, who.seat, who.name, num_(ck.total), String(ck.level || ''), String(ck.tests || ''), times, new Date(), '', file.getUrl()];
+  if (at) sh.getRange(at, 1, 1, row.length).setValues([row]); else sh.appendRow(row);
+  return { ok: true, time: work.submittedAt, times: times };
+}
+/* teacher: every exam handed in (one class, or all) */
+function examList_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const cls = clean_(req.cls), files = subFolder_(CONFIG.EXAM_FOLDER).getFiles(), works = [];
+  while (files.hasNext()) {
+    const f = files.next();
+    if (!/\.json$/i.test(f.getName()) || (cls && f.getName().indexOf(cls + '-') !== 0)) continue;
+    try { const w = JSON.parse(f.getBlob().getDataAsString('UTF-8')); works.push({ file: f.getName(), url: f.getUrl(), work: w }); } catch (err) {}
+  }
+  const sh = sheet_().getSheetByName(CONFIG.EXAM_TAB);
+  return { ok: true, day: today_(), works: works, roster: (rosterRows_() || []).filter(function (x) { return !cls || x.cls === cls; }), sheetUrl: sheet_().getUrl() + (sh ? '#gid=' + sh.getSheetId() : '') };
+}
+/* teacher: scores worked out again from the saved programs, written to the exam tab */
+function examSave_(req) {
+  const a = teacherAuth_(req);
+  if (a.error) return { ok: false, error: a.error, email: a.email || '' };
+  const rows = Array.isArray(req.rows) ? req.rows.slice(0, 500) : [];
+  const sh = examTab_(), data = sh.getDataRange().getValues(), now = new Date();
+  let n = 0;
+  rows.forEach(function (x) {
+    const who = who_(x); if (!who.cls || !who.seat) return;
+    const at = examRowAt_(data, who.cls, who.seat);
+    const row = [String(x.day || ''), who.cls, who.seat, who.name, num_(x.total), String(x.level || ''), String(x.tests || '')];
+    if (at) { sh.getRange(at, 1, 1, 7).setValues([row]); sh.getRange(at, 10).setValue(now); }
+    else { sh.appendRow(row.concat([1, '', now, String(x.url || '')])); data.push(row); }
+    n++;
+  });
+  return { ok: true, saved: n };
+}
+
+/* ---------- 考試流程圖暫存 Flowchart drafts: a signed-in student keeps up to 10 saves ---------- */
+function draftFile_(who, email) {
+  const key = clean_(who.student || email || '');
+  if (!key) return null;
+  const folder = subFolder_(CONFIG.DRAFT_FOLDER), it = folder.getFilesByName(key + '.json');
+  return { folder: folder, name: key + '.json', file: it.hasNext() ? it.next() : null };
+}
+function draftSave_(req) {
+  if (!loginOn_()) return { ok: false, error: 'login_off' };
+  const v = verify_(req.idToken);
+  if (v.error) return { ok: false, error: v.error };
+  const work = req.work;
+  if (!work || !Array.isArray(work.nodes) || !Array.isArray(work.edges)) return { ok: false, error: 'bad_work' };
+  if (JSON.stringify(work).length > 300000) return { ok: false, error: 'too_large' };
+  const d = draftFile_(v.who, v.email); if (!d) return { ok: false, error: 'no_name' };
+  let data = { versions: [] };
+  if (d.file) { try { data = JSON.parse(d.file.getBlob().getDataAsString('UTF-8')); } catch (err) {} }
+  if (!Array.isArray(data.versions)) data.versions = [];
+  const time = new Date().toISOString();
+  data.versions.unshift({ time: time, title: clean_(req.title), work: work });
+  data.versions = data.versions.slice(0, 10);
+  data.student = v.who.student; data.email = v.email;
+  if (d.file) d.file.setContent(JSON.stringify(data)); else d.folder.createFile(d.name, JSON.stringify(data), MimeType.PLAIN_TEXT);
+  return { ok: true, time: time, count: data.versions.length };
+}
+function draftGet_(req) {
+  if (!loginOn_()) return { ok: false, error: 'login_off' };
+  const v = verify_(req.idToken);
+  if (v.error) return { ok: false, error: v.error };
+  const d = draftFile_(v.who, v.email);
+  if (!d || !d.file) return { ok: false, error: 'none' };
+  let data; try { data = JSON.parse(d.file.getBlob().getDataAsString('UTF-8')); } catch (err) { return { ok: false, error: 'bad_file' }; }
+  const list = (data.versions || []).map(function (x) { return { time: x.time, title: x.title || '', shapes: x.work && x.work.nodes ? x.work.nodes.length : 0 }; });
+  if (!list.length) return { ok: false, error: 'none' };
+  const i = Math.max(0, Math.min(list.length - 1, Number(req.index) || 0));
+  return { ok: true, versions: list, index: i, work: data.versions[i].work };
 }
